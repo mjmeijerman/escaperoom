@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Locked Study — Escape Room</title>
+<style>
+  :root{
+    --gold:#d9a441;
+    --gold-dim:rgba(217,164,65,.35);
+    --ink:#f2e7d3;
+    --ink-dim:#b8a892;
+    --card:#1c1410;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --serif:Georgia,"Iowan Old Style","Palatino Linotype",serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:
+      radial-gradient(90% 70% at 50% -10%, #241a15 0%, #120c09 55%, #0a0705 100%);
+    color:var(--ink);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+    min-height:100%;
+  }
+  .hud{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    max-width:1240px;margin:0 auto;padding:18px 20px 12px;
+  }
+  .brand{
+    font-family:var(--serif);font-size:.95rem;letter-spacing:.28em;
+    text-transform:uppercase;color:var(--gold);
+  }
+  .hud-stats{display:flex;align-items:center;gap:10px}
+  .timer{
+    font-family:var(--mono);font-size:1.05rem;letter-spacing:.08em;
+    padding:.35em .7em;border:1px solid var(--gold-dim);border-radius:8px;
+    background:rgba(20,13,9,.7);color:#f6e5bf;min-width:5.2em;text-align:center;
+  }
+  .ghost{
+    font:inherit;font-size:.82rem;letter-spacing:.06em;
+    background:transparent;color:var(--ink-dim);border:1px solid rgba(255,255,255,.14);
+    padding:.45em .85em;border-radius:8px;cursor:pointer;transition:.15s;
+  }
+  .ghost:hover{color:var(--ink);border-color:var(--gold-dim);background:rgba(217,164,65,.08)}
+  .layout{
+    display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:18px;
+    max-width:1240px;margin:0 auto;padding:0 20px 30px;align-items:start;
+  }
+  @media (max-width:900px){
+    .layout{grid-template-columns:1fr}
+    .hud{padding:14px 16px 10px;gap:10px}
+    .brand{font-size:.72rem;letter-spacing:.16em;line-height:1.4}
+  }
+  @media (hover:none), (max-width:600px){
+    .tag{
+      opacity:1;top:auto;bottom:-1.5em;font-size:.55rem;letter-spacing:.1em;
+      background:rgba(16,10,7,.7);border-color:rgba(217,164,65,.18);color:#e7d9c0;
+    }
+  }
+
+  /* ---------- room ---------- */
+  .stage{
+    position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;
+    background:radial-gradient(120% 95% at 50% 0%, #57443a 0%, #3e312a 45%, #2a211c 100%);
+    box-shadow:inset 0 0 120px rgba(0,0,0,.8), 0 30px 60px -24px rgba(0,0,0,.95);
+    touch-action:manipulation;
+  }
+  .stage::after{
+    content:"";position:absolute;left:0;right:0;bottom:0;height:27%;
+    background:linear-gradient(180deg,#2a1d16,#150e0a);
+    border-top:1px solid rgba(217,164,65,.12);
+    box-shadow:inset 0 18px 30px -18px rgba(0,0,0,.9);
+    pointer-events:none;
+  }
+  .obj{
+    position:absolute;z-index:2;background:none;border:0;padding:0;cursor:pointer;
+    transition:transform .18s ease, filter .18s ease;
+  }
+  .obj:hover,.obj:focus-visible{transform:translateY(-2px) scale(1.03);filter:brightness(1.12)}
+  .obj:focus-visible{outline:2px solid var(--gold);outline-offset:5px;border-radius:8px}
+  .tag{
+    position:absolute;top:-1.7em;left:50%;transform:translateX(-50%);
+    font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;
+    color:#f7ecd7;background:rgba(16,10,7,.9);border:1px solid var(--gold-dim);
+    padding:.2em .55em;border-radius:5px;opacity:0;transition:opacity .15s;pointer-events:none;
+  }
+  .obj:hover .tag,.obj:focus-visible .tag{opacity:1}
+
+  /* door */
+  .door{left:42.5%;top:11%;width:15%;height:67%}
+  .door .panel{
+    position:absolute;inset:0;border-radius:5px 5px 0 0;
+    background:linear-gradient(180deg,#5d3f2a,#3a2618 70%,#2c1b11);
+    border:3px solid #241509;
+    box-shadow:inset 0 0 0 2px rgba(217,164,65,.08), inset -16px 0 26px rgba(0,0,0,.55);
+  }
+  .door .panel::before,.door .panel::after{
+    content:"";position:absolute;left:14%;right:14%;border:1px solid rgba(0,0,0,.45);
+    box-shadow:inset 0 0 0 1px rgba(217,164,65,.07);border-radius:3px;
+  }
+  .door .panel::before{top:8%;height:34%}
+  .door .panel::after{top:48%;height:44%}
+  .door .knob{
+    position:absolute;right:9%;top:52%;width:11%;aspect-ratio:1;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#f6d897,#a97a25 70%,#6d4c14);
+    box-shadow:0 0 10px rgba(217,164,65,.45);
+  }
+  .door .pad{
+    position:absolute;left:12%;top:36%;width:26%;height:14%;border-radius:3px;
+    background:#101a20;border:1px solid #2f4a5a;
+    box-shadow:inset 0 0 8px rgba(111,227,196,.55);
+  }
+  /* painting */
+  .painting{left:4.5%;top:11%;width:16%;height:26%}
+  .painting .canvas{
+    position:absolute;inset:0;transform:rotate(-1.5deg);
+    background:linear-gradient(165deg,#2b4a63,#16283a 55%,#0d1722);
+    border:6px solid #7a5a25;
+    box-shadow:0 0 0 2px #241a0d, 0 12px 22px rgba(0,0,0,.6);
+    overflow:hidden;transition:transform .3s ease;
+  }
+  .painting .canvas::before{
+    content:"";position:absolute;left:-10%;right:-10%;bottom:-6%;height:46%;
+    background:radial-gradient(ellipse at 40% 0%,#3f6b4a,#1d3527 70%,#12211a);
+    border-radius:50% 50% 0 0;
+  }
+  .painting .canvas::after{
+    content:"";position:absolute;right:14%;top:16%;width:16%;aspect-ratio:1;border-radius:50%;
+    background:radial-gradient(circle,#f2e2b8,#c9b380);opacity:.75;
+  }
+  .painting.moved .canvas{transform:rotate(-7deg) translateY(-4%)}
+  /* clock */
+  .clock{left:26%;top:8%;width:11.5%;aspect-ratio:1}
+  .clock .face{
+    position:absolute;inset:0;border-radius:50%;
+    background:radial-gradient(circle at 34% 28%,#f6ecd4,#d3c1a0 68%,#a89272);
+    border:5px solid #6c4f22;
+    box-shadow:0 10px 20px rgba(0,0,0,.55), inset 0 0 14px rgba(0,0,0,.25);
+  }
+  .clock .h,.clock .m{
+    position:absolute;left:50%;top:50%;background:#2a1f16;border-radius:2px;
+    transform-origin:bottom center;
+  }
+  .clock .h{width:5%;height:25%;transform:translate(-50%,-100%) rotate(210deg)}
+  .clock .m{width:3.5%;height:36%;transform:translate(-50%,-100%) rotate(0deg)}
+  .clock .dot{
+    position:absolute;left:50%;top:50%;width:8%;aspect-ratio:1;border-radius:50%;
+    background:#2a1f16;transform:translate(-50%,-50%);
+  }
+  .clock .cloth{
+    position:absolute;inset:-6%;border-radius:50%;
+    background:radial-gradient(circle at 38% 30%,#7d7870,#4f4b45 62%,#2f2c28);
+    box-shadow:0 8px 16px rgba(0,0,0,.55), inset -6px -8px 18px rgba(0,0,0,.45);
+    transition:opacity .3s, transform .3s;
+  }
+  .clock .cloth::after{
+    content:"";position:absolute;left:50%;top:-6%;width:18%;aspect-ratio:1;border-radius:50%;
+    background:radial-gradient(circle at 40% 35%,#8a857c,#403c37);
+    transform:translateX(-50%);
+  }
+  .clock.revealed .cloth{opacity:0;transform:translateY(18%) scale(.9);pointer-events:none}
+  /* bookshelf */
+  .shelf{left:65.5%;top:13%;width:24.5%;height:43%}
+  .shelf .case{
+    position:absolute;inset:0;display:flex;align-items:flex-end;gap:3%;
+    padding:5% 7% 9%;border-radius:4px;
+    background:linear-gradient(180deg,#452b1b,#2a1a11);
+    border:2px solid #1a0f08;
+    box-shadow:inset 0 0 22px rgba(0,0,0,.65);
+  }
+  .shelf .case i{display:block;flex:1;border-radius:2px 2px 0 0;box-shadow:inset -4px 0 6px rgba(0,0,0,.35)}
+  .shelf .case i:nth-child(1){height:78%;background:#5a3b2a}
+  .shelf .case i:nth-child(2){height:88%;background:#2f6b4c}
+  .shelf .case i:nth-child(3){height:82%;background:#8a3232}
+  .shelf .case i:nth-child(4){height:92%;background:#33567f}
+  .shelf .case i:nth-child(5){height:70%;background:#6b5a86}
+  .shelf .board{
+    position:absolute;left:-2%;right:-2%;bottom:-4%;height:7%;
+    background:linear-gradient(180deg,#6b4a2d,#3a2413);border-radius:2px;
+    box-shadow:0 6px 12px rgba(0,0,0,.5);
+  }
+  /* rug */
+  .rug{left:11%;top:71%;width:31%;height:17%;transition:transform .35s ease}
+  .rug .shape{
+    position:absolute;inset:0;border-radius:50%;
+    background:radial-gradient(ellipse at 50% 38%,#8d3d35,#5e241f 62%,#3a1612);
+    border:2px solid rgba(217,164,65,.2);
+    box-shadow:inset 0 0 34px rgba(0,0,0,.55), 0 8px 16px rgba(0,0,0,.45);
+  }
+  .rug .shape::after{
+    content:"";position:absolute;inset:16% 22%;border-radius:50%;
+    border:1px solid rgba(217,164,65,.22);
+  }
+  .rug.moved{transform:translateX(16%) rotate(5deg)}
+  /* desk */
+  .desk{left:57%;top:60%;width:31%;height:28%}
+  .desk .top{
+    position:absolute;left:0;right:0;top:0;height:20%;border-radius:4px;
+    background:linear-gradient(180deg,#75522f,#4a3120);
+    box-shadow:0 8px 16px rgba(0,0,0,.55);
+  }
+  .desk .body{
+    position:absolute;left:6%;right:6%;top:18%;bottom:0;border-radius:0 0 5px 5px;
+    background:linear-gradient(180deg,#4e3524,#31200f);
+    box-shadow:inset 0 0 20px rgba(0,0,0,.6);
+  }
+  .desk .drawer{
+    position:absolute;left:8%;right:8%;height:26%;
+    background:linear-gradient(180deg,#563a26,#3a2616);
+    border:1px solid rgba(0,0,0,.5);border-radius:3px;
+    box-shadow:inset 0 1px 0 rgba(217,164,65,.12);
+  }
+  .desk .drawer.d1{top:32%}
+  .desk .drawer.d2{top:64%;border-color:rgba(217,164,65,.18);height:28%}
+  .desk .drawer::after{
+    content:"";position:absolute;left:50%;top:46%;width:22%;height:8%;border-radius:2px;
+    background:#8a6a2f;transform:translateX(-50%);
+  }
+  .desk .d2::after{background:radial-gradient(circle at 30% 30%,#f0cf8a,#8a6a2f)}
+
+  /* ---------- notes ---------- */
+  .notes{
+    background:linear-gradient(180deg,#1b1310,#150f0c);
+    border:1px solid rgba(217,164,65,.18);border-radius:14px;padding:16px 16px 18px;
+  }
+  .notes h2{
+    margin:0 0 12px;font-family:var(--serif);font-size:.78rem;letter-spacing:.24em;
+    text-transform:uppercase;color:var(--gold);font-weight:400;
+  }
+  .digits{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:15px}
+  .digit{
+    display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px 7px;
+    border:1px solid rgba(255,255,255,.1);border-radius:9px;background:rgba(0,0,0,.28);
+  }
+  .digit .lbl{font-size:.56rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+  .digit b{font-family:var(--mono);font-size:1.4rem;color:#5f5344;line-height:1}
+  .digit.found{border-color:var(--gold-dim);background:rgba(217,164,65,.1)}
+  .digit.found b{color:#ffd98a;animation:pop .4s ease}
+  .clues{list-style:none;margin:0;padding:0;display:grid;gap:9px;font-size:.82rem;line-height:1.45;color:#e2d3ba}
+  .clues li{position:relative;padding-left:14px}
+  .clues li::before{content:"›";position:absolute;left:0;color:var(--gold)}
+  .clues .muted{color:#7c6f60;font-style:italic}
+  .clues .muted::before{content:""}
+
+  /* ---------- modal ---------- */
+  .modal{
+    position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;
+    background:rgba(8,5,3,.74);backdrop-filter:blur(6px);opacity:0;transition:opacity .16s ease;
+  }
+  .modal.show{opacity:1}
+  .card{
+    position:relative;width:min(560px,100%);max-height:86vh;overflow:auto;
+    padding:24px 24px 18px;border-radius:14px;
+    background:linear-gradient(180deg,#241a14,#181110);
+    border:1px solid rgba(217,164,65,.26);
+    box-shadow:0 40px 80px -24px rgba(0,0,0,.95);
+    transform:translateY(6px) scale(.99);transition:transform .18s ease;
+  }
+  .modal.show .card{transform:none}
+  .card h2{
+    margin:0 0 12px;font-family:var(--serif);font-weight:400;font-size:1.35rem;color:#f7ead2;
+  }
+  .mBody{font-size:.95rem;line-height:1.6;color:#ddd0ba}
+  .mBody p{margin:0 0 .8em}
+  .muted{color:#9c8d79}
+  .scrawl{
+    font-family:var(--serif);font-style:italic;font-size:1.05rem;color:#f0d9a5;
+    border-left:2px solid var(--gold-dim);padding-left:12px;
+  }
+  .digitsline b{font-family:var(--mono);font-size:1.4rem;color:#ffd98a}
+  .close{
+    position:absolute;right:12px;top:10px;background:none;border:0;color:#8d7d6a;
+    font-size:1.05rem;cursor:pointer;padding:6px;line-height:1;border-radius:6px;
+  }
+  .close:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+  .mActions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+  .btn{
+    font:inherit;font-size:.86rem;letter-spacing:.03em;cursor:pointer;
+    padding:.6em 1.05em;border-radius:9px;
+    border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--ink);
+    transition:.15s;
+  }
+  .btn:hover{background:rgba(255,255,255,.09)}
+  .btn.primary{
+    background:linear-gradient(180deg,#e2b154,#b4802a);color:#241708;
+    border-color:transparent;font-weight:600;
+  }
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .bigclock{width:min(210px,58%);display:block;margin:6px auto 12px}
+  .books{display:flex;gap:10px;justify-content:center;margin:16px 0 6px}
+  .bk{width:26px;height:96px;border-radius:3px 3px 0 0;box-shadow:inset -5px 0 8px rgba(0,0,0,.4)}
+  .bk.green{background:#2f6b4c}
+  .bk.red{background:#8a3232}
+  .bk.blue{background:#33567f}
+  .tin{margin-top:18px;padding-top:16px;border-top:1px dashed rgba(217,164,65,.2)}
+  .colors{display:flex;gap:12px;margin:12px 0}
+  .c{
+    width:52px;height:52px;border-radius:50%;cursor:pointer;
+    border:2px solid rgba(0,0,0,.45);transition:transform .12s, box-shadow .12s;
+  }
+  .c:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(0,0,0,.5)}
+  .c:active{transform:translateY(1px)}
+  .c.green{background:radial-gradient(circle at 35% 30%,#4f9e76,#24523a)}
+  .c.red{background:radial-gradient(circle at 35% 30%,#c26155,#6d2721)}
+  .c.blue{background:radial-gradient(circle at 35% 30%,#5a8fc4,#213f60)}
+  .status{margin:6px 0 0;font-size:.82rem;color:#a4967f;font-family:var(--mono)}
+  .foundbox{margin-top:18px;padding:14px 16px;border:1px solid var(--gold-dim);border-radius:10px;background:rgba(217,164,65,.07)}
+  .bignum{margin:.2em 0 0;font-family:var(--mono);font-size:2rem;color:#ffd98a}
+  .err{color:#e59a8a;font-size:.84rem}
+  input.code{
+    width:100%;margin-top:6px;padding:.55em .3em .55em .8em;border-radius:11px;
+    background:#0c0907;border:1px solid var(--gold-dim);color:#f6e6c8;
+    font-family:var(--mono);font-size:1.9rem;letter-spacing:.5em;text-align:center;
+    outline:none;
+  }
+  input.code:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(217,164,65,.14)}
+  .shake{animation:shake .4s}
+  @keyframes shake{0%,100%{transform:none}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+  @keyframes pop{0%{transform:scale(.6);opacity:.3}70%{transform:scale(1.15)}100%{transform:none}}
+
+  /* ---------- toasts / win ---------- */
+  .obj.rug{z-index:1}
+  .toasts{
+    position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
+    display:flex;flex-direction:column;gap:8px;z-index:60;pointer-events:none;align-items:center;
+  }
+  .toast{
+    background:rgba(30,22,16,.96);border:1px solid var(--gold-dim);color:#f2e3c6;
+    padding:.5em .95em;border-radius:999px;font-size:.83rem;animation:pop .25s ease;
+    box-shadow:0 10px 25px rgba(0,0,0,.6);white-space:nowrap;
+  }
+  .win{
+    position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:20px;
+    background:radial-gradient(circle at 50% 40%,rgba(60,40,15,.92),rgba(6,4,3,.97));
+    animation:pop .5s ease;
+  }
+  .wincard{text-align:center;max-width:440px}
+  .wincard .kicker{letter-spacing:.34em;text-transform:uppercase;font-size:.7rem;color:var(--gold)}
+  .wincard h2{font-family:var(--serif);font-weight:400;font-size:2rem;margin:.35em 0 .3em;color:#ffe9bd}
+  .wincard p{color:#cbb898;font-size:.95rem;margin:0 0 1.4em}
+  .wincard .time{font-family:var(--mono);font-size:1.5rem;color:#ffd98a}
+</style>
+</head>
+<body>
+
+<header class="hud">
+  <div class="brand">The Locked Study</div>
+  <div class="hud-stats">
+    <span class="timer" id="timer" aria-label="Elapsed time">00:00</span>
+    <button class="ghost" id="hintBtn" type="button">Hint</button>
+    <button class="ghost" id="resetBtn" type="button">Restart</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="stage" aria-label="The room">
+    <button class="obj painting" data-obj="painting" id="o-painting" type="button" aria-label="Painting">
+      <span class="canvas"></span><span class="tag">Painting</span>
+    </button>
+
+    <button class="obj clock" data-obj="clock" id="o-clock" type="button" aria-label="Clock">
+      <span class="face"><i class="h"></i><i class="m"></i><b class="dot"></b></span>
+      <span class="cloth"></span><span class="tag">Clock</span>
+    </button>
+
+    <button class="obj door" data-obj="door" type="button" aria-label="Door">
+      <span class="panel"><span class="pad"></span><span class="knob"></span></span>
+      <span class="tag">Door</span>
+    </button>
+
+    <button class="obj shelf" data-obj="shelf" type="button" aria-label="Bookshelf">
+      <span class="case"><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="board"></span><span class="tag">Bookshelf</span>
+    </button>
+
+    <button class="obj desk" data-obj="desk" type="button" aria-label="Desk">
+      <span class="top"></span>
+      <span class="body"><span class="drawer d1"></span><span class="drawer d2"></span></span>
+      <span class="tag">Desk</span>
+    </button>
+
+    <button class="obj rug" data-obj="rug" id="o-rug" type="button" aria-label="Rug">
+      <span class="shape"></span><span class="tag">Rug</span>
+    </button>
+  </section>
+
+  <aside class="notes" aria-label="Case notes">
+    <h2>Case notes</h2>
+    <div class="digits">
+      <div class="digit" id="d-clock"><span class="lbl">Clock</span><b>?</b></div>
+      <div class="digit" id="d-box"><span class="lbl">Colour</span><b>?</b></div>
+      <div class="digit" id="d-drawer"><span class="lbl">Wood</span><b>?</b></div>
+    </div>
+    <ul class="clues" id="clues">
+      <li class="muted">Nothing yet. Click around the room.</li>
+    </ul>
+  </aside>
+</main>
+
+<div class="modal" id="modal" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <button class="close" id="mClose" type="button" aria-label="Close">✕</button>
+    <h2 id="mTitle"></h2>
+    <div class="mBody" id="mBody"></div>
+    <div class="mActions" id="mActions"></div>
+  </div>
+</div>
+
+<div class="win" id="win" hidden>
+  <div class="wincard">
+    <div class="kicker">Escaped</div>
+    <h2>The lock clicks open.</h2>
+    <p>Cold air from the corridor. You leave the study behind in <span class="time" id="winTime">00:00</span>.</p>
+    <button class="btn primary" id="againBtn" type="button">Play again</button>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+(function () {
+"use strict";
+
+var $ = function (sel, root) { return (root || document).querySelector(sel); };
+
+/* ---------------- state ---------------- */
+var S = {
+  painting: false,
+  clock: false,
+  rugMoved: false,
+  key: false,
+  shelfSeen: false,
+  boxOpen: false,
+  drawerOpen: false,
+  seq: [],
+  digits: { clock: null, box: null, drawer: null },
+  clues: [],
+  escaped: false,
+  hint: 0
+};
+
+var CODE = "742";
+
+/* ---------------- ui helpers ---------------- */
+var modal = $("#modal"), mTitle = $("#mTitle"), mBody = $("#mBody"), mActions = $("#mActions");
+
+function openPanel(opts) {
+  mTitle.textContent = opts.title || "";
+  mBody.innerHTML = opts.body || "";
+  mActions.innerHTML = "";
+  (opts.actions || []).forEach(function (a) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn" + (a.primary ? " primary" : "");
+    b.textContent = a.label;
+    if (a.disabled) b.disabled = true;
+    b.addEventListener("click", function () { a.onClick && a.onClick(); });
+    mActions.appendChild(b);
+  });
+  if (typeof opts.mount === "function") opts.mount(mBody);
+  modal.hidden = false;
+  requestAnimationFrame(function () { modal.classList.add("show"); });
+  mBody.parentElement.scrollTop = 0;
+}
+function closePanel() {
+  modal.classList.remove("show");
+  setTimeout(function () { modal.hidden = true; }, 170);
+}
+function toast(msg) {
+  var el = document.createElement("div");
+  el.className = "toast";
+  el.textContent = msg;
+  $("#toasts").appendChild(el);
+  setTimeout(function () {
+    el.style.transition = "opacity .3s";
+    el.style.opacity = "0";
+    setTimeout(function () { el.remove(); }, 320);
+  }, 2200);
+}
+function addClue(text) {
+  if (S.clues.indexOf(text) !== -1) return;
+  S.clues.push(text);
+  renderClues();
+}
+function renderClues() {
+  var list = $("#clues");
+  if (!S.clues.length) {
+    list.innerHTML = '<li class="muted">Nothing yet. Click around the room.</li>';
+    return;
+  }
+  list.innerHTML = S.clues.map(function (c) {
+    return "<li>" + c + "</li>";
+  }).join("");
+}
+function setDigit(which, value) {
+  S.digits[which] = value;
+  var box = $("#d-" + which);
+  box.classList.add("found");
+  box.querySelector("b").textContent = value;
+}
+
+/* ---------------- room objects ---------------- */
+var OBJ = {};
+
+OBJ.painting = function () {
+  if (!S.painting) {
+    S.painting = true;
+    $("#o-painting").classList.add("moved");
+    addClue('Scratched behind the painting: "Time keeps the first number. Its hands are shy."');
+    addClue("The rug looks disturbed.");
+    toast("Clue found");
+    openPanel({
+      title: "Behind the painting",
+      body:
+        '<p>You lift the frame off its hook. The wall behind it is scratched, not painted:</p>' +
+        '<p class="scrawl">"Time keeps the first number. Its hands are shy."</p>' +
+        "<p>The dust is swept aside near the door. Someone moved the rug, and recently.</p>"
+    });
+  } else {
+    openPanel({
+      title: "Behind the painting",
+      body: '<p class="scrawl">"Time keeps the first number. Its hands are shy."</p>'
+    });
+  }
+};
+
+OBJ.clock = function () {
+  if (!S.clock) {
+    if (!S.painting) {
+      openPanel({
+        title: "The clock",
+        body: "<p>A grey cloth is tied over the face. The knot is at the back, out of reach from here.</p>"
+      });
+      return;
+    }
+    S.clock = true;
+    $("#o-clock").classList.add("revealed");
+    setDigit("clock", "7");
+    addClue("The clock's hands are frozen at 7:00 → first number 7.");
+    toast("First number found");
+    openPanel({
+      title: "The clock",
+      body:
+        "<p>You pull the cloth away. The hands are frozen, hour hand straight on seven.</p>" +
+        clockSVG() +
+        '<p class="digitsline">First number: <b>7</b></p>'
+    });
+  } else {
+    openPanel({ title: "The clock", body: "<p>Frozen at seven. It has been for a long time.</p>" + clockSVG() });
+  }
+};
+
+OBJ.rug = function () {
+  if (!S.key) {
+    S.rugMoved = true;
+    S.key = true;
+    $("#o-rug").classList.add("moved");
+    addClue("A brass key was under the rug. It fits a small lock.");
+    toast("Picked up: brass key");
+    openPanel({
+      title: "Under the rug",
+      body:
+        "<p>The rug drags aside with a dry rasp. On the bare boards sits a small brass key, cold and heavy.</p>" +
+        "<p class=\"muted\">You pocket it. Something in this room has a small keyhole.</p>"
+    });
+  } else {
+    openPanel({ title: "Under the rug", body: "<p>Only dust and floorboards now.</p>" });
+  }
+};
+
+OBJ.desk = function () {
+  if (!S.drawerOpen) {
+    if (!S.key) {
+      openPanel({
+        title: "The desk",
+        body:
+          "<p>Two drawers. The top one is empty except for a dried-up pen.</p>" +
+          "<p>The deep drawer is locked — a small brass keyhole, barely wider than a needle.</p>"
+      });
+      return;
+    }
+    openPanel({
+      title: "The desk",
+      body: "<p>The brass key slides into the small keyhole and turns without a sound.</p>",
+      actions: [{
+        label: "Pull the drawer open",
+        primary: true,
+        onClick: function () {
+          S.drawerOpen = true;
+          setDigit("drawer", "2");
+          addClue("Inside the desk drawer: a note with the number 2.");
+          toast("Second number found");
+          OBJ.desk();
+        }
+      }]
+    });
+    return;
+  }
+  openPanel({
+    title: "The desk",
+    body: '<p>The drawer hangs open. One note inside, in careful handwriting:</p><p class="bignum">2</p>'
+  });
+};
+
+OBJ.door = function () {
+  if (S.escaped) return;
+  openPanel({
+    title: "The door",
+    body:
+      "<p>The keypad beside the handle is warm to the touch. Three digits.</p>" +
+      '<p class="scrawl">time · colour · wood</p>' +
+      '<input class="code" id="codeInput" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="•••" aria-label="Door code">',
+    actions: [{ label: "Unlock", primary: true, onClick: submitCode }],
+    mount: function (body) {
+      var input = $("#codeInput", body);
+      input.focus();
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") submitCode();
+      });
+      input.addEventListener("input", function () { input.value = input.value.replace(/\D/g, ""); });
+    }
+  });
+};
+
+OBJ.shelf = function () {
+  if (!S.shelfSeen) {
+    S.shelfSeen = true;
+    addClue("Bookshelf: three spines lean apart — green, red, blue.");
+    toast("Colour order found");
+  }
+  openPanel({
+    title: "The bookshelf",
+    body: shelfBody(),
+    mount: bindShelf
+  });
+  mActions.innerHTML = "";
+  var b = document.createElement("button");
+  b.type = "button";
+  b.className = "btn";
+  b.textContent = "Step back";
+  b.addEventListener("click", closePanel);
+  mActions.appendChild(b);
+};
+
+/* ---------------- bookshelf / tin box ---------------- */
+function shelfBody() {
+  var books = ["green", "red", "blue"].map(function (c) {
+    return '<span class="bk ' + c + '"></span>';
+  }).join("");
+
+  var box;
+  if (S.boxOpen) {
+    box =
+      '<div class="foundbox">' +
+      "<p>Inside the tin box, a folded slip of paper:</p>" +
+      '<p class="bignum">4</p>' +
+      "</div>";
+  } else {
+    box =
+      '<div class="tin">' +
+      "<p>A tin box sits on the shelf. Three coloured buttons, no labels.</p>" +
+      '<div class="colors" id="tinButtons">' +
+      '<button type="button" class="c green" data-color="green" aria-label="Green button"></button>' +
+      '<button type="button" class="c red" data-color="red" aria-label="Red button"></button>' +
+      '<button type="button" class="c blue" data-color="blue" aria-label="Blue button"></button>' +
+      "</div>" +
+      '<p class="status">' + (S.seq.length ? "Pressed: " + S.seq.join(" → ") : "Nothing pressed yet.") + "</p>" +
+      (S.seq.length ? '<p class="err">The lid stays shut.</p>' : "") +
+      "</div>";
+  }
+
+  return (
+    "<p>Five books, thick with dust. Three of them lean away from the rest, in this order:</p>" +
+    '<div class="books">' + books + "</div>" +
+    '<p class="muted">Green, red, blue. Someone wanted them noticed.</p>' +
+    box
+  );
+}
+
+function bindShelf(body) {
+  body.querySelectorAll("button[data-color]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      pressColor(btn.getAttribute("data-color"), body);
+    });
+  });
+}
+
+function pressColor(color, body) {
+  if (S.boxOpen) return;
+  S.seq.push(color);
+  var target = ["green", "red", "blue"];
+  if (S.seq.length >= 3) {
+    if (S.seq.join() === target.join()) {
+      S.boxOpen = true;
+      setDigit("box", "4");
+      addClue("The tin box opened: a note with the number 4.");
+      toast("The tin box clicks open");
+    } else {
+      toast("The box resets");
+    }
+    S.seq = [];
+  }
+  body.innerHTML = shelfBody();
+  bindShelf(body);
+}
+
+/* ---------------- door code ---------------- */
+function submitCode() {
+  var input = $("#codeInput");
+  if (!input) return;
+  var value = input.value.trim();
+  if (value === CODE) {
+    win();
+    return;
+  }
+  input.classList.add("shake");
+  input.value = "";
+  input.focus();
+  setTimeout(function () { input.classList.remove("shake"); }, 420);
+  var err = $("#codeErr");
+  if (!err) {
+    err = document.createElement("p");
+    err.id = "codeErr";
+    err.className = "err";
+    input.insertAdjacentElement("afterend", err);
+  }
+  err.textContent = value.length < 3 ? "Three digits, not fewer." : "The lock does not budge.";
+}
+
+/* ---------------- clock graphic ---------------- */
+function clockSVG() {
+  var ticks = "";
+  for (var i = 0; i < 12; i++) {
+    var a = (i * 30) * Math.PI / 180;
+    var x1 = 50 + 40 * Math.sin(a), y1 = 50 - 40 * Math.cos(a);
+    var x2 = 50 + 46 * Math.sin(a), y2 = 50 - 46 * Math.cos(a);
+    ticks += '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) +
+             '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) +
+             '" stroke="#3a2c1c" stroke-width="1.6" stroke-linecap="round"/>';
+  }
+  return (
+    '<svg class="bigclock" viewBox="0 0 100 100" role="img" aria-label="Clock showing seven o\'clock">' +
+    '<circle cx="50" cy="50" r="48" fill="#efe2c6" stroke="#6c4f22" stroke-width="3"/>' +
+    ticks +
+    '<line x1="50" y1="50" x2="50" y2="24" stroke="#2a1f16" stroke-width="3" stroke-linecap="round"/>' +
+    '<line x1="50" y1="50" x2="39" y2="69" stroke="#2a1f16" stroke-width="5" stroke-linecap="round"/>' +
+    '<circle cx="50" cy="50" r="3.2" fill="#2a1f16"/>' +
+    "</svg>"
+  );
+}
+
+/* ---------------- hints / timer / win ---------------- */
+var HINTS = [
+  "Click every object. One of them is hanging crooked.",
+  "The clock wears a cloth. Move the painting first, then come back.",
+  "Drag the rug aside. What you find opens the deep drawer.",
+  "The bookshelf tells the colour order for the tin box: green, red, blue.",
+  "The door wants three digits in the order time, colour, wood."
+];
+
+function hint() {
+  var msg = HINTS[Math.min(S.hint, HINTS.length - 1)];
+  S.hint = Math.min(S.hint + 1, HINTS.length - 1);
+  toast(msg);
+  addClue("Hint: " + msg);
+}
+
+var t0 = Date.now();
+var timerId = setInterval(tick, 1000);
+function tick() { $("#timer").textContent = fmt(Math.floor((Date.now() - t0) / 1000)); }
+function fmt(total) {
+  var m = String(Math.floor(total / 60)).padStart(2, "0");
+  var s = String(total % 60).padStart(2, "0");
+  return m + ":" + s;
+}
+tick();
+
+function win() {
+  S.escaped = true;
+  clearInterval(timerId);
+  closePanel();
+  $("#winTime").textContent = fmt(Math.floor((Date.now() - t0) / 1000));
+  setTimeout(function () { $("#win").hidden = false; }, 180);
+}
+
+/* ---------------- wiring ---------------- */
+document.querySelectorAll("[data-obj]").forEach(function (el) {
+  el.addEventListener("click", function () {
+    var fn = OBJ[el.getAttribute("data-obj")];
+    if (fn) fn();
+  });
+});
+$("#mClose").addEventListener("click", closePanel);
+modal.addEventListener("click", function (e) { if (e.target === modal) closePanel(); });
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape" && !modal.hidden) closePanel();
+});
+$("#hintBtn").addEventListener("click", hint);
+$("#resetBtn").addEventListener("click", function () { location.reload(); });
+$("#againBtn").addEventListener("click", function () { location.reload(); });
+
+})();
+</script>
+</body>
+</html>

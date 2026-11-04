@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Locked Study — 3D Escape Room</title>
+<style>
+  :root{
+    --gold:#d9a441;
+    --gold-dim:rgba(217,164,65,.35);
+    --ink:#f2e7d3;
+    --ink-dim:#b8a892;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --serif:Georgia,"Iowan Old Style","Palatino Linotype",serif;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{height:100%;margin:0;overflow:hidden;background:#080605}
+  body{font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased}
+  canvas{display:block;width:100%;height:100%;touch-action:none}
+  .vignette{
+    position:fixed;inset:0;pointer-events:none;z-index:5;
+    background:radial-gradient(ellipse at 50% 45%,transparent 40%,rgba(0,0,0,.55) 100%);
+    mix-blend-mode:multiply;
+  }
+  /* ---------- hud ---------- */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+  #crosshair{
+    position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;
+    border-radius:50%;border:1px solid rgba(255,255,255,.45);
+    transition:border-color .15s, transform .15s, box-shadow .15s;
+  }
+  #crosshair.hot{border-color:var(--gold);transform:scale(1.5);box-shadow:0 0 12px rgba(217,164,65,.6)}
+  #prompt{
+    position:absolute;left:50%;top:calc(50% + 34px);transform:translateX(-50%);
+    font-size:.82rem;letter-spacing:.08em;padding:.45em .9em;border-radius:999px;
+    background:rgba(12,8,6,.8);border:1px solid var(--gold-dim);color:#f7e9c9;
+    white-space:nowrap;backdrop-filter:blur(4px);
+  }
+  #prompt kbd{
+    font-family:var(--mono);font-size:.78rem;padding:.05em .4em;margin-right:.35em;
+    border:1px solid var(--gold-dim);border-radius:4px;color:var(--gold);
+  }
+  .topbar{
+    position:absolute;right:16px;top:14px;display:flex;gap:8px;align-items:center;pointer-events:auto;
+  }
+  .timer{
+    font-family:var(--mono);font-size:.95rem;letter-spacing:.08em;min-width:4.6em;text-align:center;
+    padding:.35em .7em;border-radius:8px;border:1px solid var(--gold-dim);
+    background:rgba(16,11,8,.72);color:#f6e5bf;
+  }
+  .ghost{
+    font:inherit;font-size:.78rem;letter-spacing:.06em;cursor:pointer;
+    background:rgba(16,11,8,.72);color:var(--ink-dim);border:1px solid rgba(255,255,255,.14);
+    padding:.45em .8em;border-radius:8px;transition:.15s;
+  }
+  .ghost:hover{color:var(--ink);border-color:var(--gold-dim);background:rgba(217,164,65,.1)}
+
+  /* notes */
+  #notes{
+    position:absolute;left:16px;bottom:16px;width:262px;max-height:46vh;overflow:auto;
+    padding:12px 14px 13px;border-radius:12px;pointer-events:auto;
+    background:linear-gradient(180deg,rgba(27,19,16,.9),rgba(18,13,10,.92));
+    border:1px solid rgba(217,164,65,.18);backdrop-filter:blur(6px);
+    font-size:.78rem;line-height:1.45;
+  }
+  #notes h2{
+    margin:0 0 9px;font-family:var(--serif);font-weight:400;font-size:.64rem;
+    letter-spacing:.24em;text-transform:uppercase;color:var(--gold);
+  }
+  .digits{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+  .digit{
+    display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 3px 5px;
+    border:1px solid rgba(255,255,255,.09);border-radius:8px;background:rgba(0,0,0,.28);
+  }
+  .digit .lbl{font-size:.5rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)}
+  .digit b{font-family:var(--mono);font-size:1.15rem;color:#5f5344;line-height:1}
+  .digit.found{border-color:var(--gold-dim);background:rgba(217,164,65,.1)}
+  .digit.found b{color:#ffd98a}
+  .clues{list-style:none;margin:0;padding:0;display:grid;gap:7px;color:#dccdb4}
+  .clues li{position:relative;padding-left:12px}
+  .clues li::before{content:"›";position:absolute;left:0;color:var(--gold)}
+  .clues .muted{color:#7c6f60;font-style:italic}
+  .clues .muted::before{content:""}
+
+  /* ---------- overlays ---------- */
+  .overlay{
+    position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:22px;
+    background:radial-gradient(ellipse at 50% 40%,rgba(28,19,14,.82),rgba(5,3,2,.94));
+    backdrop-filter:blur(7px);animation:fade .22s ease;
+  }
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .card{
+    position:relative;width:min(560px,100%);max-height:86vh;overflow:auto;
+    padding:24px;border-radius:14px;
+    background:linear-gradient(180deg,#241a14,#17100e);
+    border:1px solid rgba(217,164,65,.26);
+    box-shadow:0 40px 90px -24px #000;
+  }
+  .card h2{margin:0 0 12px;font:400 1.4rem/1.25 var(--serif);color:#f8ecd4}
+  .card p{font-size:.95rem;line-height:1.6;color:#ddd0ba;margin:0 0 .8em}
+  .scrawl{
+    font-family:var(--serif);font-style:italic;font-size:1.05rem;color:#f0d9a5;
+    border-left:2px solid var(--gold-dim);padding-left:12px;
+  }
+  .close{
+    position:absolute;right:12px;top:10px;background:none;border:0;color:#8d7d6a;
+    font-size:1.05rem;cursor:pointer;padding:6px;border-radius:6px;line-height:1;
+  }
+  .close:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+  .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+  .btn{
+    font:inherit;font-size:.86rem;cursor:pointer;padding:.6em 1.05em;border-radius:9px;
+    border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--ink);
+    transition:.15s;
+  }
+  .btn:hover{background:rgba(255,255,255,.09)}
+  .btn.primary{background:linear-gradient(180deg,#e2b154,#b4802a);border-color:transparent;color:#241708;font-weight:600}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .muted{color:#9c8d79;font-size:.86rem}
+  .books{display:flex;gap:10px;justify-content:center;margin:16px 0 4px}
+  .bk{width:26px;height:96px;border-radius:3px 3px 0 0;box-shadow:inset -5px 0 8px rgba(0,0,0,.4)}
+  .bk.green{background:#2f6b4c}.bk.red{background:#8a3232}.bk.blue{background:#33567f}
+  .tin{margin-top:16px;padding-top:14px;border-top:1px dashed rgba(217,164,65,.2)}
+  .colors{display:flex;gap:12px;margin:12px 0}
+  .c{width:50px;height:50px;border-radius:50%;cursor:pointer;border:2px solid rgba(0,0,0,.45);transition:.12s}
+  .c:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(0,0,0,.5)}
+  .c.green{background:radial-gradient(circle at 35% 30%,#4f9e76,#24523a)}
+  .c.blue{background:radial-gradient(circle at 35% 30%,#5a8fc4,#213f60)}
+  .c.amber{background:radial-gradient(circle at 35% 30%,#f0c46a,#a8761f)}
+  .status{font-family:var(--mono);font-size:.8rem;color:#a4967f;margin:6px 0 0}
+  .foundbox{margin-top:16px;padding:14px 16px;border:1px solid var(--gold-dim);border-radius:10px;background:rgba(217,164,65,.07)}
+  .bignum{margin:.2em 0 0;font-family:var(--mono);font-size:2rem;color:#ffd98a}
+  .err{color:#e59a8a;font-size:.84rem;margin:.4em 0 0}
+  input.code{
+    width:100%;margin-top:4px;padding:.55em .3em .55em .8em;border-radius:11px;
+    background:#0c0907;border:1px solid var(--gold-dim);color:#f6e6c8;
+    font-family:var(--mono);font-size:1.9rem;letter-spacing:.5em;text-align:center;outline:none;
+  }
+  input.code:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(217,164,65,.14)}
+  .shake{animation:shake .4s}
+  @keyframes shake{0%,100%{transform:none}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+
+  /* start */
+  .start-card{text-align:left;max-width:520px}
+  .start-card .kicker{font-size:.68rem;letter-spacing:.34em;text-transform:uppercase;color:var(--gold)}
+  .start-card h1{font:400 2.1rem/1.15 var(--serif);margin:.3em 0 .5em;color:#ffe9bd}
+  .keys{display:grid;grid-template-columns:auto 1fr;gap:7px 14px;margin:18px 0 4px;font-size:.88rem;color:#d6c7ae}
+  .keys kbd{
+    font-family:var(--mono);font-size:.76rem;padding:.2em .45em;border-radius:5px;
+    border:1px solid rgba(217,164,65,.35);color:#f3dfb6;background:rgba(0,0,0,.35);
+    white-space:nowrap;
+  }
+  .toasts{
+    position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:30;
+    display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;
+  }
+  .toast{
+    padding:.5em .95em;border-radius:999px;font-size:.83rem;white-space:nowrap;
+    background:rgba(30,22,16,.96);border:1px solid var(--gold-dim);color:#f2e3c6;
+    box-shadow:0 10px 25px rgba(0,0,0,.6);animation:pop .25s ease;
+  }
+  @keyframes pop{from{transform:scale(.9);opacity:0}to{transform:none;opacity:1}}
+  #win{z-index:40}
+  #win .card{text-align:center}
+  #win .kicker{font-size:.68rem;letter-spacing:.34em;text-transform:uppercase;color:var(--gold)}
+  #win h2{font-size:2rem;margin:.3em 0 .3em}
+  #win .time{font-family:var(--mono);font-size:1.4rem;color:#ffd98a}
+
+  /* touch controls */
+  #touch{position:fixed;inset:auto 0 0 0;z-index:15;pointer-events:none;display:none}
+  #touch .pad{
+    position:absolute;left:18px;bottom:18px;display:grid;grid-template-columns:repeat(3,52px);
+    grid-template-rows:repeat(2,52px);gap:6px;pointer-events:auto;
+  }
+  #touch .pad button{
+    background:rgba(20,14,10,.72);border:1px solid var(--gold-dim);color:#f0dfbd;
+    border-radius:10px;font-size:1.1rem;font-family:var(--mono);
+  }
+  #touch .pad button:active{background:rgba(217,164,65,.25)}
+  #touch .act{
+    position:absolute;right:18px;bottom:32px;width:74px;height:74px;border-radius:50%;
+    background:rgba(217,164,65,.85);color:#241708;border:0;font:600 .85rem var(--sans);
+    pointer-events:auto;box-shadow:0 8px 20px rgba(0,0,0,.5);
+  }
+  @media (pointer:coarse){
+    #touch{display:block}
+    #notes{width:min(240px,44vw);max-height:32vh;font-size:.72rem}
+    .topbar{top:10px;right:10px}
+  }
+  @media (max-width:720px){
+    #notes{left:10px;bottom:auto;top:56px;max-height:30vh}
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="vignette"></div>
+
+<div id="hud">
+  <div id="crosshair"></div>
+  <div id="prompt" hidden><kbd>E</kbd><span id="promptText">Inspect</span></div>
+  <div class="topbar">
+    <span class="timer" id="timer">00:00</span>
+    <button class="ghost" id="hintBtn" type="button">Hint</button>
+    <button class="ghost" id="helpBtn" type="button">Controls</button>
+  </div>
+  <div id="notes">
+    <h2>Case notes</h2>
+    <div class="digits">
+      <div class="digit" id="d-clock"><span class="lbl">Clock</span><b>?</b></div>
+      <div class="digit" id="d-box"><span class="lbl">Shelf</span><b>?</b></div>
+      <div class="digit" id="d-drawer"><span class="lbl">Wood</span><b>?</b></div>
+    </div>
+    <ul class="clues" id="clues"><li class="muted">Walk the room. Look for anything that does not belong.</li></ul>
+  </div>
+</div>
+
+<div id="touch">
+  <div class="pad">
+    <button data-move="f" style="grid-column:2" type="button" aria-label="Forward">▲</button>
+    <button data-move="l" style="grid-row:2;grid-column:1" type="button" aria-label="Left">◀</button>
+    <button data-move="b" style="grid-row:2;grid-column:2" type="button" aria-label="Back">▼</button>
+    <button data-move="r" style="grid-row:2;grid-column:3" type="button" aria-label="Right">▶</button>
+  </div>
+  <button class="act" id="touchAct" type="button">USE</button>
+</div>
+
+<div class="overlay" id="start">
+  <div class="card start-card">
+    <div class="kicker">First person · 4 locks</div>
+    <h1>The Locked Study</h1>
+    <p>You wake in a study with one door and no handle on your side. Three numbers are hidden in this room. Find them, then open the door.</p>
+    <div class="keys">
+      <kbd>W A S D</kbd><span>Walk · <kbd>Shift</kbd> to hurry</span>
+      <kbd>Mouse</kbd><span>Look around</span>
+      <kbd>E</kbd><span>Inspect whatever the crosshair touches</span>
+      <kbd>H</kbd><span>Hint (press <kbd>Esc</kbd> first if the mouse is captured)</span>
+      <kbd>Esc</kbd><span>Release the mouse</span>
+    </div>
+    <div class="actions">
+      <button class="btn" id="startHint" type="button">Hint</button>
+      <button class="btn primary" id="enterBtn" type="button">Enter the study</button>
+      <a class="btn" href="classic.html" style="text-decoration:none">Point-and-click version</a>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="panel" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="panelTitle">
+    <button class="close" id="panelClose" type="button" aria-label="Close">✕</button>
+    <h2 id="panelTitle"></h2>
+    <div id="panelBody"></div>
+    <div class="actions" id="panelActions"></div>
+  </div>
+</div>
+
+<div class="overlay" id="win" hidden>
+  <div class="card">
+    <div class="kicker">Escaped</div>
+    <h2>The door swings open.</h2>
+    <p>Cold corridor air. You are out in <span class="time" id="winTime">00:00</span>.</p>
+    <div class="actions" style="justify-content:center">
+      <button class="btn primary" id="againBtn" type="button">Play again</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script type="module">
+import * as THREE from './vendor/three.module.min.js';
+
+/* ============================== boot ============================== */
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.25;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080605);
+scene.fog = new THREE.Fog(0x080605, 9, 20);
+
+const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 60);
+camera.rotation.order = 'YXZ';
+camera.position.set(0, 1.62, 3.1);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ============================== textures ============================== */
+function makeTex(size, draw, rx = 1, ry = 1) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  draw(c.getContext('2d'), size);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(rx, ry);
+  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return t;
+}
+
+const floorTex = makeTex(512, (g, s) => {
+  g.fillStyle = '#241708';
+  g.fillRect(0, 0, s, s);
+  const tones = ['#4e3521', '#5a3f27', '#432b19', '#63482d', '#523a24', '#48301c'];
+  const planks = 6, ph = s / planks;
+  for (let i = 0; i < planks; i++) {
+    g.fillStyle = tones[i % tones.length];
+    g.fillRect(0, i * ph, s, ph);
+    g.strokeStyle = 'rgba(0,0,0,.16)';
+    g.lineWidth = 1;
+    for (let j = 0; j < 16; j++) {
+      const y0 = i * ph + 4 + Math.random() * (ph - 8);
+      g.beginPath();
+      g.moveTo(0, y0);
+      for (let x = 0; x <= s; x += 18) {
+        g.lineTo(x, y0 + Math.sin(x * 0.035 + j) * 1.6 + (Math.random() - .5) * 1.6);
+      }
+      g.stroke();
+    }
+    g.fillStyle = 'rgba(0,0,0,.5)';
+    g.fillRect(0, i * ph, s, 2);
+    const cut = Math.random() * s;
+    g.fillRect(cut, i * ph, 2, ph);
+  }
+}, 3, 3);
+
+const wallTex = makeTex(512, (g, s) => {
+  g.fillStyle = '#6d5544';
+  g.fillRect(0, 0, s, s);
+  for (let i = 0; i < 2600; i++) {
+    const a = Math.random() * 0.05;
+    g.fillStyle = Math.random() < .5 ? `rgba(0,0,0,${a})` : `rgba(255,225,180,${a * 0.7})`;
+    g.fillRect(Math.random() * s, Math.random() * s, 2, 2);
+  }
+  g.fillStyle = 'rgba(0,0,0,.06)';
+  for (let x = 0; x < s; x += 42) g.fillRect(x, 0, 20, s);
+}, 2, 1);
+
+const paintTex = makeTex(512, (g, s) => {
+  g.fillStyle = '#2f5b78';                 // sky
+  g.fillRect(0, 0, s, s);
+  g.fillStyle = '#efe2be';                 // moon
+  g.beginPath(); g.arc(s * 0.72, s * 0.21, s * 0.065, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#31573f';                 // hills
+  g.beginPath();
+  g.moveTo(0, s * 0.74);
+  g.quadraticCurveTo(s * 0.3, s * 0.44, s * 0.62, s * 0.7);
+  g.quadraticCurveTo(s * 0.84, s * 0.86, s, s * 0.64);
+  g.lineTo(s, s); g.lineTo(0, s); g.closePath(); g.fill();
+});
+
+const scratchTex = makeTex(512, (g, s) => {
+  g.clearRect(0, 0, s, s);
+  g.fillStyle = 'rgba(240,214,160,.88)';
+  g.font = 'italic 36px Georgia, serif';
+  ['Time is upside down', 'in this room.'].forEach((line, i) => {
+    g.save();
+    g.translate(46, 150 + i * 62);
+    g.rotate(-0.025 + i * 0.012);
+    g.fillText(line, 0, 0);
+    g.restore();
+  });
+});
+
+const noiseTex = makeTex(256, (g, s) => {
+  g.fillStyle = '#8a2f28';
+  g.fillRect(0, 0, s, s);
+  for (let i = 0; i < 2000; i++) {
+    g.fillStyle = `rgba(0,0,0,${Math.random() * 0.09})`;
+    g.fillRect(Math.random() * s, Math.random() * s, 2, 2);
+  }
+});
+
+/* ============================== materials ============================== */
+const mat = (color, opts) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: .88, metalness: 0 }, opts || {}));
+const matFloor = new THREE.MeshStandardMaterial({ map: floorTex, roughness: .82, metalness: .02 });
+const matWall = new THREE.MeshStandardMaterial({ map: wallTex, roughness: .95, metalness: 0 });
+const matDarkWood = mat(0x3a2415, { roughness: .8 });
+const matWood = mat(0x5a3d26, { roughness: .78 });
+const matBrass = mat(0xc0953f, { roughness: .35, metalness: .45 });
+const matIron = mat(0x2a2521, { roughness: .55, metalness: .6 });
+const matPaper = mat(0xe8dcc0, { roughness: .95 });
+
+/* ============================== rooms ==============================
+   A room is an axis-aligned rectangle on the XZ plane plus a list of
+   doorways. Declaring one builds its floor, ceiling, walls, baseboards and
+   rail; the collision test in `blocked()` reads the same data, so a new room
+   is walkable the moment it is declared. Add props with `props(scene, r)`.
+   Side note: walls with a doorway get a lintel above the opening. */
+const H = 3.2, DOOR_H = 2.3;
+
+const ROOMS = [];
+const roomShell = new THREE.Group();
+scene.add(roomShell);
+
+function room(cfg) {
+  const r = Object.assign({
+    id: 'room', name: 'A room',
+    x0: 0, x1: 1, z0: 0, z1: 1,
+    pad: [0.4, 0.45],                 // how close the player may get to a wall
+    floorMat: matFloor,
+    ceilingMat: mat(0x33271f, { roughness: 1 }),
+    ceiling: true,
+    doors: [],                        // { side, at, width } — at = centre along the wall
+    obstacles: [],                    // THREE.Box3, impassable
+    railSkip: [],                     // sides with no picture rail
+    props: null                       // fn(scene, r) after the shell exists
+  }, cfg);
+  ROOMS.push(r);
+  buildShell(r);
+  if (r.props) r.props(scene, r);
+  return r;
+}
+
+// along-the-wall coordinate -> world position for a given side
+function sideLine(r, side) {
+  switch (side) {
+    case 'north': return { axis: 'x', lo: r.x0, hi: r.x1, fixed: r.z0, ry: 0 };
+    case 'south': return { axis: 'x', lo: r.x0, hi: r.x1, fixed: r.z1, ry: Math.PI };
+    case 'west':  return { axis: 'z', lo: r.z0, hi: r.z1, fixed: r.x0, ry: Math.PI / 2 };
+    case 'east':  return { axis: 'z', lo: r.z0, hi: r.z1, fixed: r.x1, ry: -Math.PI / 2 };
+  }
+}
+function placeOnWall(m, line, u, y, depth) {
+  if (line.axis === 'x') m.position.set(u, y, line.fixed + (depth || 0));
+  else m.position.set(line.fixed + (depth || 0), y, u);
+  m.rotation.y = line.ry;
+  return m;
+}
+
+function buildShell(r) {
+  const w = r.x1 - r.x0, d = r.z1 - r.z0;
+  const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2;
+
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), r.floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(cx, 0, cz);
+  floor.receiveShadow = true;
+  roomShell.add(floor);
+
+  if (r.ceiling) {
+    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(w, d), r.ceilingMat);
+    ceil.rotation.x = Math.PI / 2;
+    ceil.position.set(cx, H, cz);
+    roomShell.add(ceil);
+  }
+
+  for (const side of ['north', 'south', 'west', 'east']) buildSide(r, side);
+}
+
+function buildSide(r, side) {
+  const line = sideLine(r, side);
+  const gaps = r.doors
+    .filter(d => d.side === side)
+    .map(d => [d.at - d.width / 2, d.at + d.width / 2])
+    .sort((a, b) => a[0] - b[0]);
+
+  const spans = [];
+  let cursor = line.lo;
+  for (const [from, to] of gaps) {
+    const a = Math.max(line.lo, from), b = Math.min(line.hi, to);
+    if (b <= a) continue;
+    if (a > cursor) spans.push([cursor, a]);
+    cursor = Math.max(cursor, b);
+    const lh = H - DOOR_H;
+    const lintel = new THREE.Mesh(new THREE.PlaneGeometry(b - a, lh), matWall);
+    placeOnWall(lintel, line, (a + b) / 2, DOOR_H + lh / 2);
+    lintel.receiveShadow = true;
+    roomShell.add(lintel);
+    // jamb trim
+    for (const u of [a, b]) {
+      const jamb = new THREE.Mesh(new THREE.BoxGeometry(0.1, DOOR_H, 0.14), matDarkWood);
+      placeOnWall(jamb, line, u, DOOR_H / 2);
+      jamb.castShadow = true; jamb.receiveShadow = true;
+      roomShell.add(jamb);
+    }
+  }
+  if (cursor < line.hi) spans.push([cursor, line.hi]);
+
+  const rail = !r.railSkip.includes(side);
+  for (const [a, b] of spans) {
+    const len = b - a;
+    if (len < 0.001) continue;
+    const u = (a + b) / 2;
+
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(len, H), matWall);
+    placeOnWall(m, line, u, H / 2);
+    m.receiveShadow = true;
+    roomShell.add(m);
+
+    const base = new THREE.Mesh(new THREE.BoxGeometry(len, 0.14, 0.05), matDarkWood);
+    placeOnWall(base, line, u, 0.07, 0.035);
+    base.castShadow = true; base.receiveShadow = true;
+    roomShell.add(base);
+
+    if (rail) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(len, 0.05, 0.07), matDarkWood);
+      placeOnWall(bar, line, u, 2.72, 0.045);
+      roomShell.add(bar);
+    }
+  }
+}
+
+/* --------------------------------- the study -------------------------------- */
+const study = room({
+  id: 'study', name: 'The Study',
+  x0: -5, x1: 5, z0: -4, z1: 4,
+  railSkip: ['south']                 // the south wall carries the cell door
+});
+// legacy aliases: the props below were written against a single room
+const W = study.x1 - study.x0, D = study.z1 - study.z0;
+
+/* ============================== lights ============================== */
+scene.add(new THREE.HemisphereLight(0xa08a68, 0x1a120c, 1.15));
+scene.add(new THREE.AmbientLight(0xffe8c8, 0.38));
+
+const lamp = new THREE.PointLight(0xffcf9a, 55, 16, 2);
+lamp.position.set(0, 2.75, 0);
+lamp.castShadow = true;
+lamp.shadow.mapSize.set(1024, 1024);
+lamp.shadow.bias = -0.0015;
+lamp.shadow.camera.near = 0.4;
+scene.add(lamp);
+
+const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffe6bd }));
+bulb.position.copy(lamp.position);
+scene.add(bulb);
+
+const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.42, 6), mat(0x151110));
+cord.position.set(0, H - 0.21, 0);
+scene.add(cord);
+
+const deskLight = new THREE.PointLight(0xffb066, 7, 6, 2);
+deskLight.position.set(2.75, 1.45, 1.35);
+scene.add(deskLight);
+
+// wall sconces
+const sconceMat = new THREE.MeshStandardMaterial({ color: 0xffd9a0, emissive: 0xffb060, emissiveIntensity: 2.2 });
+function sconce(x, z, ry) {
+  const g = new THREE.Group();
+  g.position.set(x, 2.3, z);
+  g.rotation.y = ry;
+  const bracket = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.16, 8), matIron);
+  bracket.rotation.x = Math.PI / 2;
+  bracket.position.z = 0.08;
+  g.add(bracket);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.075, 14, 10), sconceMat);
+  bulb.position.z = 0.18;
+  g.add(bulb);
+  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.14, 14, 1, true), mat(0x8a6528, { side: THREE.DoubleSide, metalness: .4, roughness: .5 }));
+  shade.position.z = 0.18;
+  shade.position.y = 0.06;
+  g.add(shade);
+  scene.add(g);
+  const l = new THREE.PointLight(0xffb877, 14, 9, 2);
+  l.position.set(x, 2.28, z);
+  scene.add(l);
+}
+sconce(-W / 2 + 0.2, 1.2, Math.PI / 2);
+sconce(W / 2 - 0.2, 2.2, -Math.PI / 2);
+
+/* ============================== helpers ============================== */
+const box = (w, h, d, material, x, y, z, parent) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+  m.position.set(x, y, z);
+  m.castShadow = true; m.receiveShadow = true;
+  (parent || scene).add(m);
+  return m;
+};
+
+const interactables = [];
+const LABELS = {};                    // id -> "the painting"; pick() uses this for the prompt
+function interactive(root, id, label) {
+  root.traverse(o => { o.userData.id = id; });
+  root.userData.id = id;
+  root.userData.label = label;
+  if (label) LABELS[id] = label;
+  interactables.push(root);
+  return root;
+}
+
+/* ============================== game state ============================== */
+const S = {
+  painting: false, clock: false, rugMoved: false, key: false,
+  boxOpen: false, drawerOpen: false, safeOpen: false, seq: [],
+  digits: { clock: null, box: null, drawer: null },
+  clues: [], escaped: false, started: false, t0: 0
+};
+const CODE = '427';
+
+/* ============================== door ============================== */
+const doorPivot = new THREE.Group();
+doorPivot.position.set(-0.58, 0, -D / 2 + 0.06);
+scene.add(doorPivot);
+
+const doorPanel = box(1.16, 2.3, 0.09, mat(0x6b4a2c, { roughness: .62 }), 0.58, 1.15, 0, doorPivot);
+// door detail panels
+box(0.86, 0.9, 0.02, mat(0x5a3d24, { roughness: .7 }), 0.58, 1.68, 0.055, doorPivot);
+box(0.86, 0.72, 0.02, mat(0x5a3d24, { roughness: .7 }), 0.58, 0.62, 0.055, doorPivot);
+const knob = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 12), matBrass);
+knob.position.set(1.02, 1.06, 0.09);
+doorPivot.add(knob);
+
+// frame
+box(0.12, 2.5, 0.16, matDarkWood, -0.66, 1.25, -D / 2 + 0.05);
+box(0.12, 2.5, 0.16, matDarkWood, 0.66, 1.25, -D / 2 + 0.05);
+box(1.44, 0.14, 0.16, matDarkWood, 0, 2.43, -D / 2 + 0.05);
+
+// keypad beside the door
+const keypadMat = new THREE.MeshStandardMaterial({ color: 0x11181f, emissive: 0x1d6f5c, emissiveIntensity: 1.2, roughness: .4 });
+const keypad = box(0.14, 0.2, 0.05, keypadMat, 0.86, 1.35, -D / 2 + 0.1);
+interactive(doorPanel, 'door', 'the door');
+interactive(keypad, 'door', 'the keypad');
+
+// light behind the door
+const beam = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 2.3), new THREE.MeshBasicMaterial({ color: 0xffe0a8, transparent: true, opacity: 0 }));
+beam.position.set(0.08, 1.15, -D / 2 + 0.012);
+scene.add(beam);
+const doorGlow = new THREE.PointLight(0xffd79a, 0, 6, 2);
+doorGlow.position.set(0, 1.4, -D / 2 + 0.4);
+scene.add(doorGlow);
+
+/* ============================== painting ============================== */
+const paintingGroup = new THREE.Group();
+paintingGroup.position.set(-W / 2 + 0.07, 1.78, -1.3);
+paintingGroup.rotation.y = Math.PI / 2;
+scene.add(paintingGroup);
+
+const canvasArt = new THREE.Mesh(new THREE.PlaneGeometry(1.28, 0.98), new THREE.MeshStandardMaterial({ map: paintTex, roughness: .85 }));
+canvasArt.position.z = 0.03;
+paintingGroup.add(canvasArt);
+box(1.42, 1.12, 0.06, mat(0x8a6528, { roughness: .6, metalness: .35 }), 0, 0, 0, paintingGroup);
+canvasArt.position.z = 0.045;
+interactive(paintingGroup, 'painting', 'the painting');
+
+const scratch = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.76), new THREE.MeshBasicMaterial({ map: scratchTex, transparent: true }));
+scratch.position.set(-W / 2 + 0.06, 1.78, -1.3);
+scratch.rotation.y = Math.PI / 2;
+scratch.visible = false;
+scene.add(scratch);
+
+/* ============================== clock ============================== */
+const clockGroup = new THREE.Group();
+clockGroup.position.set(3.15, 2.32, -D / 2 + 0.08);
+scene.add(clockGroup);
+
+const clockBody = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.08, 32), mat(0x6c4f22, { metalness: .5, roughness: .45 }));
+clockBody.rotation.x = Math.PI / 2;
+clockGroup.add(clockBody);
+
+const face = new THREE.Mesh(new THREE.CircleGeometry(0.3, 32), mat(0xe9dcbe, { roughness: .95 }));
+face.position.z = 0.045;
+clockGroup.add(face);
+
+for (let i = 0; i < 12; i++) {
+  const a = (i / 12) * Math.PI * 2;
+  const tick = new THREE.Mesh(new THREE.BoxGeometry(i % 3 === 0 ? 0.035 : 0.015, i % 3 === 0 ? 0.06 : 0.035, 0.006), mat(0x241a12));
+  tick.position.set(Math.sin(a) * 0.24, Math.cos(a) * 0.24, 0.05);
+  tick.rotation.z = -a;
+  clockGroup.add(tick);
+}
+
+function hand(len, thick) {
+  const geo = new THREE.BoxGeometry(thick, len, 0.008);
+  geo.translate(0, len / 2, 0);
+  const m = new THREE.Mesh(geo, mat(0x241a12));
+  m.position.z = 0.055;
+  return m;
+}
+const hourHand = hand(0.17, 0.028);
+hourHand.rotation.z = -((10 + 10 / 60) / 12 * Math.PI * 2);   // 10:10
+clockGroup.add(hourHand);
+const minHand = hand(0.24, 0.018);
+minHand.rotation.z = -(10 / 60) * Math.PI * 2;
+clockGroup.add(minHand);
+const pin = new THREE.Mesh(new THREE.CircleGeometry(0.022, 12), matBrass);
+pin.position.z = 0.062;
+clockGroup.add(pin);
+
+const clothMat = new THREE.MeshStandardMaterial({ color: 0x6d6862, roughness: .95 });
+const cloth = new THREE.Mesh(new THREE.CircleGeometry(0.36, 24), clothMat);
+cloth.position.z = 0.075;
+clockGroup.add(cloth);
+const clothKnot = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), clothMat);
+clothKnot.position.set(0, 0.35, 0.05);
+clockGroup.add(clothKnot);
+interactive(clockGroup, 'clock', 'the clock');
+
+/* ============================== bookshelf ============================== */
+const shelfGroup = new THREE.Group();
+shelfGroup.position.set(W / 2 - 0.14, 0, -1.4);
+shelfGroup.rotation.y = -Math.PI / 2;
+scene.add(shelfGroup);
+
+box(1.7, 2.1, 0.06, mat(0x3d2717, { roughness: .8 }), 0, 1.05, -0.03, shelfGroup); // back
+box(1.8, 0.1, 0.42, mat(0x4a3120), 0, 0.05, 0.2, shelfGroup);                     // base
+box(1.8, 0.1, 0.42, mat(0x4a3120), 0, 2.08, 0.2, shelfGroup);                     // top
+box(0.09, 2.1, 0.42, mat(0x4a3120), -0.855, 1.05, 0.19, shelfGroup);
+box(0.09, 2.1, 0.42, mat(0x4a3120), 0.855, 1.05, 0.19, shelfGroup);
+[0.72, 1.4].forEach(y => box(1.7, 0.06, 0.4, mat(0x4a3120), 0, y, 0.19, shelfGroup));
+
+const bookColors = [0x6b4a35, 0x2f6b4c, 0x8a3232, 0x33567f, 0x6b5a86, 0x7a6335, 0x4a4a4a];
+let bookSeed = 0;
+const ribbonMat = new THREE.MeshStandardMaterial({ color: 0xd9483a, emissive: 0x5e1a12, emissiveIntensity: 1, roughness: .8 });
+function shelfBooks(y, count, startX, ribbonAt) {
+  let x = startX;
+  for (let i = 0; i < count; i++) {
+    const w = 0.07 + ((bookSeed++ * 37) % 5) * 0.012;
+    const h = 0.34 + ((bookSeed * 13) % 7) * 0.012;
+    const col = bookColors[(bookSeed * 5 + i) % bookColors.length];
+    const b = box(w, h, 0.26, mat(col, { roughness: .85 }), x, y + h / 2, 0.2, shelfGroup);
+    if (i === ribbonAt) {
+      const ribbon = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.11, 0.022), ribbonMat);
+      ribbon.position.set(x + w * 0.66, y + h + 0.03, 0.2);
+      ribbon.rotation.z = 0.09;
+      shelfGroup.add(ribbon);
+    }
+    x += w + 0.012;
+  }
+}
+shelfBooks(0.1, 8, -0.75, 5);
+shelfBooks(0.78, 7, -0.72, -1);
+shelfBooks(1.46, 6, -0.7, 2);
+
+// the tin box on the middle shelf
+const tinGroup = new THREE.Group();
+tinGroup.position.set(0.42, 0.78, 0.26);
+shelfGroup.add(tinGroup);
+box(0.26, 0.13, 0.18, mat(0x4c5a63, { metalness: .7, roughness: .45 }), 0, 0.065, 0, tinGroup);
+[[0xd9a441, -0.07], [0x33567f, 0], [0x2f6b4c, 0.07]].forEach(([c, x]) => {
+  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.018, 12), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: .25 }));
+  dot.position.set(x, 0.07, 0.091);
+  tinGroup.add(dot);
+});
+
+interactive(shelfGroup, 'shelf', 'the bookshelf');
+
+/* ============================== desk ============================== */
+const deskGroup = new THREE.Group();
+deskGroup.position.set(2.55, 0, 1.5);
+deskGroup.rotation.y = -0.34;
+scene.add(deskGroup);
+
+box(1.9, 0.09, 0.95, mat(0x6b4a2e, { roughness: .62 }), 0, 0.78, 0, deskGroup);
+[[-0.82, -0.36], [0.82, -0.36], [-0.82, 0.36], [0.82, 0.36]].forEach(([x, z]) => {
+  box(0.09, 0.78, 0.09, mat(0x4a3120), x, 0.39, z, deskGroup);
+});
+box(0.78, 0.62, 0.85, mat(0x4e3524), -0.5, 0.42, 0, deskGroup);
+box(0.78, 0.4, 0.85, mat(0x4e3524), 0.5, 0.3, 0, deskGroup);
+
+const drawerFront = box(0.72, 0.17, 0.03, mat(0x5a3d28), 0.5, 0.36, 0.43, deskGroup);
+const drawerKnob = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 8), matBrass);
+drawerKnob.position.set(0.5, 0.36, 0.45);
+deskGroup.add(drawerKnob);
+const drawerBox = box(0.68, 0.14, 0.7, mat(0x3a2718), 0.5, 0.36, 0.08, deskGroup);
+
+// desk lamp
+const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.04, 16), matIron);
+lampBase.position.set(-0.62, 0.83, -0.2);
+deskGroup.add(lampBase);
+const lampStem = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.42, 8), matIron);
+lampStem.position.set(-0.62, 1.04, -0.2);
+deskGroup.add(lampStem);
+const shade = new THREE.Mesh(new THREE.ConeGeometry(0.19, 0.2, 18, 1, true), new THREE.MeshStandardMaterial({ color: 0xd9a441, emissive: 0x6a3d0c, emissiveIntensity: .3, side: THREE.DoubleSide, roughness: .6 }));
+shade.position.set(-0.62, 1.26, -0.2);
+deskGroup.add(shade);
+
+// a few papers
+for (let i = 0; i < 3; i++) {
+  const p = box(0.3, 0.004, 0.4, matPaper, -0.15 + i * 0.03, 0.83 + i * 0.004, 0.1 + i * 0.02, deskGroup);
+  p.rotation.y = 0.2 + i * 0.14;
+}
+
+interactive(deskGroup, 'desk', 'the desk');
+
+/* ============================== rug ============================== */
+const rugGroup = new THREE.Group();
+rugGroup.position.set(-1.9, 0.012, 1.5);
+scene.add(rugGroup);
+
+const rugMesh = new THREE.Mesh(new THREE.CircleGeometry(1.15, 40), new THREE.MeshStandardMaterial({ map: noiseTex, roughness: .95, color: 0x7d2f27 }));
+rugMesh.rotation.x = -Math.PI / 2;
+rugMesh.receiveShadow = true;
+rugGroup.add(rugMesh);
+
+const rugRing = new THREE.Mesh(new THREE.RingGeometry(0.78, 0.84, 40), new THREE.MeshStandardMaterial({ color: 0xa8792f, roughness: .8 }));
+rugRing.rotation.x = -Math.PI / 2;
+rugRing.position.y = 0.003;
+rugGroup.add(rugRing);
+
+const keyGroup = new THREE.Group();
+keyGroup.position.set(-1.9, 0.05, 1.5);
+keyGroup.rotation.y = 0.7;
+keyGroup.visible = false;
+scene.add(keyGroup);
+const keyRing = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 8, 18), matBrass);
+keyRing.rotation.x = Math.PI / 2;
+keyGroup.add(keyRing);
+box(0.16, 0.012, 0.025, matBrass, 0.1, 0, 0, keyGroup);
+box(0.03, 0.012, 0.045, matBrass, 0.17, 0, 0.02, keyGroup);
+
+interactive(rugGroup, 'rug', 'the rug');
+
+/* an armchair, for the look of the place */
+const chair = new THREE.Group();
+chair.position.set(-3.3, 0, 2.5);
+chair.rotation.y = 0.7;
+scene.add(chair);
+box(0.8, 0.16, 0.8, mat(0x5a2d2a, { roughness: .95 }), 0, 0.45, 0, chair);
+box(0.8, 0.9, 0.16, mat(0x5a2d2a, { roughness: .95 }), 0, 0.85, -0.32, chair);
+[-0.32, 0.32].forEach(x => box(0.14, 0.45, 0.8, mat(0x4c2421), x, 0.55, 0, chair));
+[-0.3, 0.3].forEach(x => [-0.3, 0.3].forEach(z => box(0.08, 0.36, 0.08, matDarkWood, x, 0.18, z, chair)));
+
+/* ============================== wall safe ============================== */
+const safeGroup = new THREE.Group();
+safeGroup.position.set(-2.2, 1.5, D / 2 - 0.1);
+safeGroup.rotation.y = Math.PI;
+scene.add(safeGroup);
+
+const matSteel = mat(0x5d666e, { metalness: .55, roughness: .45 });
+box(0.56, 0.66, 0.18, matSteel, 0, 0, 0, safeGroup);
+box(0.5, 0.6, 0.02, mat(0x2b3036, { metalness: .4, roughness: .6 }), 0, 0, 0.09, safeGroup);
+box(0.22, 0.28, 0.006, matPaper, 0, -0.02, 0.11, safeGroup);
+
+const safeDoorPivot = new THREE.Group();
+safeDoorPivot.position.set(-0.24, 0, 0.1);
+safeGroup.add(safeDoorPivot);
+box(0.48, 0.58, 0.04, mat(0x6b7580, { metalness: .6, roughness: .4 }), 0.24, 0, 0, safeDoorPivot);
+box(0.16, 0.1, 0.03, mat(0x101820, { emissive: 0x1f5f4a, emissiveIntensity: 1 }), 0.32, 0.1, 0.03, safeDoorPivot);
+const safeHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.16, 10), matBrass);
+safeHandle.rotation.z = Math.PI / 2;
+safeHandle.position.set(0.3, -0.12, 0.045);
+safeDoorPivot.add(safeHandle);
+interactive(safeDoorPivot, 'safe', 'the wall safe');
+
+/* ============================== collision ============================== */
+const obstacles = [
+  new THREE.Box3(new THREE.Vector3(1.5, 0, 0.85), new THREE.Vector3(3.6, 1.1, 2.15)),
+  new THREE.Box3(new THREE.Vector3(4.35, 0, -2.35), new THREE.Vector3(5, 2.1, -0.45)),
+  new THREE.Box3(new THREE.Vector3(-3.85, 0, 1.95), new THREE.Vector3(-2.75, 1.1, 3.05))
+];
+const RADIUS = 0.34;
+
+// the passage through a doorway, wide enough to walk but not to clip the jambs
+function doorRect(r, d) {
+  const half = Math.max(0.15, d.width / 2 - 0.32), t = 0.5;
+  if (d.side === 'north') return { x0: d.at - half, x1: d.at + half, z0: r.z0 - t, z1: r.z0 + t };
+  if (d.side === 'south') return { x0: d.at - half, x1: d.at + half, z0: r.z1 - t, z1: r.z1 + t };
+  if (d.side === 'west')  return { x0: r.x0 - t, x1: r.x0 + t, z0: d.at - half, z1: d.at + half };
+  return { x0: r.x1 - t, x1: r.x1 + t, z0: d.at - half, z1: d.at + half };
+}
+
+function inRoom(r, x, z) {
+  return x > r.x0 + r.pad[0] && x < r.x1 - r.pad[0]
+      && z > r.z0 + r.pad[1] && z < r.z1 - r.pad[1];
+}
+
+function blocked(x, z) {
+  let walkable = false;
+  for (const r of ROOMS) {
+    if (inRoom(r, x, z)) { walkable = true; break; }
+    for (const d of r.doors) {
+      const s = doorRect(r, d);
+      if (x > s.x0 && x < s.x1 && z > s.z0 && z < s.z1) { walkable = true; break; }
+    }
+    if (walkable) break;
+  }
+  if (!walkable) return true;
+  for (const b of obstacles) {
+    if (x > b.min.x - RADIUS && x < b.max.x + RADIUS && z > b.min.z - RADIUS && z < b.max.z + RADIUS) return true;
+  }
+  return false;
+}
+
+/* ============================== input ============================== */
+const keys = Object.create(null);
+let locked = false, panelOpen = false, hovered = null, dragging = false;
+const isTouch = window.matchMedia('(pointer: coarse)').matches;
+
+function beginTimer() {
+  if (!S.started) { S.started = true; S.t0 = performance.now(); }
+}
+function requestLock() {
+  if (isTouch) return;
+  try {
+    const p = canvas.requestPointerLock();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } catch (e) { /* pointer lock unavailable: drag-look fallback still works */ }
+}
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'KeyE') { tryInteract(); return; }
+  if (e.code === 'KeyH') { if (!panelOpen) showHint(); return; }
+  if (e.code === 'KeyC') { if (!panelOpen) showControls(); return; }
+  if (e.code === 'Escape' && panelOpen) { closePanel(); return; }
+  keys[e.code] = true;
+  if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+
+canvas.addEventListener('mousedown', () => {
+  dragging = true;
+  if (!panelOpen && !S.escaped && !isTouch && !locked && startOverlay.hidden) requestLock();
+});
+window.addEventListener('mouseup', () => { dragging = false; });
+document.addEventListener('pointerlockchange', () => {
+  locked = document.pointerLockElement === canvas;
+  if (locked) {
+    startOverlay.hidden = true;
+    beginTimer();
+  } else if (!panelOpen && !S.escaped) {
+    startOverlay.hidden = false;
+    document.getElementById('enterBtn').textContent = S.started ? 'Resume' : 'Enter the study';
+  }
+});
+document.addEventListener('pointerlockerror', () => {
+  startOverlay.hidden = true;
+  beginTimer();
+  toast('Mouse capture blocked — hold the left button and drag to look.');
+});
+document.addEventListener('mousemove', e => {
+  if (!startOverlay.hidden || panelOpen) return;
+  if (!locked && !dragging) return;
+  camera.rotation.y -= e.movementX * 0.0022;
+  camera.rotation.x -= e.movementY * 0.0022;
+  camera.rotation.x = Math.max(-1.35, Math.min(1.35, camera.rotation.x));
+});
+
+/* touch: drag to look, buttons to move */
+let touchLook = null;
+canvas.addEventListener('touchstart', e => {
+  const t = e.changedTouches[0];
+  touchLook = { id: t.identifier, x: t.clientX, y: t.clientY };
+}, { passive: true });
+canvas.addEventListener('touchmove', e => {
+  if (!touchLook) return;
+  for (const t of e.changedTouches) {
+    if (t.identifier !== touchLook.id) continue;
+    camera.rotation.y -= (t.clientX - touchLook.x) * 0.006;
+    camera.rotation.x = Math.max(-1.3, Math.min(1.3, camera.rotation.x - (t.clientY - touchLook.y) * 0.006));
+    touchLook.x = t.clientX; touchLook.y = t.clientY;
+  }
+}, { passive: true });
+canvas.addEventListener('touchend', () => { touchLook = null; }, { passive: true });
+
+const touchMove = { f: false, b: false, l: false, r: false };
+document.querySelectorAll('[data-move]').forEach(btn => {
+  const dir = btn.dataset.move;
+  const on = e => { e.preventDefault(); touchMove[dir] = true; };
+  const off = e => { e.preventDefault(); touchMove[dir] = false; };
+  btn.addEventListener('touchstart', on, { passive: false });
+  btn.addEventListener('touchend', off, { passive: false });
+  btn.addEventListener('touchcancel', off, { passive: false });
+  btn.addEventListener('mousedown', on);
+  btn.addEventListener('mouseup', off);
+  btn.addEventListener('mouseleave', off);
+});
+document.getElementById('touchAct').addEventListener('click', () => tryInteract());
+
+/* ============================== ui ============================== */
+const startOverlay = document.getElementById('start');
+const panelEl = document.getElementById('panel');
+const panelTitle = document.getElementById('panelTitle');
+const panelBody = document.getElementById('panelBody');
+const panelActions = document.getElementById('panelActions');
+const winEl = document.getElementById('win');
+const promptEl = document.getElementById('prompt');
+const promptText = document.getElementById('promptText');
+const crosshair = document.getElementById('crosshair');
+
+function openPanel(title, html, opts) {
+  opts = opts || {};
+  panelOpen = true;
+  panelTitle.textContent = title;
+  panelBody.innerHTML = html;
+  panelActions.innerHTML = '';
+  (opts.actions || []).forEach(a => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn' + (a.primary ? ' primary' : '');
+    b.textContent = a.label;
+    b.addEventListener('click', a.onClick);
+    panelActions.appendChild(b);
+  });
+  panelEl.hidden = false;
+  if (document.pointerLockElement) document.exitPointerLock();
+  panelEl.querySelector('.card').scrollTop = 0;
+  if (opts.mount) opts.mount(panelBody);
+}
+function closePanel() {
+  panelEl.hidden = true;
+  panelOpen = false;
+  if (!S.escaped && !isTouch) requestLock();
+}
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity .3s';
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 320);
+  }, 2100);
+}
+function addClue(text) {
+  if (S.clues.includes(text)) return;
+  S.clues.push(text);
+  const list = document.getElementById('clues');
+  list.innerHTML = S.clues.map(c => '<li>' + c + '</li>').join('');
+}
+function setDigit(which, value) {
+  S.digits[which] = value;
+  const el = document.getElementById('d-' + which);
+  el.classList.add('found');
+  el.querySelector('b').textContent = value;
+}
+
+/* ============================== interactions ============================== */
+const ray = new THREE.Raycaster();
+ray.far = 3.4;
+const center = new THREE.Vector2(0, 0);
+
+function pick() {
+  if (panelOpen || S.escaped) return null;
+  ray.setFromCamera(center, camera);
+  const hits = ray.intersectObjects(interactables, true);
+  if (!hits.length) return null;
+  let o = hits[0].object;
+  while (o && o.userData.id === undefined) o = o.parent;
+  return o ? o.userData.id : null;
+}
+
+function tryInteract() {
+  if (panelOpen) return;
+  if (hovered) ACTIONS[hovered]();
+}
+
+const ACTIONS = {};
+
+function bindAnswer(submit) {
+  return function (body) {
+    const input = body.querySelector('#ans');
+    if (!input) return;
+    input.focus();
+    input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, ''); });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  };
+}
+
+function checkAnswer(expected, onOk) {
+  const input = panelBody.querySelector('#ans');
+  if (!input) return;
+  if (input.value.trim() === String(expected)) { onOk(); return; }
+  input.classList.add('shake');
+  input.value = '';
+  input.focus();
+  setTimeout(() => input.classList.remove('shake'), 420);
+  let err = panelBody.querySelector('.ansErr');
+  if (!err) {
+    err = document.createElement('p');
+    err.className = 'err ansErr';
+    input.insertAdjacentElement('afterend', err);
+  }
+  err.textContent = 'Not it. Read the room again.';
+}
+
+ACTIONS.painting = function () {
+  if (!S.painting) {
+    S.painting = true;
+    paintingGroup.position.z += 0.75;
+    paintingGroup.rotation.z = 0.1;
+    scratch.visible = true;
+    addClue('Scratched behind the painting: "Time is upside down in this room."');
+    addClue('The rug looks disturbed.');
+    toast('Clue found');
+    openPanel('Behind the painting',
+      '<p>You lift the frame off its hook and set it aside. Words are scratched straight into the plaster:</p>' +
+      '<p class="scrawl">"Time is upside down in this room."</p>' +
+      '<p>The dust near the door is swept aside. Someone moved the rug.</p>');
+  } else {
+    openPanel('Behind the painting',
+      '<p class="scrawl">"Time is upside down in this room."</p>');
+  }
+};
+
+ACTIONS.clock = function () {
+  if (!S.clock) {
+    if (!S.painting) {
+      openPanel('The clock',
+        '<p>A grey cloth is tied over the face. The knot is at the back, against the wall — you would need the clock off its hook.</p>', {
+        actions: [{ label: 'Step back', onClick: closePanel }]
+      });
+      return;
+    }
+    S.clock = true;
+    cloth.visible = false;
+    clothKnot.visible = false;
+    toast('The cloth comes away');
+  }
+
+  if (S.digits.clock) {
+    openPanel('The clock',
+      '<p>Upside down the hands read 4:50. The hour is four.</p><p class="bignum">4</p>');
+    return;
+  }
+
+  const solved = () => {
+    setDigit('clock', '4');
+    addClue('Upside down the clock reads 4:50 → first number 4.');
+    toast('First number found');
+    ACTIONS.clock();
+  };
+  const submit = () => checkAnswer(4, solved);
+
+  openPanel('The clock',
+    '<p>The hands are frozen: hour hand just past ten, minute hand on two.</p>' +
+    '<p class="scrawl">"Time is upside down in this room."</p>' +
+    '<p>Read the face upside down. What hour does it land on?</p>' +
+    '<input class="code" id="ans" inputmode="numeric" autocomplete="off" maxlength="2" placeholder="?" aria-label="Your answer">', {
+    actions: [{ label: 'Answer', primary: true, onClick: submit }, { label: 'Step back', onClick: closePanel }],
+    mount: bindAnswer(submit)
+  });
+};
+
+ACTIONS.rug = function () {
+  if (!S.rugMoved) {
+    S.rugMoved = true;
+    rugGroup.position.x -= 0.95;
+    rugGroup.position.z -= 0.35;
+    rugGroup.rotation.y = 0.18;
+    keyGroup.visible = true;
+    openPanel('Under the rug',
+      '<p>The rug drags aside with a dry rasp. On the bare boards sits a small brass key, cold and heavy.</p>', {
+      actions: [{
+        label: 'Take the key',
+        primary: true,
+        onClick: () => {
+          S.key = true;
+          keyGroup.visible = false;
+          addClue('A brass key was under the rug. It fits a small lock.');
+          toast('Picked up: brass key');
+          closePanel();
+        }
+      }, { label: 'Leave it', onClick: closePanel }]
+    });
+    return;
+  }
+  openPanel('Under the rug', S.key
+    ? '<p>Only dust and floorboards now.</p>'
+    : '<p>A brass key on the bare boards. You leave it for now.</p>');
+};
+
+const BLOTTER = '<p>On the blotter, a strip of paper in neat figures: <b>1, 2, 4, 7, 11, ?</b></p>';
+
+ACTIONS.desk = function () {
+  addClue('Desk blotter: 1, 2, 4, 7, 11, ?');
+  if (!S.drawerOpen) {
+    if (!S.key) {
+      openPanel('The desk',
+        '<p>A wide writing desk. Two drawers on the right, both shut.</p>' +
+        '<p>The lower one is locked — a small brass keyhole, barely wider than a needle.</p>' + BLOTTER);
+      return;
+    }
+    openPanel('The desk',
+      '<p>The brass key slides into the small keyhole and turns without a sound.</p>' + BLOTTER, {
+      actions: [{
+        label: 'Pull the drawer open',
+        primary: true,
+        onClick: () => {
+          S.drawerOpen = true;
+          drawerFront.position.z += 0.34;
+          drawerBox.position.z += 0.34;
+          drawerKnob.position.z += 0.34;
+          ACTIONS.desk();
+        }
+      }, { label: 'Step back', onClick: closePanel }]
+    });
+    return;
+  }
+
+  if (S.digits.drawer) {
+    openPanel('The desk',
+      '<p>The note: the hour on the clock, less the colours on the canvas. Ten, less three.</p><p class="bignum">7</p>');
+    return;
+  }
+
+  const solved = () => {
+    setDigit('drawer', '7');
+    addClue('Third number: 10 o\'clock minus 3 canvas colours = 7.');
+    toast('Third number found');
+    ACTIONS.desk();
+  };
+  const submit = () => checkAnswer(7, solved);
+
+  openPanel('The desk',
+    '<p>The drawer hangs open. One note inside, in careful handwriting:</p>' +
+    '<p class="scrawl">"Third number: the hour on the clock, less the colours on the canvas."</p>' +
+    '<p>What is the third number?</p>' + BLOTTER +
+    '<input class="code" id="ans" inputmode="numeric" autocomplete="off" maxlength="2" placeholder="?" aria-label="Your answer">', {
+    actions: [{ label: 'Answer', primary: true, onClick: submit }, { label: 'Step back', onClick: closePanel }],
+    mount: bindAnswer(submit)
+  });
+};
+
+ACTIONS.shelf = function () {
+  if (!S.clues.some(c => c.startsWith('Shelf note'))) {
+    addClue('Shelf note: "The box opens in the order I painted it — highest in the picture first."');
+    toast('Note found');
+  }
+  const solved = () => {
+    setDigit('box', '2');
+    addClue('Two red ribbons on the shelf → second number 2.');
+    toast('Second number found');
+    ACTIONS.shelf();
+  };
+  const submit = () => checkAnswer(2, solved);
+  const actions = [{ label: 'Step back', onClick: closePanel }];
+  if (S.boxOpen && !S.digits.box) actions.unshift({ label: 'Answer', primary: true, onClick: submit });
+
+  openPanel('The bookshelf', shelfBody(), {
+    actions,
+    mount: body => {
+      bindShelf(body);
+      if (S.boxOpen && !S.digits.box) bindAnswer(submit)(body);
+    }
+  });
+};
+
+ACTIONS.door = function () {
+  if (S.escaped) return;
+  openPanel('The door',
+    '<p>The keypad beside the handle is warm. Three digits.</p>' +
+    (S.safeOpen
+      ? '<p class="scrawl">time · shelf · wood</p>'
+      : '<p class="muted">Three digits, and no order written here. Someone took that note.</p>') +
+    '<input class="code" id="codeInput" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="•••" aria-label="Door code">', {
+    actions: [{ label: 'Unlock', primary: true, onClick: submitCode }, { label: 'Step back', onClick: closePanel }],
+    mount: body => {
+      const input = body.querySelector('#codeInput');
+      input.focus();
+      input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, ''); });
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') submitCode(); });
+    }
+  });
+};
+
+ACTIONS.safe = function () {
+  if (S.safeOpen) {
+    openPanel('The wall safe',
+      '<p>The door hangs open. Inside, one folded note:</p>' +
+      '<p class="scrawl">"The door takes them in order: time, shelf, wood."</p>');
+    return;
+  }
+
+  const solved = () => {
+    S.safeOpen = true;
+    safeDoorPivot.rotation.y = -1.55;
+    addClue('Safe note: the door takes the numbers in the order time, shelf, wood.');
+    toast('The safe swings open');
+    ACTIONS.safe();
+  };
+  const submit = () => checkAnswer(16, solved);
+
+  openPanel('The wall safe',
+    '<p>A steel safe set into the wall. Two digits, then the handle turns.</p>' +
+    (S.clues.some(c => c.startsWith('Desk blotter'))
+      ? '<p class="muted">The blotter on the desk had a strip of numbers on it.</p>'
+      : '<p class="muted">Two digits. Whatever they are, they are not written on the safe.</p>') +
+    '<input class="code" id="ans" inputmode="numeric" autocomplete="off" maxlength="2" placeholder="??" aria-label="Safe code">', {
+    actions: [{ label: 'Turn the handle', primary: true, onClick: submit }, { label: 'Step back', onClick: closePanel }],
+    mount: bindAnswer(submit)
+  });
+};
+
+/* ---- tin box ---- */
+function shelfBody() {
+  let boxHtml;
+  if (S.digits.box) {
+    boxHtml = '<div class="foundbox"><p>Inside the tin box, a folded slip:</p><p class="bignum">2</p></div>';
+  } else if (S.boxOpen) {
+    boxHtml = '<div class="foundbox">' +
+      '<p>The lid clicks open. A folded slip inside:</p>' +
+      '<p class="scrawl">"Second number: count the books that wear a red ribbon."</p>' +
+      '<p>How many are there?</p>' +
+      '<input class="code" id="ans" inputmode="numeric" autocomplete="off" maxlength="2" placeholder="?" aria-label="Your answer">' +
+      '</div>';
+  } else {
+    boxHtml =
+      '<div class="tin">' +
+      '<p>A tin box sits on the shelf. Three coloured buttons, no labels.</p>' +
+      '<div class="colors" id="tinButtons">' +
+      '<button type="button" class="c amber" data-color="amber" aria-label="Amber button"></button>' +
+      '<button type="button" class="c blue" data-color="blue" aria-label="Blue button"></button>' +
+      '<button type="button" class="c green" data-color="green" aria-label="Green button"></button>' +
+      '</div>' +
+      '<p class="status">' + (S.seq.length ? 'Pressed: ' + S.seq.join(' → ') : 'Nothing pressed yet.') + '</p>' +
+      (S.seq.length ? '<p class="err">The lid stays shut.</p>' : '') +
+      '</div>';
+  }
+  return '<p>The shelf holds three rows of books. A note is tucked behind them:</p>' +
+    '<p class="scrawl">"The box opens in the order I painted it — highest in the picture first."</p>' + boxHtml;
+}
+function bindShelf(body) {
+  body.querySelectorAll('button[data-color]').forEach(btn => {
+    btn.addEventListener('click', () => pressColor(btn.dataset.color, body));
+  });
+}
+function pressColor(color, body) {
+  if (S.boxOpen) return;
+  S.seq.push(color);
+  if (S.seq.length >= 3) {
+    if (S.seq.join() === 'amber,blue,green') {
+      S.boxOpen = true;
+      S.seq = [];
+      toast('The tin box clicks open');
+      ACTIONS.shelf();
+      return;
+    }
+    toast('The box resets');
+    S.seq = [];
+  }
+  body.innerHTML = shelfBody();
+  bindShelf(body);
+}
+
+/* ---- door code ---- */
+function submitCode() {
+  const input = panelBody.querySelector('#codeInput');
+  if (!input) return;
+  const value = input.value.trim();
+  if (value === CODE) { win(); return; }
+  input.classList.add('shake');
+  input.value = '';
+  input.focus();
+  setTimeout(() => input.classList.remove('shake'), 420);
+  let err = panelBody.querySelector('.codeErr');
+  if (!err) {
+    err = document.createElement('p');
+    err.className = 'err codeErr';
+    input.insertAdjacentElement('afterend', err);
+  }
+  err.textContent = value.length < 3 ? 'Three digits, not fewer.' : 'The lock does not budge.';
+}
+
+/* ---- win ---- */
+let doorOpening = 0;
+function win() {
+  if (S.escaped) return;
+  S.escaped = true;
+  closePanel();
+  document.exitPointerLock();
+  addClue('Door code accepted: 4 · 2 · 7.');
+  beam.material.opacity = 0.9;
+  doorGlow.intensity = 9;
+  doorOpening = 0.001;
+  setTimeout(() => {
+    document.getElementById('winTime').textContent = fmt((performance.now() - S.t0) / 1000);
+    winEl.hidden = false;
+  }, 1500);
+}
+
+/* ============================== loop ============================== */
+const clock = new THREE.Clock();
+let bob = 0;
+
+function fmt(seconds) {
+  const s = Math.max(0, Math.floor(seconds));
+  return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+}
+
+function tick() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  if (!panelOpen && startOverlay.hidden) {
+    const fwd = (keys.KeyW || keys.ArrowUp || touchMove.f ? 1 : 0) - (keys.KeyS || keys.ArrowDown || touchMove.b ? 1 : 0);
+    const strafe = (keys.KeyD || keys.ArrowRight || touchMove.r ? 1 : 0) - (keys.KeyA || keys.ArrowLeft || touchMove.l ? 1 : 0);
+    if (fwd || strafe) {
+      const speed = (keys.ShiftLeft || keys.ShiftRight ? 4.0 : 2.1) * dt;
+      const s = Math.sin(camera.rotation.y), c = Math.cos(camera.rotation.y);
+      let vx = (-s) * fwd + c * strafe;
+      let vz = (-c) * fwd + (-s) * strafe;
+      const len = Math.hypot(vx, vz) || 1;
+      vx = vx / len * speed;
+      vz = vz / len * speed;
+      const nx = camera.position.x + vx;
+      const nz = camera.position.z + vz;
+      if (!blocked(nx, camera.position.z)) camera.position.x = nx;
+      if (!blocked(camera.position.x, nz)) camera.position.z = nz;
+      bob += dt * (speed > 0.05 ? 9 : 0);
+      camera.position.y = 1.62 + Math.sin(bob) * 0.018;
+    } else {
+      camera.position.y += (1.62 - camera.position.y) * Math.min(1, dt * 8);
+    }
+
+    // hover target
+    const id = pick();
+    if (id !== hovered) {
+      hovered = id;
+      crosshair.classList.toggle('hot', !!id);
+      promptEl.hidden = !id;
+      if (id) promptText.textContent = 'Inspect ' + (labelFor(id));
+    }
+  } else if (hovered) {
+    hovered = null;
+    crosshair.classList.remove('hot');
+    promptEl.hidden = true;
+  }
+
+  if (doorOpening > 0 && doorPivot.rotation.y > -1.45) {
+    doorPivot.rotation.y -= dt * 0.9;
+  }
+
+  if (S.started) document.getElementById('timer').textContent = fmt((performance.now() - S.t0) / 1000);
+
+  renderer.render(scene, camera);
+}
+
+function labelFor(id) {
+  return LABELS[id] || 'it';
+}
+
+/* ============================== wiring ============================== */
+document.getElementById('enterBtn').addEventListener('click', () => {
+  startOverlay.hidden = true;
+  beginTimer();
+  if (!isTouch) requestLock();
+});
+document.getElementById('panelClose').addEventListener('click', closePanel);
+panelEl.addEventListener('click', e => { if (e.target === panelEl) closePanel(); });
+document.getElementById('againBtn').addEventListener('click', () => location.reload());
+var HINTS = [
+  'The painting is the rulebook. It tells you how time works in this room.',
+  'Clock: 10:10 turned upside down reads 4:50. The hour is 4.',
+  'Tin box: the painter went moon, sky, hill — amber, blue, green.',
+  'Desk note: 10 o\'clock minus the painting\'s 3 colours = 7.',
+  'Safe: 1, 2, 4, 7, 11 — the gaps are 1, 2, 3, 4, so the next is 16.',
+  'Door: 4 · 2 · 7, in the order time, shelf, wood.'
+];
+var hintIdx = 0;
+
+function showHint() {
+  if (locked) document.exitPointerLock();
+  var msg = HINTS[Math.min(hintIdx, HINTS.length - 1)];
+  hintIdx = Math.min(hintIdx + 1, HINTS.length - 1);
+  addClue('Hint: ' + msg);
+  openPanel('Hint', '<p>' + msg + '</p>', {
+    actions: [{ label: 'Back to the room', primary: true, onClick: closePanel }]
+  });
+}
+
+function showControls() {
+  if (locked) document.exitPointerLock();
+  openPanel('Controls',
+    '<p>Walk with <b>W A S D</b>. Hold <b>Shift</b> to move faster. Look with the mouse.</p>' +
+    '<p>Aim the crosshair at something and press <b>E</b> to inspect it. The crosshair turns gold when there is something to look at.</p>' +
+    '<p><b>H</b> gives a hint, <b>C</b> this panel. <b>Esc</b> releases the mouse so you can click, and closes any open panel.</p>',
+    { actions: [{ label: 'Back to the room', primary: true, onClick: closePanel }] });
+}
+
+document.getElementById('hintBtn').addEventListener('click', showHint);
+document.getElementById('startHint').addEventListener('click', () => {
+  startOverlay.hidden = true;
+  showHint();
+});
+
+document.getElementById('helpBtn').addEventListener('click', showControls);
+
+renderer.setAnimationLoop(tick);
+
+if (location.search.includes('debug')) {
+  window.__room = { S, camera, ACTIONS, openPanel, closePanel, doorPivot, ROOMS, blocked, interactables, LABELS };
+}
+</script>
+</body>
+</html>

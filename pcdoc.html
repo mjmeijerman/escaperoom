@@ -1,0 +1,2594 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PC Doctor — 3D Escape Room</title>
+<style>
+  :root{
+    --ink:#e7e9ea; --dim:#9aa1a6; --accent:#59d3ff; --ok:#63d68b; --bad:#ff6b5a;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{height:100%;margin:0;overflow:hidden;background:#07090a;color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  canvas#scene{position:fixed;inset:0;display:block;width:100%;height:100%;cursor:crosshair;touch-action:none}
+  .vignette{position:fixed;inset:0;pointer-events:none;z-index:3;
+    background:radial-gradient(ellipse at 50% 45%,transparent 40%,rgba(0,0,0,.62) 100%)}
+  kbd{font-family:var(--mono);font-size:.74em;border:1px solid rgba(231,233,234,.4);border-bottom-width:2px;
+    border-radius:3px;padding:.06em .38em;margin-right:.4em;color:#fff;background:rgba(0,0,0,.35)}
+
+  /* ---------- hud: crosshair, prompt, timer. nothing else ---------- */
+  #hud{position:fixed;inset:0;z-index:5;pointer-events:none}
+  #crosshair{position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;
+    border:1px solid rgba(240,244,246,.6);background:rgba(0,0,0,.25);
+    transition:transform .12s,background .12s,border-color .12s,box-shadow .12s}
+  #crosshair.hot{background:var(--accent);border-color:#dffaff;transform:scale(1.5);box-shadow:0 0 12px rgba(89,211,255,.9)}
+  #crosshair.grab{border-radius:2px;border-color:#ffd166;background:#ffd166;transform:scale(1.2) rotate(45deg)}
+  #prompt.read{border-color:rgba(255,255,255,.14);color:#a9b6bc;font-style:italic}
+  #prompt{position:absolute;left:50%;top:calc(50% + 36px);transform:translateX(-50%);white-space:nowrap;
+    font-family:var(--mono);font-size:.78rem;letter-spacing:.03em;padding:.34em .72em;border-radius:3px;
+    background:rgba(8,11,13,.82);border:1px solid rgba(89,211,255,.3);color:#dff6ff;backdrop-filter:blur(3px)}
+  .topbar{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:center;
+    padding:12px 18px;font-family:var(--mono);font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;
+    color:#8b979e;background:linear-gradient(180deg,rgba(5,7,8,.8),rgba(5,7,8,0))}
+  .brand{display:flex;align-items:center;gap:.6em;color:#c9d3d8}
+  .brand i{display:inline-grid;place-items:center;width:26px;height:26px;border:1px solid rgba(89,211,255,.45);
+    color:var(--accent);font-style:normal;font-size:.8rem}
+  .timer{font-variant-numeric:tabular-nums;color:#b9c4c9}
+
+  /* ---------- tray: reading surface, corner only ---------- */
+  #tray{position:fixed;left:16px;bottom:16px;z-index:6;width:min(330px,32vw);padding:11px 13px;
+    background:linear-gradient(180deg,rgba(12,16,18,.9),rgba(7,10,11,.94));
+    border:1px solid rgba(89,211,255,.22);border-left:2px solid rgba(89,211,255,.55);
+    box-shadow:0 16px 44px rgba(0,0,0,.6);font-family:var(--mono);font-size:.76rem;line-height:1.55}
+  #tray .head{display:flex;align-items:baseline;gap:.5em;margin-bottom:.4em;flex-wrap:wrap}
+  #tray .head b{font-size:.84rem;font-weight:600;letter-spacing:.02em;color:#eaf6fa}
+  #tray .head span{font-size:.56rem;letter-spacing:.2em;text-transform:uppercase;color:#6e7d85}
+  #tray p{margin:.35em 0;color:#c2ced4}
+  #tray p b{color:#fff}
+  #tray .keys{margin-top:.5em;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:#6b7a82}
+  #tray table{border-collapse:collapse;margin-top:.4em;width:100%}
+  #tray td{padding:1px 0;vertical-align:top;color:#c2ced4}
+  #tray td.c{color:var(--accent);padding-right:.7em;white-space:nowrap;font-weight:600}
+  #tray .got{color:var(--ok)}
+  #tray .bar{height:4px;background:rgba(255,255,255,.1);margin-top:.5em;border-radius:2px;overflow:hidden}
+  #tray .bar i{display:block;height:100%;background:var(--accent);width:0}
+  #tray .sub{color:#8b979e;font-size:.7rem}
+  #tray .say{color:#ffe9b3}
+
+  /* ---------- notepad: inventory + notes ---------- */
+  #pad{position:fixed;right:16px;top:60px;z-index:8;width:min(320px,34vw);padding:13px 15px;
+    background:repeating-linear-gradient(180deg,rgba(24,30,33,.96) 0 21px,rgba(30,38,42,.96) 21px 22px);
+    border:1px solid rgba(255,255,255,.14);box-shadow:0 18px 50px rgba(0,0,0,.65);
+    font-family:var(--mono);font-size:.74rem;line-height:22px;color:#dfe7ea}
+  #pad h2{margin:0 0 6px;font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:#7f8d94;font-weight:600}
+  #pad .items{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 10px;min-height:22px}
+  #pad .items span{border:1px solid rgba(89,211,255,.35);color:#cbeefb;padding:0 .4em;font-size:.68rem}
+  #pad .items em{color:#5c6a71;font-style:normal;font-size:.68rem}
+  #pad ul{list-style:none;margin:0;padding:0}
+  #pad li{display:flex;justify-content:space-between;gap:.6em}
+  #pad li b{color:#ffd166;font-weight:600}
+  #pad li i{font-style:normal;color:#8b979e}
+
+  /* ---------- the key legend: always on, bottom right, small ---------- */
+  #legend{position:fixed;right:16px;bottom:16px;z-index:6;display:flex;flex-wrap:wrap;gap:.3em 1em;
+    max-width:min(360px,50vw);padding:8px 11px;background:rgba(7,10,11,.60);
+    border:1px solid rgba(255,255,255,.10);font-family:var(--mono);font-size:.58rem;letter-spacing:.09em;
+    text-transform:uppercase;color:#7f8d94;line-height:1.6;pointer-events:none;backdrop-filter:blur(3px)}
+  #legend b{color:#cfe3ea;font-weight:600;letter-spacing:.06em}
+  @media (max-width:820px){ #legend{font-size:.5rem;max-width:62vw;gap:.2em .7em} }
+
+  #banner{position:fixed;left:50%;top:56px;transform:translateX(-50%);z-index:9;text-align:center;
+    padding:9px 20px;background:rgba(8,12,14,.86);border:1px solid rgba(89,211,255,.45);color:#e7f8ff;
+    letter-spacing:.16em;text-transform:uppercase;font-family:var(--mono);font-size:.8rem}
+  #banner small{display:block;margin-top:.45em;font-size:.6rem;letter-spacing:.12em;color:#8b979e;text-transform:none}
+
+  .toasts{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);z-index:40;display:grid;gap:7px;
+    justify-items:center;pointer-events:none;width:min(520px,90vw)}
+  .toast{padding:.5em 1em;background:rgba(9,13,15,.94);border:1px solid rgba(89,211,255,.4);color:#dff2f8;
+    font-family:var(--mono);font-size:.76rem;animation:tin .2s ease-out;text-align:center}
+  .toast.bad{border-color:rgba(255,107,90,.6);color:#ffcfc8}
+  .toast.good{border-color:rgba(99,214,139,.6);color:#c8f5d8}
+  @keyframes tin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  #unlockHint{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:6;
+    font-family:var(--mono);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:#9aa1a6;
+    background:rgba(6,9,10,.7);border:1px solid rgba(255,255,255,.15);padding:.45em .85em;pointer-events:none}
+  #bloom{position:fixed;inset:0;z-index:30;background:#eafcff;opacity:0;pointer-events:none;
+    transition:opacity .28s ease-out}
+  @media (max-width:820px){
+    #tray{width:min(300px,60vw)}
+    #pad{width:min(280px,52vw)}
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+
+<div id="hud">
+  <div class="topbar">
+    <div class="brand"><i>⌘</i>PC Doctor</div>
+    <div class="timer" id="timer">00:00</div>
+  </div>
+  <div id="crosshair" aria-hidden="true"></div>
+  <div id="prompt" hidden></div>
+</div>
+
+<aside id="tray" hidden><div class="head"><span id="kicker"></span><b id="title"></b></div>
+  <div id="body"></div><div class="keys" id="keys"></div></aside>
+
+<aside id="pad" hidden><h2>workshop notepad</h2>
+  <div class="items" id="padItems"></div>
+  <h2>fault codes</h2>
+  <ul id="padCodes"></ul>
+  <h2>found</h2>
+  <ul id="padNotes"></ul>
+</aside>
+
+<aside id="legend" aria-label="controls">
+  <span><b>W A S D</b> walk</span>
+  <span><b>Shift</b> hurry</span>
+  <span><b>Space</b> jump</span>
+  <span><b>E</b> use</span>
+  <span><b>Q</b> let go</span>
+  <span><b>I</b> notepad</span>
+  <span><b>H</b> hint</span>
+  <span><b>M</b> music</span>
+  <span><b>N</b> all sound</span>
+  <span><b>Esc</b> free cursor</span>
+  <span><b>click</b> look</span>
+</aside>
+
+<div id="banner" hidden></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="unlockHint">Click to look around</div>
+<div id="bloom"></div>
+
+<script type="module">
+import * as THREE from './vendor/three.module.min.js';
+
+/* ----------------------------------------------------------------- setup */
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const $ = s => document.querySelector(s);
+const canvas = $('#scene');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x090b0c);
+scene.fog = new THREE.FogExp2(0x0c1012, 0.026);
+
+const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 60);
+camera.rotation.order = 'YXZ';
+
+/* two scales, four numbers (see PC-DOCTOR.md §2) */
+const HUMAN  = { eye: 1.62, speed: 2.45, jump: 3.1, near: 0.05, reach: 2.3, step: 0.34, foot: 2.6 };
+const SHRUNK = { eye: 0.017, speed: 0.105, jump: 0.36, near: 0.0004, reach: 0.13, step: 0.004, foot: 0.055 };
+let P = HUMAN;
+
+/* -------------------------------------------------------------- textures */
+function tex(w, h, draw, opt = {}) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  if (opt.srgb !== false) t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(opt.rx || 1, opt.ry || 1);
+  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return t;
+}
+const rnd = (a, b) => a + Math.random() * (b - a);
+function grain(g, w, h, a = .05) {
+  for (let i = 0; i < (w * h) / 140; i++) {
+    const v = Math.random() < .5 ? 0 : 255;
+    g.fillStyle = `rgba(${v},${v},${v},${Math.random() * a})`;
+    g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1 + Math.random() * 2);
+  }
+}
+
+const floorTex = tex(1024, 1024, (g, w, h) => {
+  g.fillStyle = '#2a2c2d'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 2200; i++) {
+    g.fillStyle = `rgba(${Math.random() < .5 ? 10 : 120},${Math.random() < .5 ? 12 : 122},${Math.random() < .5 ? 14 : 120},${Math.random() * .06})`;
+    g.fillRect(Math.random() * w, Math.random() * h, rnd(2, 16), rnd(2, 12));
+  }
+  g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 3;
+  for (let i = 0; i <= 4; i++) {
+    g.beginPath(); g.moveTo(0, i * h / 4); g.lineTo(w, i * h / 4); g.stroke();
+    g.beginPath(); g.moveTo(i * w / 4, 0); g.lineTo(i * w / 4, h); g.stroke();
+  }
+  grain(g, w, h, .05);
+}, { rx: 2, ry: 2 });
+
+const wallTex = tex(512, 512, (g, w, h) => {
+  g.fillStyle = '#43484a'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 420; i++) {
+    const v = Math.random() < .5 ? 26 : 176;
+    g.fillStyle = `rgba(${v},${v + 2},${v + 3},${Math.random() * .035})`;
+    g.fillRect(Math.random() * w, Math.random() * h, rnd(6, 46), rnd(4, 30));
+  }
+  for (let i = 0; i < 26; i++) {
+    g.strokeStyle = `rgba(0,0,0,${rnd(.05, .16)})`; g.lineWidth = rnd(.5, 2);
+    g.beginPath();
+    const x = rnd(0, w), y = rnd(0, h);
+    g.moveTo(x, y); g.lineTo(x + rnd(-30, 30), y + rnd(20, 70)); g.stroke();
+  }
+  grain(g, w, h, .04);
+}, { rx: 2, ry: 1 });
+
+const benchTex = tex(1024, 512, (g, w, h) => {
+  g.fillStyle = '#4a3323'; g.fillRect(0, 0, w, h);
+  for (let p = 0; p < 4; p++) {
+    const y = p * h / 4;
+    g.fillStyle = `rgb(${68 + rnd(-8, 8)},${46 + rnd(-6, 6)},${30 + rnd(-5, 5)})`;
+    g.fillRect(0, y + 2, w, h / 4 - 4);
+    for (let i = 0; i < 90; i++) {
+      g.strokeStyle = `rgba(${20 + Math.random() * 50},${12 + Math.random() * 34},${8 + Math.random() * 22},${.1 + Math.random() * .3})`;
+      g.lineWidth = rnd(.4, 2.2);
+      g.beginPath();
+      const yy = y + rnd(0, h / 4);
+      for (let x = 0; x <= w; x += 20) g.lineTo(x, yy + Math.sin((x + i * 9) * .02) * 2.5);
+      g.stroke();
+    }
+    g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(0, y + h / 4 - 3, w, 3);
+  }
+  for (let i = 0; i < 40; i++) {           // cup rings and scars
+    g.strokeStyle = `rgba(20,12,6,${rnd(.1, .28)})`; g.lineWidth = rnd(1, 3);
+    const x = rnd(0, w), y = rnd(0, h), r2 = rnd(8, 30);
+    g.beginPath(); g.arc(x, y, r2, 0, 6.3); g.stroke();
+  }
+  grain(g, w, h, .05);
+}, { rx: 2, ry: 1 });
+
+const pcbTex = tex(1024, 1024, (g, w, h) => {
+  g.fillStyle = '#0c3b2c'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 900; i++) {
+    g.fillStyle = `rgba(${Math.random() < .5 ? 4 : 60},${Math.random() < .5 ? 20 : 150},${Math.random() < .5 ? 12 : 110},${Math.random() * .07})`;
+    g.fillRect(Math.random() * w, Math.random() * h, rnd(2, 20), rnd(2, 20));
+  }
+  // traces
+  g.strokeStyle = 'rgba(150,200,150,.16)'; g.lineWidth = 2;
+  for (let i = 0; i < 190; i++) {
+    let x = Math.round(rnd(0, w) / 16) * 16, y = Math.round(rnd(0, h) / 16) * 16;
+    g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 5; k++) {
+      if (Math.random() < .5) x += rnd(-90, 90); else y += rnd(-90, 90);
+      g.lineTo(x, y);
+    }
+    g.stroke();
+  }
+  // pads and vias
+  for (let i = 0; i < 420; i++) {
+    const x = rnd(0, w), y = rnd(0, h);
+    g.fillStyle = 'rgba(200,190,120,.5)';
+    g.beginPath(); g.arc(x, y, rnd(2, 5), 0, 6.3); g.fill();
+    g.fillStyle = 'rgba(10,20,16,.85)';
+    g.beginPath(); g.arc(x, y, rnd(1, 2.4), 0, 6.3); g.fill();
+  }
+  g.fillStyle = 'rgba(225,230,220,.5)';
+  g.font = '600 26px ' + 'ui-monospace,monospace';
+  g.fillText('PD-B450M  REV 2.1', 40, 60);
+  g.fillText('CPU_FAN   SYS_FAN3', 40, h - 40);
+  grain(g, w, h, .05);
+});
+
+const paperTex = tex(512, 640, (g, w, h) => {
+  g.fillStyle = '#e6e2d6'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 300; i++) {
+    g.fillStyle = `rgba(${Math.random() < .5 ? 120 : 255},${Math.random() < .5 ? 120 : 250},${Math.random() < .5 ? 110 : 235},${Math.random() * .1})`;
+    g.fillRect(Math.random() * w, Math.random() * h, rnd(2, 22), rnd(2, 10));
+  }
+  g.strokeStyle = 'rgba(90,110,150,.28)'; g.lineWidth = 1;
+  for (let y = 120; y < h - 40; y += 26) { g.beginPath(); g.moveTo(28, y); g.lineTo(w - 28, y); g.stroke(); }
+  g.strokeStyle = 'rgba(190,90,80,.5)'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(46, 60); g.lineTo(46, h - 30); g.stroke();
+});
+
+const metalTex = tex(512, 512, (g, w, h) => {
+  g.fillStyle = '#24282b'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 1400; i++) {
+    g.fillStyle = `rgba(${Math.random() < .5 ? 8 : 170},${Math.random() < .5 ? 10 : 175},${Math.random() < .5 ? 12 : 180},${Math.random() * .05})`;
+    g.fillRect(Math.random() * w, Math.random() * h, rnd(1, 30), rnd(1, 3));
+  }
+  grain(g, w, h, .04);
+}, { rx: 2, ry: 2 });
+
+const shadowTex = tex(256, 256, (g, S) => {
+  const grd = g.createRadialGradient(S / 2, S / 2, 4, S / 2, S / 2, S / 2);
+  grd.addColorStop(0, 'rgba(0,0,0,.66)');
+  grd.addColorStop(.55, 'rgba(0,0,0,.3)');
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, S, S);
+});
+
+/* sticker: the shop sign, the generator procedure, the POST table on the manual */
+function stickerTex(lines, opt = {}) {
+  return tex(512, opt.h || 384, (g, w, h) => {
+    g.fillStyle = opt.bg || '#efe9d8'; g.fillRect(0, 0, w, h);
+    if (opt.border !== false) { g.strokeStyle = opt.ink || '#1b2328'; g.lineWidth = 8; g.strokeRect(10, 10, w - 20, h - 20); }
+    g.fillStyle = opt.ink || '#1b2328';
+    g.textAlign = opt.align || 'left';
+    const x = opt.align === 'center' ? w / 2 : 34;
+    let y = opt.top || 78;
+    for (const [text, size, bold] of lines) {
+      g.font = `${bold ? '700' : '500'} ${size}px ui-monospace,Menlo,Consolas,monospace`;
+      g.fillText(text, x, y);
+      y += size * 1.42;
+    }
+    grain(g, w, h, .05);
+  });
+}
+
+const slotMatBlue = new THREE.MeshStandardMaterial({ color: 0x2f6fd0, roughness: .6 });
+const slotMatGrey = new THREE.MeshStandardMaterial({ color: 0x2b2f33, roughness: .6 });
+
+const M = {
+  floor: new THREE.MeshStandardMaterial({ map: floorTex, roughness: .93 }),
+  wall: new THREE.MeshStandardMaterial({ map: wallTex, roughness: .95 }),
+  ceiling: new THREE.MeshStandardMaterial({ color: 0x24282a, roughness: .96 }),
+  bench: new THREE.MeshStandardMaterial({ map: benchTex, roughness: .82 }),
+  metal: new THREE.MeshStandardMaterial({ map: metalTex, roughness: .62, metalness: .10 }),
+  caseInner: new THREE.MeshStandardMaterial({ color: 0x3c4448, roughness: .88, metalness: .04 }),
+  metalDark: new THREE.MeshStandardMaterial({ color: 0x1a1e21, roughness: .6, metalness: .5 }),
+  dark: new THREE.MeshStandardMaterial({ color: 0x14181a, roughness: .9 }),
+  black: new THREE.MeshStandardMaterial({ color: 0x0b0e10, roughness: .85 }),
+  pcb: new THREE.MeshStandardMaterial({ map: pcbTex, roughness: .72, metalness: .12 }),
+  paper: new THREE.MeshStandardMaterial({ map: paperTex, roughness: .95 }),
+  white: new THREE.MeshStandardMaterial({ color: 0xd9d5c8, roughness: .8 }),
+  clip: new THREE.MeshStandardMaterial({ color: 0x8f948f, roughness: .75 }),
+  gold: new THREE.MeshStandardMaterial({ color: 0xb99545, roughness: .35, metalness: .8 }),
+  plastic: new THREE.MeshStandardMaterial({ color: 0x2a3033, roughness: .55 }),
+  red: new THREE.MeshStandardMaterial({ color: 0x8c2f24, roughness: .6 }),
+};
+
+function box(w, h, d, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  (parent || scene).add(m);
+  return m;
+}
+function plane(w, h, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  m.position.set(x, y, z);
+  (parent || scene).add(m);
+  return m;
+}
+function cyl(rt, rb, h, seg, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat);
+  m.position.set(x, y, z);
+  (parent || scene).add(m);
+  return m;
+}
+function sphere(r, mat, x, y, z, parent, seg = 14) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg / 2)), mat);
+  m.position.set(x, y, z);
+  (parent || scene).add(m);
+  return m;
+}
+function decal(w, h, t, x, y, z, ry = 0, parent) {
+  const m = plane(w, h, new THREE.MeshStandardMaterial({ map: t, roughness: .9 }), x, y, z, parent);
+  m.rotation.y = ry;
+  return m;
+}
+function shadow(x, z, size = 1, y = 0.008, opacity = .55) {
+  const m = plane(size, size, new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity, depthWrite: false }), x, y, z);
+  m.rotation.x = -Math.PI / 2;
+  return m;
+}
+
+/* ----------------------------------------------------------------- audio */
+/* everything synthesised: no files, no network (see PC-DOCTOR.md §11) */
+const A = { ctx: null, master: null, bus: null, music: null, on: false, muted: false, musicOn: true, hum: null, pad: [], chord: -1 };
+
+function noiseBuf(dur = 2) {
+  const b = A.ctx.createBuffer(1, Math.floor(A.ctx.sampleRate * dur), A.ctx.sampleRate);
+  const d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  return b;
+}
+function audioInit() {
+  if (A.ctx) return;
+  const C = window.AudioContext || window.webkitAudioContext;
+  if (!C) return;
+  const ctx = A.ctx = new C();
+  A.master = ctx.createGain(); A.master.gain.value = .85; A.master.connect(ctx.destination);
+  A.bus = ctx.createGain(); A.bus.gain.value = .9; A.bus.connect(A.master);
+  A.music = ctx.createGain(); A.music.gain.value = .35; A.music.connect(A.master);
+  // a short procedural room: noise with an exponential decay, no impulse files
+  const ir = ctx.createBuffer(2, Math.floor(ctx.sampleRate * 1.1), ctx.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const d = ir.getChannelData(c);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3.4);
+  }
+  A.verb = ctx.createConvolver(); A.verb.buffer = ir;
+  A.verbGain = ctx.createGain(); A.verbGain.gain.value = .22;
+  A.verb.connect(A.verbGain); A.verbGain.connect(A.master);
+  A.noise = noiseBuf(2);
+  A.on = true;
+  A.bus.connect(A.verb);
+  startMusic();
+  buildHum();
+  loadVoices();
+  // a browser that was not really happy about autoplay gets nudged
+  if (ctx.state === 'suspended') ctx.resume();
+}
+function tone({ f = 440, f2 = null, type = 'sine', dur = .18, vol = .12, at = 0, pan = 0, filter = 0 }) {
+  if (!A.on) return;
+  const t0 = A.ctx.currentTime + at;
+  const osc = A.ctx.createOscillator();
+  osc.type = type;
+  osc.frequency.setValueAtTime(f, t0);
+  if (f2) osc.frequency.exponentialRampToValueAtTime(Math.max(18, f2), t0 + dur);
+  const g = A.ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(vol, t0 + Math.min(.015, dur * .25));
+  g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+  let head = osc;
+  if (filter) {
+    const lp = A.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = filter;
+    osc.connect(lp); head = lp;
+  }
+  head.connect(g);
+  const p = A.ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1);
+  g.connect(p); p.connect(A.bus);
+  osc.start(t0); osc.stop(t0 + dur + .03);
+}
+function hiss({ dur = .18, vol = .1, at = 0, type = 'bandpass', f = 1800, q = 1, pan = 0, f2 = null }) {
+  if (!A.on) return;
+  const t0 = A.ctx.currentTime + at;
+  const s = A.ctx.createBufferSource(); s.buffer = A.noise; s.loop = true;
+  const bp = A.ctx.createBiquadFilter(); bp.type = type; bp.frequency.setValueAtTime(f, t0); bp.Q.value = q;
+  if (f2) bp.frequency.exponentialRampToValueAtTime(Math.max(60, f2), t0 + dur);
+  const g = A.ctx.createGain();
+  g.gain.setValueAtTime(.0001, t0);
+  g.gain.linearRampToValueAtTime(vol, t0 + dur * .12);
+  g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+  s.connect(bp); bp.connect(g);
+  const p = A.ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1);
+  g.connect(p); p.connect(A.bus);
+  s.start(t0); s.stop(t0 + dur + .02);
+}
+
+/* -------------------------------------------------------------- effects */
+/* Every sound here is a small additive model: a transient, a body, and a tail.
+   Dry-by-default plus a short procedural reverb send, so metal sounds metal. */
+const sfx = {
+  click() {
+    hiss({ dur: .035, vol: .07, f: 3400, q: 1.6 });
+    tone({ f: 1180, f2: 760, type: 'triangle', dur: .035, vol: .05 });
+  },
+  tick() { hiss({ dur: .022, vol: .05, f: 5200, q: 2.2 }); },
+  snap() {
+    hiss({ dur: .05, vol: .13, f: 2200, q: 1.1 });
+    tone({ f: 300, f2: 150, type: 'triangle', dur: .07, vol: .10 });
+    tone({ f: 2450, dur: .12, vol: .03, at: .004 });        // the little metal ring after
+  },
+  clack() {                                                  // a key, a switch, a latch
+    hiss({ dur: .045, vol: .11, f: 1400, q: .8 });
+    tone({ f: 210, f2: 96, type: 'square', dur: .07, vol: .09, filter: 900 });
+    tone({ f: 640, f2: 420, type: 'triangle', dur: .05, vol: .04, at: .006 });
+  },
+  relay() {
+    tone({ f: 128, f2: 64, type: 'square', dur: .05, vol: .13, filter: 700 });
+    tone({ f: 96, f2: 48, type: 'square', dur: .07, vol: .11, filter: 520, at: .055 });
+    hiss({ dur: .04, vol: .05, f: 1800, q: 1.2, at: .05 });
+  },
+  paper() {
+    hiss({ dur: .16, vol: .055, f: 4200, q: .5, f2: 2200 });
+    hiss({ dur: .12, vol: .04, f: 2600, q: .7, at: .09 });
+  },
+  pickup() {
+    tone({ f: 560, dur: .06, vol: .07 });
+    tone({ f: 840, dur: .09, vol: .06, at: .055 });
+    tone({ f: 1680, dur: .07, vol: .02, at: .055 });
+  },
+  nope() {
+    tone({ f: 196, f2: 130, type: 'sawtooth', dur: .20, vol: .10, filter: 620 });
+    tone({ f: 98, f2: 72, type: 'sine', dur: .22, vol: .06 });
+  },
+  buzz() {
+    tone({ f: 140, f2: 104, type: 'sawtooth', dur: .28, vol: .085, filter: 520 });
+    tone({ f: 70, dur: .28, type: 'square', vol: .05, filter: 300 });
+  },
+  step(big) {
+    if (big) {
+      hiss({ dur: .09, vol: .05, f: 520, q: .7, f2: 190 });
+      tone({ f: 88, f2: 58, type: 'sine', dur: .09, vol: .05 });
+    } else {
+      hiss({ dur: .03, vol: .045, f: 3000, q: 1.5 });
+      tone({ f: 900, f2: 600, type: 'triangle', dur: .025, vol: .02 });
+    }
+  },
+  cough() {
+    hiss({ dur: .42, vol: .14, f: 700, q: .6, f2: 160 });
+    tone({ f: 92, f2: 44, type: 'sawtooth', dur: .45, vol: .09, filter: 380 });
+  },
+  roar() {
+    hiss({ dur: 1.2, vol: .11, f: 200, q: .5, f2: 900 });
+    tone({ f: 52, f2: 68, type: 'sawtooth', dur: 1.3, vol: .10, filter: 300 });
+    tone({ f: 104, f2: 136, type: 'sine', dur: 1.2, vol: .05 });
+  },
+  charge(d) {
+    tone({ f: 64, f2: 1040, dur: d, vol: .075 });
+    tone({ f: 128, f2: 2080, dur: d, vol: .025, type: 'triangle' });
+    hiss({ dur: d, vol: .05, f: 700, q: .4, f2: 6400 });
+  },
+  whoom() {
+    hiss({ dur: 1.3, vol: .16, f: 6000, q: .35, f2: 90 });
+    tone({ f: 150, f2: 22, dur: 1.0, vol: .16 });
+    tone({ f: 75, f2: 30, type: 'triangle', dur: 1.4, vol: .10 });
+    tone({ f: 3800, dur: 5, vol: .018 });                     // the ringing in your ears
+    tone({ f: 5600, dur: 4, vol: .010, at: .2 });
+  },
+  chime() {                                                   // a bell, not a beep
+    [[784, .14], [1568, .07], [2350, .035], [3136, .015]].forEach(([f, v], i) => {
+      tone({ f, dur: 1.1 - i * .18, vol: v, at: i * .006 });
+    });
+    tone({ f: 1174, dur: .8, vol: .05, at: .16 });
+  },
+  scratch() { hiss({ dur: .08, vol: .035, f: 5200, q: 1.4 }); },
+  ratchet() {
+    hiss({ dur: .04, vol: .06, f: 2600, q: 2.4 });
+    tone({ f: 340, f2: 220, type: 'square', dur: .04, vol: .05, filter: 1200 });
+  },
+  spin() {
+    hiss({ dur: 1.2, vol: .09, f: 220, q: .6, f2: 1700 });
+    tone({ f: 58, f2: 210, type: 'sawtooth', dur: 1.1, vol: .04, filter: 700 });
+  },
+  chunk() {
+    hiss({ dur: .16, vol: .14, f: 1100, q: .5, f2: 220 });
+    tone({ f: 120, f2: 44, type: 'triangle', dur: .28, vol: .14 });
+    tone({ f: 1860, dur: .22, vol: .03, at: .01 });
+  },
+  pop() {
+    hiss({ dur: .05, vol: .11, f: 3600, q: 1.8 });
+    tone({ f: 900, f2: 320, type: 'square', dur: .07, vol: .07, filter: 2400 });
+  },
+};
+
+/* ------------------------------------------------------------- generator hum */
+/* the generator is never a loop you can point at: it is a rumble that follows distance */
+function buildHum() {
+  const ctx = A.ctx;
+  const g = ctx.createGain(); g.gain.value = 0.0001; g.connect(A.master);
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 320; lp.connect(g);
+  const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 48; o1.connect(lp);
+  const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = 96.5; o2.connect(lp);
+  const s = ctx.createBufferSource(); s.buffer = A.noise; s.loop = true;
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 260; bp.Q.value = .6;
+  const ng = ctx.createGain(); ng.gain.value = .25;
+  s.connect(bp); bp.connect(ng); ng.connect(g);
+  o1.start(); o2.start(); s.start();
+  A.hum = { g, lp, o1, o2 };
+}
+function setHum(level) {
+  if (!A.hum) return;
+  // short time constant: walk away and it is gone in a breath, not a bar
+  A.hum.g.gain.setTargetAtTime(clamp(level, .00001, .3), A.ctx.currentTime, .12);
+  A.hum.lp.frequency.setTargetAtTime(200 + level * 1200, A.ctx.currentTime, .15);
+}
+
+/* ------------------------------------------------------------------ music */
+/* A sparse lo-fi loop instead of a drone: chord stabs with real decay, a bass
+   note, a shaker, a soft kick, and plenty of air between them.               */
+const MUS = {
+  step: 0, next: 0, bpm: 74,
+  bars: [
+    [220.0, 261.6, 329.6, 392.0],   // Am7
+    [174.6, 220.0, 261.6, 329.6],   // Fmaj7
+    [196.0, 246.9, 293.7, 349.2],   // G7-ish
+    [130.8, 196.0, 261.6, 329.6],   // C
+  ],
+};
+function musChord(t, freqs, vol = 1) {
+  freqs.forEach((f, i) => {
+    const o = A.ctx.createOscillator();
+    o.type = i === 0 ? 'triangle' : 'sine';
+    o.frequency.value = f;
+    const g = A.ctx.createGain();
+    const peak = (i === 0 ? .05 : .032) * vol;
+    const dur = i === 0 ? 1.5 : 1.0;
+    g.gain.setValueAtTime(.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + .014);
+    g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    const lp = A.ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 1500; lp.Q.value = .4;
+    o.connect(lp); lp.connect(g); g.connect(A.music);
+    o.start(t); o.stop(t + dur + .05);
+  });
+}
+function musBass(t, f, vol = 1) {
+  const o = A.ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+  const o2 = A.ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.value = f * 2;
+  const g = A.ctx.createGain();
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(.075 * vol, t + .02);
+  g.gain.exponentialRampToValueAtTime(.0001, t + .6);
+  const g2 = A.ctx.createGain(); g2.gain.value = .12;
+  const lp = A.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420;
+  o.connect(g); o2.connect(g2); g2.connect(g); g.connect(lp); lp.connect(A.music);
+  o.start(t); o2.start(t); o.stop(t + .62); o2.stop(t + .62);
+}
+function musShaker(t, vol = 1) {
+  const s = A.ctx.createBufferSource(); s.buffer = A.noise;
+  const bp = A.ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 6200; bp.Q.value = .9;
+  const g = A.ctx.createGain();
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(.03 * vol, t + .006);
+  g.gain.exponentialRampToValueAtTime(.0001, t + .06);
+  s.connect(bp); bp.connect(g); g.connect(A.music);
+  s.start(t); s.stop(t + .08);
+}
+function musKick(t, vol = 1) {
+  const o = A.ctx.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(96, t);
+  o.frequency.exponentialRampToValueAtTime(44, t + .09);
+  const g = A.ctx.createGain();
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(.09 * vol, t + .01);
+  g.gain.exponentialRampToValueAtTime(.0001, t + .2);
+  o.connect(g); g.connect(A.music);
+  o.start(t); o.stop(t + .22);
+}
+function startMusic() {
+  MUS.next = A.ctx.currentTime + .15;
+  MUS.step = 0;
+}
+/* called every frame; schedules a little ahead, never inside the callback */
+function musicTick() {
+  if (!A.on || A.muted || !A.musicOn || !A.ctx || A.ctx.state !== 'running') return;
+  const now = A.ctx.currentTime;
+  const stepDur = 60 / MUS.bpm / 2;                       // eighth notes
+  if (MUS.next < now) MUS.next = now + .05;
+  while (MUS.next < now + .3) {
+    const s = MUS.step % 8;
+    const bar = Math.floor(MUS.step / 8) % MUS.bars.length;
+    const chord = MUS.bars[bar];
+    const t = MUS.next;
+    if (s === 0) { musChord(t, chord); musBass(t, chord[0] / 2); musKick(t, 1); }
+    if (s === 3) musChord(t, chord, .7);
+    if (s === 2 || s === 6) musShaker(t, s === 6 ? .9 : .55);
+    if (s === 4) musBass(t, chord[0] / 2, .8);
+    if (s === 6 && bar % 2 === 1) musChord(t, chord, .45);
+    if (s === 5) musKick(t, .5);
+    MUS.next += stepDur;
+    MUS.step++;
+  }
+}
+
+/* ------------------------------------------------------------------ world */
+const ROOM = { x0: -3.6, x1: 3.6, z0: -3.2, z1: 3.2, h: 3.2 };
+const YARD = { x0: 1.1, x1: 3.5, z0: -5.9, z1: -3.2, h: 2.4 };
+const BENCH = { x0: -3.5, x1: 1.0, z0: -3.15, z1: -1.9, top: 0.95 };
+const TOWER = { x: -2.0, z: -2.45, w: 0.52, d: 0.62, y0: 0.95, h: 1.15 };
+const DESK = { x0: 1.9, x1: 3.5, z0: -1.55, z1: -0.45, top: 0.76 };   // out of the way of the yard door
+const COUNTER = { x0: -2.8, x1: 0.2, z0: 1.0, z1: 1.75, top: 1.0 };
+const PAD = { x: 1.65, z: 1.35, r: .5 };
+
+const interact = [];
+function register(group, id, label) {
+  group.traverse(o => { if (o.isMesh) o.userData.interact = id; });
+  group.userData.interact = id;
+  group.userData.label = label;
+  interact.push(group);
+  return group;
+}
+
+/* floor, ceiling, walls */
+const floor = plane(ROOM.x1 - ROOM.x0, ROOM.z1 - ROOM.z0, M.floor, 0, 0, 0);
+floor.rotation.x = -Math.PI / 2;
+const yardFloor = plane(YARD.x1 - YARD.x0, YARD.z1 - YARD.z0, M.floor, (YARD.x0 + YARD.x1) / 2, 0.002, (YARD.z0 + YARD.z1) / 2);
+yardFloor.rotation.x = -Math.PI / 2;
+const ceil = plane(ROOM.x1 - ROOM.x0, ROOM.z1 - ROOM.z0, M.ceiling, 0, ROOM.h, 0);
+ceil.rotation.x = Math.PI / 2;
+
+const WALL_T = .16;
+box(WALL_T, ROOM.h, 6.4, M.wall, ROOM.x0 - WALL_T / 2, ROOM.h / 2, 0);   // west
+box(WALL_T, ROOM.h, 6.4, M.wall, ROOM.x1 + WALL_T / 2, ROOM.h / 2, 0);   // east
+box(7.4, ROOM.h, WALL_T, M.wall, 0, ROOM.h / 2, ROOM.z1 + WALL_T / 2);   // south
+// north wall, with the yard door at x 2.05 .. 2.85
+box(5.65, ROOM.h, WALL_T, M.wall, -0.775, ROOM.h / 2, ROOM.z0 - WALL_T / 2);
+box(0.75, ROOM.h, WALL_T, M.wall, 3.225, ROOM.h / 2, ROOM.z0 - WALL_T / 2);
+box(0.8, ROOM.h - 2.05, WALL_T, M.wall, 2.45, 2.05 + (ROOM.h - 2.05) / 2, ROOM.z0 - WALL_T / 2);
+box(0.9, 0.06, .5, M.metalDark, 2.45, 2.06, ROOM.z0 - .05);              // door head
+box(.07, 2.03, .1, M.metalDark, 2.0, 1.01, ROOM.z0 - .02);               // jambs
+box(.07, 2.03, .1, M.metalDark, 2.9, 1.01, ROOM.z0 - .02);
+// pipe clamps, so the pipes do not float either
+[-1.2, 2.4].forEach(x => [-2.4, 0, 2.4].forEach(z => box(.1, .06, .1, M.metalDark, x, 3.14, z)));
+const exitTex = tex(256, 96, (g, w, h) => {
+  g.fillStyle = '#06210f'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#6bff9c'; g.font = '700 54px ui-monospace,monospace'; g.textAlign = 'center';
+  g.fillText('EXIT', w / 2, 66);
+});
+plane(.34, .12, new THREE.MeshStandardMaterial({ map: exitTex, emissive: 0x7cffae, emissiveMap: exitTex, emissiveIntensity: 1.5, roughness: .5 }),
+  2.45, 1.97, ROOM.z0 + .02);
+const exitGlow = new THREE.PointLight(0x5aff92, 1.6, 3.4, 2);
+exitGlow.position.set(2.45, 1.92, ROOM.z0 + .18);
+scene.add(exitGlow);
+// yard shell
+box(WALL_T, YARD.h, 2.7, M.wall, YARD.x0 - WALL_T / 2, YARD.h / 2, -4.55);
+box(WALL_T, YARD.h, 2.7, M.wall, YARD.x1 + WALL_T / 2, YARD.h / 2, -4.55);
+box(2.6, YARD.h, WALL_T, M.wall, 2.3, YARD.h / 2, YARD.z0 - WALL_T / 2);
+const yardCeil = plane(2.4, 2.7, M.ceiling, 2.3, YARD.h, -4.55);
+yardCeil.rotation.x = Math.PI / 2;
+
+/* skirting and wall clutter: pipes, a noticeboard, shelves */
+box(7.2, .1, .04, M.metalDark, 0, .05, ROOM.z1 - .06);
+box(.04, .1, 6.4, M.metalDark, ROOM.x1 - .06, .05, 0);
+[[-1.2, 2.95, 'pipe'], [2.4, 2.9, 'pipe']].forEach(([x, y]) => {
+  const p = cyl(.05, .05, 6.4, 8, M.metal, x, y, 0);
+  p.rotation.x = Math.PI / 2;
+});
+
+/* --------------------------------------------------------------- bench */
+const benchTop = box(BENCH.x1 - BENCH.x0, .08, BENCH.z1 - BENCH.z0, M.bench,
+  (BENCH.x0 + BENCH.x1) / 2, BENCH.top - .04, (BENCH.z0 + BENCH.z1) / 2);
+[[BENCH.x0 + .1, BENCH.z0 + .1], [BENCH.x1 - .1, BENCH.z0 + .1], [BENCH.x0 + .1, BENCH.z1 - .1], [BENCH.x1 - .1, BENCH.z1 - .1]]
+  .forEach(([x, z]) => box(.07, BENCH.top - .08, .07, M.metalDark, x, (BENCH.top - .08) / 2, z));
+// a shelf lip at the back of the bench so tools do not roll off
+box(BENCH.x1 - BENCH.x0, .05, .04, M.metalDark, (BENCH.x0 + BENCH.x1) / 2, BENCH.top + .025, BENCH.z0 + .02);
+
+/* the tower: a building with the side panel off */
+const tg = new THREE.Group();
+tg.position.set(TOWER.x, 0, TOWER.z);
+scene.add(tg);
+box(TOWER.w, TOWER.h, .03, M.metal, 0, TOWER.y0 + TOWER.h / 2, -TOWER.d / 2, tg);        // back
+box(.03, TOWER.h, TOWER.d, M.metal, -TOWER.w / 2, TOWER.y0 + TOWER.h / 2, 0, tg);        // left
+box(.03, TOWER.h, TOWER.d, M.metal, TOWER.w / 2, TOWER.y0 + TOWER.h / 2, 0, tg);         // right
+box(TOWER.w, .04, TOWER.d, M.metalDark, 0, TOWER.y0 - .02, 0, tg);   // floor pan sits *under* the bench line                        // floor pan
+box(TOWER.w, .05, TOWER.d, M.metal, 0, TOWER.y0 + TOWER.h - .025, 0, tg);                 // roof
+box(TOWER.w, .009, .02, M.caseInner, 0, TOWER.y0 + .004, TOWER.d / 2 - .01, tg);           // threshold, not a wall
+// painted interior liners: bare metal at metalness .45 turns black with no environment
+box(.012, TOWER.h, TOWER.d - .02, M.caseInner, TOWER.w / 2 - .024, TOWER.y0 + TOWER.h / 2, 0, tg);
+box(.012, TOWER.h, TOWER.d - .02, M.caseInner, -TOWER.w / 2 + .024, TOWER.y0 + TOWER.h / 2, 0, tg);
+box(TOWER.w - .05, TOWER.h, .012, M.caseInner, 0, TOWER.y0 + TOWER.h / 2, -TOWER.d / 2 + .024, tg);
+// feet, so the case is not a box resting on nothing
+[[-.19, -.24], [.19, -.24], [-.19, .24], [.19, .24]].forEach(([x, z]) =>
+  box(.05, .035, .05, M.black, x, TOWER.y0 - .017, z, tg));
+// roof vents
+for (let i = 0; i < 7; i++) box(.30, .006, .02, M.black, 0, TOWER.y0 + TOWER.h + .003, -TOWER.d / 2 + .09 + i * .07, tg);
+// front branding
+const brandTex = stickerTex([
+  ['PC DOCTOR', 54, true],
+  ['GERRIT', 30, false],
+  ['0545-123456', 26, false],
+], { bg: '#101416', ink: '#8fe6ff', h: 260, align: 'center', top: 92 });
+decal(.34, .16, brandTex, TOWER.w / 2 + .003, TOWER.y0 + .55, 0, Math.PI / 2, tg);
+// power button and the front fan grille
+const pwrLed = sphere(.006, new THREE.MeshStandardMaterial({ color: 0x331a10, emissive: 0x000000, roughness: .4 }), .17, TOWER.y0 + .018, TOWER.d / 2 + .004, tg, 8);
+const pwrBtn = cyl(.013, .013, .01, 12, M.metalDark, .21, TOWER.y0 + .018, TOWER.d / 2 + .004, tg);
+pwrBtn.rotation.x = Math.PI / 2;
+register(tg, 'tower', 'The customer\'s tower');
+
+/* the side panel, lying flat on the bench: the wiring diagram is printed inside it */
+const diagTex = stickerTex([
+  ['WIRING', 46, true],
+  ['1  PSU ROCKER  ->  ON', 24, false],
+  ['2  24-PIN  ->  BOARD', 24, false],
+  ['3  CPU 8-PIN  ->  TOP', 24, false],
+  ['4  PCIe 8-PIN  ->  GPU', 24, false],
+  ['5  SATA  ->  SSD', 24, false],
+], { bg: '#c9c3b2', ink: '#20282c', h: 420, top: 88 });
+const sidePanel = box(.62, .012, .34, M.metal, -1.05, BENCH.top + .008, -2.45);
+decal(.58, .30, diagTex, -1.05, BENCH.top + .015, -2.45).rotation.x = -Math.PI / 2;
+register(sidePanel, 'schematic', 'the side panel');
+
+/* Inside the case the board is the floor: Gerrit tests on an open rig, so it lies flat.
+   Everything you can touch has to sit within arm's length of a 17 mm person. */
+const boardY = BENCH.top + .006;
+const boardFloor = plane(.46, .56, M.pcb, TOWER.x, boardY, TOWER.z);
+boardFloor.rotation.x = -Math.PI / 2;
+const board = new THREE.Group();
+scene.add(board);
+
+// four memory slots, cut as long trenches in the board
+const SLOTS = [-0.19, -0.13, -0.07, -0.01];
+SLOTS.forEach((dx, i) => {
+  box(.030, .008, .34, i % 2 ? slotMatBlue : slotMatGrey, TOWER.x + dx, boardY + .004, TOWER.z - .02, board);
+  const clip = box(.036, .010, .012, M.clip, TOWER.x + dx, boardY + .005, TOWER.z + .15, board);
+  box(.034, .006, .008, M.clip, TOWER.x + dx, boardY + .003, TOWER.z - .19, board);
+  if (i === 1) register(clip, 'slotA2', 'the clip on slot A2');
+});
+// A2: a module half out, leaning like a tower
+const stickIn = box(.026, .26, .012, new THREE.MeshStandardMaterial({ color: 0x22593f, roughness: .7 }),
+  TOWER.x + SLOTS[1], boardY + .125, TOWER.z - .06, board);
+stickIn.rotation.z = .38;
+register(stickIn, 'slotA2', 'the module in slot A2');
+// B2: the scorched one, standing in its slot with a burnt chip
+const stickS = box(.026, .26, .012, new THREE.MeshStandardMaterial({ color: 0x4a3a24, roughness: .8 }),
+  TOWER.x + SLOTS[3], boardY + .13, TOWER.z - .02, board);
+box(.027, .03, .013, new THREE.MeshStandardMaterial({ color: 0x120c08, roughness: .95 }), TOWER.x + SLOTS[3], boardY + .20, TOWER.z - .02, board);
+register(stickS, 'slotB2', 'the module in slot B2');
+
+// the CPU cooler: a building with fins
+box(.16, .21, .14, M.metal, TOWER.x - .06, boardY + .105, TOWER.z - .215, board);
+for (let i = 0; i < 5; i++) box(.17, .006, .15, M.metalDark, TOWER.x - .06, boardY + .03 + i * .042, TOWER.z - .215, board);
+
+// the PCIe slot: a rail across the floor, and a hook above it holding nothing yet
+box(.34, .010, .030, new THREE.MeshStandardMaterial({ color: 0x1b1f22, roughness: .7 }), TOWER.x, boardY + .005, TOWER.z - .235, board);
+cyl(.003, .003, .62, 6, M.metal, TOWER.x + .10, TOWER.y0 + .78, TOWER.z - .235, board);
+
+/* the POST display: two digits, seven-segment red, cycling the faults */
+const ledCanvas = document.createElement('canvas');
+ledCanvas.width = 256; ledCanvas.height = 112;
+const ledCtx = ledCanvas.getContext('2d');
+const ledTexture = new THREE.CanvasTexture(ledCanvas);
+ledTexture.colorSpace = THREE.SRGBColorSpace;
+const ledMat = new THREE.MeshStandardMaterial({ map: ledTexture, emissive: 0xff2a10, emissiveMap: ledTexture, emissiveIntensity: 1.6, roughness: .4 });
+// It used to sit on the back wall, exactly behind the CPU cooler. It is on the right-hand wall now,
+// at eye height, angled at the open front so it is the first thing you see walking in.
+const ledGroup = new THREE.Group();
+ledGroup.position.set(TOWER.x + TOWER.w / 2 - .042, boardY + .092, TOWER.z - .06);
+ledGroup.rotation.y = -Math.PI / 2 + .45;
+scene.add(ledGroup);
+box(.145, .070, .014, M.black, 0, 0, 0, ledGroup);
+const led = plane(.11, .048, ledMat, 0, 0, .009, ledGroup);
+const ledLight = new THREE.PointLight(0xff3b16, 0, .6, 2);
+ledLight.position.set(TOWER.x + TOWER.w / 2 - .12, boardY + .08, TOWER.z - .02);
+scene.add(ledLight);
+register(led, 'led', 'the debug display');
+
+/* the anti-static bag, lying on the case floor next to the slots */
+const bagGroup = new THREE.Group();
+bagGroup.position.set(-2.155, boardY + .010, TOWER.z + .09);      // right beside slot A2
+scene.add(bagGroup);
+box(.075, .012, .10, new THREE.MeshStandardMaterial({ color: 0x3b4650, roughness: .5, metalness: .35 }), 0, 0, 0, bagGroup);
+box(.026, .014, .030, new THREE.MeshStandardMaterial({ color: 0x9fb0bb, roughness: .8 }), 0, .006, -.01, bagGroup);
+const bagLabel = plane(.070, .092, new THREE.MeshStandardMaterial({
+  map: stickerTex([['SPARE', 40, true], ['> B2', 34, true]], { bg: '#e8e2cf', ink: '#1b2328', h: 320, top: 120, align: 'center' }),
+  roughness: .9,
+}), 0, .009, 0, bagGroup);
+bagLabel.rotation.x = -Math.PI / 2;
+register(bagGroup, 'bag', 'an anti-static bag');
+
+/* ---------------------------------------------------------- desk, monitor */
+box(DESK.x1 - DESK.x0, .05, DESK.z1 - DESK.z0, M.bench, (DESK.x0 + DESK.x1) / 2, DESK.top - .025, (DESK.z0 + DESK.z1) / 2);
+[[DESK.x0 + .08, DESK.z0 + .08], [DESK.x1 - .08, DESK.z0 + .08], [DESK.x0 + .08, DESK.z1 - .08], [DESK.x1 - .08, DESK.z1 - .08]]
+  .forEach(([x, z]) => box(.06, DESK.top - .05, .06, M.metalDark, x, (DESK.top - .05) / 2, z));
+const standBase = box(.26, .02, .2, M.metalDark, 2.7, DESK.top + .01, -1.34);
+const standPost = box(.06, .28, .05, M.metalDark, 2.7, DESK.top + .16, -1.36);
+const monitor = box(.66, .40, .045, M.metalDark, 2.7, DESK.top + .50, -1.44);
+const screenTex = tex(512, 320, (g, w, h) => {
+  const grd = g.createLinearGradient(0, 0, w, h);
+  grd.addColorStop(0, '#0a1016'); grd.addColorStop(1, '#101a22');
+  g.fillStyle = grd; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(90,220,255,.5)';
+  g.font = '600 22px ui-monospace,monospace';
+  g.fillText('NO SIGNAL', 34, h - 40);
+  g.fillStyle = 'rgba(90,220,255,.12)';
+  for (let y = 0; y < h; y += 4) g.fillRect(0, y, w, 1);
+});
+const monitorScreen = plane(.60, .34, new THREE.MeshStandardMaterial({ map: screenTex, emissive: 0x2a3d4a, emissiveMap: screenTex, emissiveIntensity: .35, roughness: .5 }),
+  2.7, DESK.top + .50, -1.416);
+register(monitor, 'monitor', 'the monitor');
+
+/* the keyboard and the mouse, where the customer left them */
+const kb = box(.44, .022, .16, M.plastic, 2.42, DESK.top + .011, -0.66);
+const kbKeys = plane(.42, .14, new THREE.MeshStandardMaterial({ color: 0x121618, roughness: .75 }), 2.42, DESK.top + .023, -0.66);
+kbKeys.rotation.x = -Math.PI / 2;
+register(kb, 'keyboard', 'a giant keyboard');
+const mpad = plane(.24, .18, new THREE.MeshStandardMaterial({ color: 0x141a1d, roughness: .9 }), 3.05, DESK.top + .003, -0.66);
+mpad.rotation.x = -Math.PI / 2;
+const mouse = new THREE.Group();
+mouse.position.set(3.05, DESK.top + .02, -0.66);
+scene.add(mouse);
+const mBody = sphere(.028, M.plastic, 0, 0, 0, mouse, 16);
+mBody.scale.set(1, .62, 1.5);
+const mBtn = box(.024, .008, .05, M.plastic, -.006, .016, -.02, mouse);
+register(mouse, 'mouse', 'a giant mouse');
+
+/* --------------------------------------------------------------- counter */
+box(COUNTER.x1 - COUNTER.x0, .05, COUNTER.z1 - COUNTER.z0, M.bench, (COUNTER.x0 + COUNTER.x1) / 2, COUNTER.top - .025, (COUNTER.z0 + COUNTER.z1) / 2);
+box(COUNTER.x1 - COUNTER.x0 - .1, COUNTER.top - .05, COUNTER.z1 - COUNTER.z0 - .1, M.metalDark,
+  (COUNTER.x0 + COUNTER.x1) / 2, (COUNTER.top - .05) / 2, (COUNTER.z0 + COUNTER.z1) / 2);
+
+const werkbonTex = tex(512, 640, (g, w, h) => {
+  g.fillStyle = '#efeade'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#1d2429';
+  g.font = '700 30px ui-monospace,monospace';
+  g.fillText('PC DOKTER — INTAKE', 30, 56);
+  g.font = '400 19px ui-monospace,monospace';
+  g.fillText('name:  M. de VRIES', 30, 100);
+  g.fillText('unit:  tower, home build', 30, 130);
+  g.fillText('symptom (her words):', 30, 176);
+  g.font = '400 22px "Segoe Script",cursive,ui-monospace,monospace';
+  ['"switches itself off"', '"it beeps at me"', '"no picture on the screen"', '"and the mouse is being weird"']
+    .forEach((l, i) => g.fillText(l, 46, 214 + i * 34));
+  g.font = '400 18px ui-monospace,monospace';
+  g.fillStyle = '#8c2f24';
+  g.fillText('next of kin: her patience', 30, 400);
+  g.fillStyle = 'rgba(120,110,90,.5)';
+  for (let y = 470; y < h - 30; y += 28) g.fillRect(30, y, w - 60, 1);
+  grain(g, w, h, .05);
+});
+const werkbon = plane(.21, .28, new THREE.MeshStandardMaterial({ map: werkbonTex, roughness: .95 }), -1.15, COUNTER.top + .002, 1.34);
+werkbon.rotation.x = -Math.PI / 2;
+werkbon.rotation.z = .18;
+register(werkbon, 'werkbon', 'the intake form');
+
+const logTex = tex(512, 384, (g, w, h) => {
+  g.fillStyle = '#2a2f33'; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(220,225,225,.9)';
+  g.font = '700 24px ui-monospace,monospace';
+  g.fillText('SERVICE LOG', 28, 46);
+  g.font = '400 17px ui-monospace,monospace';
+  g.fillStyle = 'rgba(210,218,220,.8)';
+  ["14/03  same tower. dust. cleaned, no charge.",
+   "02/04  same tower. 'it beeps'. reseated memory.",
+   "27/04  SAME TOWER. 3rd time back. new PSU or",
+   "        nothing, I am not doing this again.",
+   "27/04  customer 'fixed it herself' with a free",
+   "        diagnostic tool off a marketplace ad."]
+    .forEach((l, i) => g.fillText(l, 28, 96 + i * 30));
+  grain(g, w, h, .05);
+});
+const logbook = box(.19, .045, .26, M.dark, -2.3, COUNTER.top + .022, 1.36);
+logbook.rotation.y = -.3;
+decal(.18, .135, logTex, 0, .024, 0, 0, logbook).rotation.x = -Math.PI / 2;
+register(logbook, 'logbook', 'the service log');
+
+/* --------------------------------------------------------------- the shelf */
+box(1.0, .035, .26, M.bench, -2.9, 1.86, -3.02);
+[-3.3, -2.5].forEach(x => {
+  box(.02, .12, .02, M.metalDark, x, 1.79, -3.12);
+  box(.02, .02, .2, M.metalDark, x, 1.74, -3.03);
+});
+const machine = new THREE.Group();
+machine.position.set(-2.95, 1.98, -3.0);
+scene.add(machine);
+box(.26, .11, .16, M.plastic, 0, 0, 0, machine);
+const amLed = sphere(.008, new THREE.MeshStandardMaterial({ color: 0x330a06, emissive: 0xff2a10, emissiveIntensity: 1.4, roughness: .4 }), .09, .03, .081, machine, 8);
+const amLcd = plane(.13, .035, new THREE.MeshStandardMaterial({ color: 0x0d1a12, emissive: 0x1a3b2a, emissiveIntensity: .5, roughness: .5 }), -.02, .02, .081, machine);
+box(.04, .06, .02, M.metalDark, -.09, .01, .08, machine);   // speaker grille
+register(machine, 'answer', 'the answering machine');
+
+/* --------------------------------------------------------- shrink ray + pad */
+const ray = new THREE.Group();
+ray.position.set(2.9, 0, 1.35);
+ray.rotation.y = Math.PI / 2;
+scene.add(ray);
+[0, 2.1, 4.2].forEach(a => {
+  const leg = cyl(.014, .014, 1.15, 8, M.metalDark, Math.cos(a) * .2, .55, Math.sin(a) * .2, ray);
+  leg.rotation.z = Math.cos(a) * .26;
+  leg.rotation.x = -Math.sin(a) * .26;
+});
+box(.28, .18, .34, M.metal, 0, 1.2, 0, ray);
+const barrel = cyl(.10, .13, .34, 18, M.metal, 0, 1.22, -.22, ray);
+barrel.rotation.x = Math.PI / 2;
+const lens = cyl(.11, .11, .02, 18, new THREE.MeshStandardMaterial({ color: 0x0b2a33, emissive: 0x0a6c86, emissiveIntensity: .5, roughness: .2, metalness: .4 }), 0, 1.22, -.39, ray);
+lens.rotation.x = Math.PI / 2;
+const rayLed = sphere(.012, new THREE.MeshStandardMaterial({ color: 0x0a1a1f, emissive: 0x000000, roughness: .4 }), .12, 1.3, .17, ray, 8);
+const leverPivot = new THREE.Group();
+leverPivot.position.set(.19, 1.06, .05);
+ray.add(leverPivot);
+box(.035, .26, .035, M.red, 0, .13, 0, leverPivot);
+box(.075, .05, .075, new THREE.MeshStandardMaterial({ color: 0x8c2f24, roughness: .5 }), 0, .27, 0, leverPivot);
+leverPivot.rotation.z = -.22;
+const rayDial = cyl(.05, .05, .015, 16, M.metalDark, -.11, 1.30, .04, ray);
+rayDial.rotation.x = Math.PI / 2;
+register(ray, 'ray', 'the shrink ray');
+// the big red handle is the thing you pull: re-register it so E lands on the lever, not the tripod
+register(leverPivot, 'rayLever', 'the big red lever');
+// a painted line on the floor, because nobody reads the tripod
+const ringTex = tex(1024, 256, (g, w, h) => {
+  g.clearRect(0, 0, w, h);
+  g.fillStyle = 'rgba(255,214,90,.92)';
+  g.font = '700 96px ui-monospace,monospace';
+  g.textAlign = 'center';
+  g.fillText('SHRINK RAY', w / 2, 104);
+  g.font = '600 66px ui-monospace,monospace';
+  g.fillText('STAND IN THE RING', w / 2, 194);
+});
+const ringSign = plane(.95, .24, new THREE.MeshStandardMaterial({ map: ringTex, transparent: true, roughness: .95, depthWrite: false }),
+  PAD.x, .014, PAD.z + .78);
+ringSign.rotation.x = -Math.PI / 2;
+
+const padRing = new THREE.Mesh(new THREE.RingGeometry(PAD.r - .03, PAD.r, 40),
+  new THREE.MeshBasicMaterial({ color: 0x59d3ff, transparent: true, opacity: .25, side: THREE.DoubleSide }));
+padRing.rotation.x = -Math.PI / 2;
+padRing.position.set(PAD.x, .012, PAD.z);
+scene.add(padRing);
+
+/* ------------------------------------------------------------- the manual */
+const manualTex = tex(1024, 1200, (g, w, h) => {
+  g.fillStyle = '#ece7da'; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(60,70,80,.14)';
+  for (let y = 150; y < h - 40; y += 34) g.fillRect(70, y, w - 140, 1);
+  g.fillStyle = '#1b2328';
+  g.font = '700 58px ui-monospace,monospace';
+  g.fillText('POST CODES', 70, 96);
+  g.font = '400 30px ui-monospace,monospace';
+  const rows = [
+    ['C1', 'memory not detected', '/ module faulty'],
+    ['d4', 'no display adapter', '/ slot empty'],
+    ['A2', 'no monitor detected', '/ cable?'],
+    ['F1', 'thermal fault', '/ fans'],
+    ['b7', 'storage fault', '/ boot sector'],
+    ['--', 'system clear', '/ boot normally'],
+  ];
+  rows.forEach(([c, a, b], i) => {
+    const y = 190 + i * 96;
+    g.fillStyle = '#8c2f24';
+    g.font = '700 46px ui-monospace,monospace';
+    g.fillText(c, 70, y);
+    g.fillStyle = '#1b2328';
+    g.font = '500 32px ui-monospace,monospace';
+    g.fillText(a, 190, y);
+    g.fillStyle = '#4a5860';
+    g.font = '400 28px ui-monospace,monospace';
+    g.fillText(b, 190, y + 40);
+  });
+  g.fillStyle = '#2a3439';
+  g.font = '400 26px ui-monospace,monospace';
+  g.fillText('power first: the board must see 12 V', 70, h - 132);
+  g.fillText('before it will talk to you at all.', 70, h - 96);
+  g.fillStyle = 'rgba(90,60,40,.55)';
+  g.font = 'italic 30px Georgia,serif';
+  g.fillText('she never remembers the password.', 70, h - 44);
+  grain(g, w, h, .05);
+});
+const manual = plane(1.02, .74, new THREE.MeshStandardMaterial({ map: manualTex, roughness: .96 }), .42, BENCH.top + .004, -2.5);
+manual.rotation.x = -Math.PI / 2;
+manual.rotation.z = -.04;
+register(manual, 'manual', 'the open manual');
+
+/* ----------------------------------------------------------------- torch */
+const toolbox = box(.42, .18, .26, M.red, -2.85, .09, .55);
+box(.44, .03, .28, M.metalDark, -2.85, .19, .55);
+// the torch lies on the counter, LED blinking: in a dark shop that pin is the only landmark
+const TORCH = { x: 0.02, y: COUNTER.top + .032, z: 1.2 };
+const torch = cyl(.028, .034, .2, 12, M.metalDark, TORCH.x, TORCH.y, TORCH.z);
+torch.rotation.z = Math.PI / 2;
+torch.rotation.y = .5;
+const torchLens = cyl(.03, .03, .01, 12, new THREE.MeshStandardMaterial({ color: 0x1a1c17, emissive: 0x000000, roughness: .3 }), TORCH.x - .10, TORCH.y, TORCH.z - .05);
+torchLens.rotation.z = Math.PI / 2;
+torchLens.rotation.y = .5;
+const torchPin = sphere(.006, new THREE.MeshStandardMaterial({ color: 0x0d2a12, emissive: 0x46ff7a, emissiveIntensity: 2.4, roughness: .3 }), TORCH.x + .05, TORCH.y + .028, TORCH.z + .03, scene, 8);
+register(torch, 'torch', 'a torch');
+register(torchLens, 'torch', 'a torch');
+register(torchPin, 'torch', 'a torch');
+
+/* ------------------------------------------------------------------ light */
+scene.add(new THREE.HemisphereLight(0x9fb6c8, 0x22262a, 1.35));
+const moon = new THREE.DirectionalLight(0xa9c6e0, .55);
+moon.position.set(-4, 6, 4);
+scene.add(moon);
+// a shop window we never see, off to the south-east: it is what stops the bench reading as empty air
+const windowLight = new THREE.DirectionalLight(0x9fc4e8, 1.5);
+windowLight.position.set(5, 3.4, 6);
+windowLight.target.position.set(-1.5, 0.9, -2.5);
+scene.add(windowLight, windowLight.target);
+const shopLight = new THREE.PointLight(0xdfe9f0, 0, 14, 2);
+shopLight.position.set(-.6, 2.95, -.4);
+scene.add(shopLight);
+const shopLight2 = new THREE.PointLight(0xd7e4ec, 0, 14, 2);
+shopLight2.position.set(2.2, 2.9, 1.4);
+scene.add(shopLight2);
+const caseGlow = new THREE.PointLight(0x2a6f8f, .3, .95, 2);
+caseGlow.position.set(TOWER.x, TOWER.y0 + .5, TOWER.z + .1);
+scene.add(caseGlow);
+
+/* flashlight, dangling from the camera */
+const torchLight = new THREE.SpotLight(0xfff3d6, 0, 9, .62, .45, 1.4);
+torchLight.position.set(0, 0, 0);
+torchLight.target.position.set(0, 0, -1);
+camera.add(torchLight, torchLight.target);
+scene.add(camera);
+
+/* --------------------------------------------------- the generator (yard) */
+const GEN = { x: 2.3, z: -4.7 };
+const genGroup = new THREE.Group();
+genGroup.position.set(GEN.x, 0, GEN.z);
+scene.add(genGroup);
+box(.70, .34, .50, M.red, 0, .30, 0, genGroup);
+box(.74, .03, .54, M.metalDark, 0, .47, 0, genGroup);
+box(.66, .10, .46, M.metalDark, 0, .09, 0, genGroup);
+cyl(.09, .09, .06, 14, M.black, -.30, .09, -.16, genGroup).rotation.z = Math.PI / 2;
+cyl(.09, .09, .06, 14, M.black, .30, .09, -.16, genGroup).rotation.z = Math.PI / 2;
+box(.05, .05, .46, M.metalDark, -.34, .52, 0, genGroup);
+box(.05, .05, .46, M.metalDark, .34, .52, 0, genGroup);
+box(.70, .05, .05, M.metalDark, 0, .55, -.22, genGroup);
+register(genGroup, 'gen', 'the generator');
+const fuelLever = box(.02, .10, .02, M.gold, -.24, .33, .255, genGroup);
+const chokeLever = box(.02, .08, .02, M.metalDark, -.12, .34, .255, genGroup);
+const primer = sphere(.028, new THREE.MeshStandardMaterial({ color: 0x8a6a22, roughness: .6 }), .02, .33, .255, genGroup, 10);
+const cordHandle = box(.06, .03, .03, M.black, .26, .40, .26, genGroup);
+const cordLine = cyl(.004, .004, .22, 6, M.black, .26, .30, .26, genGroup);
+const genSticker = decal(.14, .10, stickerTex([
+  ['COLD START', 26, true],
+  ['1 fuel OPEN', 17, false],
+  ['2 choke CLOSED', 17, false],
+  ['3 pull 3x', 17, false],
+], { bg: '#e8e2cf', ink: '#1b2328', h: 300, top: 44 }), .16, .26, .253, 0, genGroup);
+register(fuelLever, 'genFuel', 'the fuel cock');
+register(chokeLever, 'genChoke', 'the choke');
+register(primer, 'genPrimer', 'the primer bulb');
+register(cordHandle, 'genCord', 'the starter cord');
+register(genSticker, 'genSticker', 'a sticker on the generator');
+shadow(GEN.x, GEN.z, 1.1, .01, .5);
+
+/* --------------------------------------------------------------- dressing */
+// pegboard with tools, straight out of every repair shop on earth
+const peg = box(2.6, 1.05, .02, new THREE.MeshStandardMaterial({ color: 0x2b3134, roughness: .95 }), -1.55, 1.62, -3.17);
+for (let i = 0; i < 90; i++) {
+  const x = -2.8 + (i % 18) * .145, y = 1.16 + Math.floor(i / 18) * .21;
+  sphere(.006, M.metalDark, x, y, -3.155, scene, 6);
+}
+const toolCols = [0xb03a2a, 0x2a6fb0, 0xd0a22a, 0x3a8a4a, 0x8a8f92];
+for (let i = 0; i < 9; i++) {
+  const x = -2.6 + i * .26, y = 1.42 + (i % 3) * .16;
+  const g = box(.035, .022, .045, new THREE.MeshStandardMaterial({ color: toolCols[i % 5], roughness: .7 }), x, y, -3.14);
+  if (i < 6) cyl(.008, .008, .19, 6, M.metal, x, y - .10, -3.13);
+  else box(.03, .16, .01, M.metal, x, y - .09, -3.13);
+  register(g, 'peg', 'the tool board');
+}
+// a work lamp over the bench
+cyl(.014, .014, .88, 8, M.metalDark, -1.35, 2.76, -2.5);
+box(.09, .02, .09, M.metalDark, -1.35, 3.19, -2.5);
+cyl(.09, .045, .1, 14, M.metal, -1.35, 2.32, -2.5);
+const bulb = sphere(.045, new THREE.MeshStandardMaterial({ color: 0x3a3226, emissive: 0xffe6b0, emissiveIntensity: 1.6, roughness: .4 }), -1.35, 2.27, -2.5, scene, 10);
+const benchLamp = new THREE.PointLight(0xffe0b0, 0, 4.5, 2);
+benchLamp.position.set(-1.35, 2.24, -2.5);
+scene.add(benchLamp);
+// a stool, a crate, a bin: the room has to feel used
+cyl(.15, .17, .04, 16, M.dark, 1.3, .46, .2);
+[0, 2.1, 4.2].forEach(a => cyl(.02, .02, .44, 6, M.metalDark, 1.3 + Math.cos(a) * .11, .22, .2 + Math.sin(a) * .11));
+box(.34, .26, .26, new THREE.MeshStandardMaterial({ map: benchTex, roughness: .95 }), -3.05, .13, 1.9);
+box(.26, .19, .26, new THREE.MeshStandardMaterial({ map: benchTex, roughness: .95 }), -3.05, .11, 1.62);
+cyl(.13, .11, .34, 12, M.metalDark, 3.1, .17, .8);
+// a poster next to the door
+const posterTex = tex(512, 700, (g, w, h) => {
+  g.fillStyle = '#16323c'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#8fe6ff';
+  g.font = '700 64px ui-monospace,monospace';
+  g.fillText('NO', 40, 130); g.fillText('FIX', 40, 200); g.fillText('NO', 40, 270); g.fillText('FEE', 40, 340);
+  g.font = '400 30px ui-monospace,monospace';
+  g.fillStyle = '#d8f4ff';
+  ['diagnose first.', 'half of them', 'just need', 'a clean fan', 'and a kind word.'].forEach((l, i) => g.fillText(l, 40, 420 + i * 44));
+  g.strokeStyle = 'rgba(143,230,255,.5)'; g.lineWidth = 6; g.strokeRect(14, 14, w - 28, h - 28);
+  grain(g, w, h, .04);
+});
+decal(.42, .58, posterTex, 3.44, 1.62, 1.6, -Math.PI / 2);
+
+/* --------------------------------------------------------------- state */
+const state = {
+  phase: 'dark',            // dark | lit | shrinking | shrunk
+  locked: false, running: true, elapsed: 0, won: false,
+  torch: false, casePower: false,
+  gen: { fuel: false, choke: 'closed', pulls: 0, flooded: 0, running: false },
+  ram: { a2: false, b2Out: false, spare: false, seated: false },
+  codes: ['C1', 'd4', 'A2', 'F1', 'b7'],
+  codeIndex: 0, codeT: 0,
+  reads: {}, notes: {}, items: [],
+  hovered: null, trayTarget: null, grab: null,
+};
+
+const padEl = $('#pad'), trayEl = $('#tray'), bodyEl = $('#body'), titleEl = $('#title'),
+  kickerEl = $('#kicker'), keysEl = $('#keys'), crosshair = $('#crosshair'), promptEl = $('#prompt'),
+  bannerEl = $('#banner'), toasts = $('#toasts'), unlockHint = $('#unlockHint'), bloom = $('#bloom'),
+  timerEl = $('#timer');
+
+function toast(msg, kind = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.textContent = msg;
+  toasts.appendChild(el);
+  setTimeout(() => { el.style.transition = 'opacity .35s'; el.style.opacity = '0'; }, 2400);
+  setTimeout(() => el.remove(), 2850);
+}
+function banner(html) { bannerEl.innerHTML = html; bannerEl.hidden = false; }
+
+/* --------------------------------------------------------------- notepad */
+const CODE_MEANING = { C1: 'memory', d4: 'no adapter', A2: 'no monitor', F1: 'fans', b7: 'boot sector' };
+function renderPad() {
+  $('#padItems').innerHTML = state.items.length
+    ? state.items.map(i => `<span>${i}</span>`).join('')
+    : '<em>empty</em>';
+  $('#padCodes').innerHTML = ['C1', 'd4', 'A2', 'F1', 'b7'].map(c =>
+    `<li><span>${c} <i>${CODE_MEANING[c]}</i></span><b>${state.codes.includes(c) ? 'fault' : 'clear'}</b></li>`).join('');
+  const n = Object.entries(state.notes);
+  $('#padNotes').innerHTML = n.length
+    ? n.map(([k, v]) => `<li><span>${k}</span><b>${v}</b></li>`).join('')
+    : '<li><i>nothing yet</i></li>';
+}
+function togglePad() {
+  padEl.hidden = !padEl.hidden;
+  if (!padEl.hidden) { renderPad(); sfx.paper(); }
+}
+
+/* ------------------------------------------------------------------- LED */
+let ledOn = false;
+function drawLed(v) {
+  const g = ledCtx;
+  g.fillStyle = '#0a0302'; g.fillRect(0, 0, 256, 112);
+  if (v) {
+    g.fillStyle = '#ff4a1e';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '700 82px ui-monospace,Menlo,Consolas,monospace';
+    g.fillText(v, 128, 60);
+    g.globalAlpha = .26; g.filter = 'blur(6px)'; g.fillText(v, 128, 60);
+    g.filter = 'none'; g.globalAlpha = 1;
+  }
+  ledTexture.needsUpdate = true;
+}
+function powerCase() {
+  if (state.casePower) return;
+  state.casePower = true;
+  ledOn = true;
+  ledLight.intensity = state.phase === 'shrunk' ? .02 : .5;
+  ledMat.emissiveIntensity = 1.9;
+  drawLed(state.codes[0]);
+  sfx.relay();
+}
+
+function inRing() {
+  return Math.hypot(camera.position.x - PAD.x, camera.position.z - PAD.z) < PAD.r;
+}
+
+/* ------------------------------------------------------------- the things */
+const THINGS = {
+  torch: {
+    kicker: 'counter', title: 'A rubber torch',
+    text: () => state.torch
+      ? 'You are holding it. The beam is the only light in the shop.'
+      : 'A rubber torch, still warm from Gerrit\'s hand. The little battery LED blinks: it is the only thing in here that works.',
+    keys: () => state.torch ? '' : '<kbd>E</kbd>pick it up',
+    act() {
+      if (state.torch) return;
+      state.torch = true; state.items.push('torch');
+      torchLight.intensity = 26;
+      torchLens.material.emissive.setHex(0xffe9b0); torchLens.material.emissiveIntensity = 2;
+      torch.visible = false; torchLens.visible = false; torchPin.visible = false;
+      sfx.pickup();
+      toast('Torch. Small, but it will do.', 'good');
+      renderPad();
+    },
+  },
+  answer: {
+    kicker: 'shelf', title: 'Answering machine',
+    text: () => voice.lines.length ? transcriptHTML()
+      : 'One new message. The red LED blinks in time with your pulse.',
+    keys: () => voice.done ? '<kbd>E</kbd>play it again' : (voice.lines.length ? 'playing — turn the sound up' : '<kbd>E</kbd>play it'),
+    act() { playMessage(); },
+  },
+  werkbon: {
+    kicker: 'counter', title: 'Intake form',
+    text: () => `<p><b>PC DOKTER</b> — name: M. de VRIES · unit: home-built tower</p>
+      <p class="sub">symptom, in her words:</p>
+      <p>"switches itself off" · "it beeps at me" · "no picture on the screen" · "and the mouse is being weird"</p>
+      <p class="sub">Gerrit wrote underneath: <i>three of these are the same fault. read the codes, not the customer.</i></p>`,
+    keys: () => '', act() { state.reads.werkbon = true; sfx.paper(); },
+  },
+  logbook: {
+    kicker: 'counter', title: 'Service log',
+    text: () => `<p>14/03 — same tower. dust. cleaned, no charge.</p>
+      <p>02/04 — same tower. "it beeps". reseated the memory.</p>
+      <p>27/04 — <b>SAME TOWER.</b> Third time back. New PSU or nothing.</p>
+      <p class="sub">27/04 — customer "fixed it herself" with a free diagnostic tool off a marketplace ad.</p>`,
+    keys: () => '', act() { state.reads.log = true; sfx.paper(); },
+  },
+  manual: {
+    kicker: 'bench', title: 'The open manual — POST codes',
+    text: () => `<table>
+      <tr><td class="c">C1</td><td>memory not detected / module faulty</td></tr>
+      <tr><td class="c">d4</td><td>no display adapter found / slot empty</td></tr>
+      <tr><td class="c">A2</td><td>no monitor detected / cable?</td></tr>
+      <tr><td class="c">F1</td><td>thermal fault / fans not spinning</td></tr>
+      <tr><td class="c">b7</td><td>storage fault / boot sector</td></tr>
+      <tr><td class="c">--</td><td>system clear / boot normally</td></tr>
+      </table>
+      <p class="sub">Power first: the board wants 12 V before it says anything at all.</p>
+      <p class="say">In the margin, in pencil: "she never remembers the password."</p>`,
+    keys: () => '', act() { state.reads.manual = true; sfx.paper(); },
+  },
+  schematic: {
+    kicker: 'bench', title: 'Inside of the side panel',
+    text: () => `<p>Wiring diagram, printed on the panel like a real case.</p>
+      <table>
+      <tr><td class="c">1</td><td>PSU rocker → ON</td></tr>
+      <tr><td class="c">2</td><td>24-pin → board</td></tr>
+      <tr><td class="c">3</td><td>CPU 8-pin → top of the board</td></tr>
+      <tr><td class="c">4</td><td>PCIe 8-pin → GPU</td></tr>
+      <tr><td class="c">5</td><td>SATA → SSD</td></tr>
+      </table>
+      <p class="sub">Nothing downstream works until the step above it does.</p>`,
+    keys: () => '', act() { state.reads.schematic = true; },
+  },
+  tower: {
+    kicker: 'bench', title: 'The customer\'s tower',
+    text: () => `<p>Side panel off, screws in a cup. From here it is just a black box with a bad attitude.</p>
+      <p class="sub">The shrink ray would let you walk in through that open side.</p>`,
+    keys: () => '', act() { },
+  },
+  led: {
+    kicker: 'inside the case', title: 'Debug display',
+    text: () => state.casePower
+      ? `<p>The two-digit display is cycling through every fault it knows about.</p>
+         <p class="got">current: ${state.codes.length ? state.codes[state.codeIndex % state.codes.length] : '--'}</p>
+         <p class="sub">${state.codes.length} faults live. The manual on the bench names them.</p>`
+      : '<p>Dark. No standby power yet.</p>',
+    keys: () => '', act() { },
+  },
+  bag: {
+    kicker: 'case floor', title: 'Anti-static bag',
+    text: () => state.ram.spare
+      ? '<p>Empty. The spare module is in your pocket.</p>'
+      : `<p>A sealed bag with one memory module inside. The sticker on it says <b>SPARE &gt; B2</b> — Gerrit labelled
+         it for exactly this job.</p>
+         <p class="sub">${state.ram.b2Out ? 'B2 is empty and open. Take the module and put it there.'
+           : 'B2 still has the burnt module in it. Pull that one out first.'}</p>`,
+    keys: () => state.ram.spare ? '' : '<kbd>E</kbd>take the module',
+    act() {
+      if (state.ram.spare) return;
+      state.ram.spare = true; state.items.push('ddr4 module');
+      bagGroup.visible = false;
+      sfx.pickup(); toast('A good 8 GB module. Slot B2 is right there — E to seat it.', 'good');
+      renderPad();
+    },
+  },
+  slotA2: {
+    kicker: 'memory', title: 'Slot A2',
+    text: () => !state.casePower
+      ? '<p>A memory module, half out of its slot. In this light it looks like a leaning tower.</p>'
+      : state.ram.a2
+        ? '<p>Home, both clips down. This one was never the problem.</p>'
+        : '<p>One module is barely in its slot — leaning out, one clip open. It looks clean; it has simply worked loose.</p>',
+    keys: () => !state.casePower || state.ram.a2 ? '' : '<kbd>E</kbd>push it home',
+    act() {
+      if (!state.casePower || state.ram.a2) return;
+      state.ram.a2 = true;
+      stickIn.rotation.z = .02;
+      stickIn.position.x = TOWER.x + SLOTS[1];
+      stickIn.position.z = TOWER.z - .02;
+      sfx.snap(); setTimeout(() => sfx.clack(), 90);
+      toast('It slides home and both clips snap down.', 'good');
+      setTimeout(() => toast(state.ram.seated ? 'Both modules seated.' : 'C1 is still up — so the fault is the other module.', ''), 1500);
+      checkRam();
+    },
+  },
+  slotB2: {
+    kicker: 'memory', title: 'Slot B2',
+    text: () => !state.casePower
+      ? '<p>A module in the second pair of slots, dark and quiet.</p>'
+      : state.ram.seated
+        ? `<p>The replacement is seated. The sticker on it gave up a <b>${state.notes.RAM || 'B'}</b>.</p>`
+        : state.ram.b2Out
+          ? `<p>Empty, clips open. The scorched module lies where you dropped it. ${state.ram.spare
+              ? 'The spare is in your pocket — <b>E</b> seats it.'
+              : 'You need a replacement: the sealed bag beside the slots says <b>SPARE &gt; B2</b>.'}</p>`
+          : `<p>A module with a scorched edge and a burnt chip above the third memory package. Someone wrote <b>RMA</b>
+             on it in marker.</p>
+             <p class="sub">The intake form said "it beeps". This is the beep.</p>`,
+    keys: () => !state.casePower || state.ram.seated ? '' : state.ram.b2Out
+      ? (state.ram.spare ? '<kbd>E</kbd>seat the spare' : 'empty hands')
+      : '<kbd>E</kbd>pull the burnt module out',
+    act() {
+      if (!state.casePower || state.ram.seated) return;
+      if (!state.ram.b2Out) {
+        if (!state.ram.a2) { sfx.buzz(); toast('One at a time: A2 has to be home before the board will talk about B2.'); return; }
+        state.ram.b2Out = true;
+        stickS.rotation.z = 1.25;
+        stickS.position.x = TOWER.x + SLOTS[3] + .11;
+        stickS.position.y = boardY + .012;
+        sfx.snap();
+        toast('Out. Burnt chip, scorched edge — that is the beep in the intake form.', 'good');
+        setTimeout(() => toast('A sealed spare sits beside the slots: SPARE > B2.', ''), 1400);
+        return;
+      }
+      if (!state.ram.spare) { sfx.buzz(); toast('You need a module — the sealed bag beside the slots is labelled SPARE > B2.'); return; }
+      state.ram.spare = false;
+      state.ram.seated = true;
+      state.items = state.items.filter(i => i !== 'ddr4 module');
+      const good = box(.026, .26, .012, new THREE.MeshStandardMaterial({ color: 0x22593f, roughness: .7 }),
+        TOWER.x + SLOTS[3], boardY + .13, TOWER.z - .02, board);
+      register(good, 'slotB2', 'slot B2');
+      SOLID_S.push(S(TOWER.x + SLOTS[3] - .014, TOWER.x + SLOTS[3] + .014, .90, B2 + .26, TOWER.z - .026, TOWER.z - .014));
+      sfx.snap(); setTimeout(() => sfx.clack(), 90);
+      checkRam();
+    },
+  },
+  gen: {
+    kicker: 'back yard', title: 'The generator',
+    text: () => state.gen.running
+      ? '<p>Running rough but running. The whole shop is on its shoulder now.</p>'
+      : `<p>Old, red, and bad-tempered. Fuel ${state.gen.fuel ? '<span class="got">OPEN</span>' : '<b>OFF</b>'} ·
+         choke <b>${state.gen.choke.toUpperCase()}</b> · ${state.gen.pulls} of 3 pulls.</p>
+         ${state.gen.flooded ? '<p class="sub">It is flooded. Squeeze the primer bulb three times.</p>' : ''}`,
+    keys: () => '',
+    act() { },
+  },
+  genSticker: {
+    kicker: 'sticker', title: 'COLD START',
+    text: () => `<p><b>1</b> fuel cock <b>OPEN</b><br><b>2</b> choke <b>CLOSED</b><br><b>3</b> pull the cord <b>3×</b></p>
+      <p class="sub">Gerrit's hand: "and don't flood it, I'm not buying another one."</p>`,
+    keys: () => '', act() { },
+  },
+  genFuel: {
+    kicker: 'generator', title: 'Fuel cock',
+    text: () => `<p>${state.gen.fuel ? 'Pointing down: fuel is flowing.' : 'Pointing across the line: fuel is shut off.'}</p>`,
+    keys: () => state.gen.running ? '' : `<kbd>E</kbd>${state.gen.fuel ? 'close' : 'open'} it`,
+    act() {
+      if (state.gen.running) return;
+      state.gen.fuel = !state.gen.fuel;
+      fuelLever.rotation.z = state.gen.fuel ? -.8 : 0;
+      sfx.click(); toast(state.gen.fuel ? 'Fuel cock open. You can smell petrol.' : 'Fuel cock closed.');
+    },
+  },
+  genChoke: {
+    kicker: 'generator', title: 'Choke',
+    text: () => `<p>Choke is <b>${state.gen.choke.toUpperCase()}</b>. Cold engine wants it closed.</p>`,
+    keys: () => state.gen.running ? '' : `<kbd>E</kbd>${state.gen.choke === 'closed' ? 'open it' : 'close it'}`,
+    act() {
+      if (state.gen.running) return;
+      state.gen.choke = state.gen.choke === 'closed' ? 'open' : 'closed';
+      chokeLever.rotation.z = state.gen.choke === 'closed' ? 0 : .9;
+      sfx.click(); toast(`Choke ${state.gen.choke}.`);
+    },
+  },
+  genPrimer: {
+    kicker: 'generator', title: 'Primer bulb',
+    text: () => `<p>A rubber bulb. Squeezing it pushes fuel back through a flooded carburettor.</p>
+      <p class="sub">${state.gen.flooded ? `${state.gen.flooded} squeezes to go before it will start again.` : 'Only needed if it is flooded.'}</p>`,
+    keys: () => state.gen.flooded ? '<kbd>E</kbd>squeeze' : '<kbd>E</kbd>squeeze (nothing happens)',
+    act() {
+      if (state.gen.running) return;
+      primer.scale.set(1, .8, 1); setTimeout(() => primer.scale.set(1, 1, 1), 140);
+      if (state.gen.flooded) {
+        state.gen.flooded--;
+        sfx.snap();
+        if (!state.gen.flooded) toast('Drained. Try again properly.', 'good');
+        else toast(`${state.gen.flooded} more.`);
+      } else { sfx.click(); toast('It is not flooded.'); }
+    },
+  },
+  genCord: {
+    kicker: 'generator', title: 'Starter cord',
+    text: () => state.gen.running ? '<p>Slack. The engine is already doing the work.</p>'
+      : '<p>Grab it and pull it back.</p>',
+    keys: () => state.gen.running ? '' : '<kbd>E</kbd>take hold · drag back to pull',
+    act() {
+      if (state.gen.running) return;
+      state.grab = { id: 'genCord', p: 0, need: 260, label: 'pull the cord back' };
+      sfx.scratch();
+    },
+  },
+  ray: {
+    kicker: 'tripod', title: 'STRAAL-2000',
+    text: () => state.phase === 'dark'
+      ? '<p>Dead. Its little console LED is dark — nothing in this shop has power.</p>'
+      : state.phase === 'lit'
+        ? `<p>Console lit. The scale dial is worn blank; the painted ring on the floor marks where a person stands.</p>
+           <p class="sub">${inRing() ? 'You are standing in the ring. Pull the big red handle.' : 'You are <b>not</b> in the ring.'}</p>`
+        : '<p>You are on the wrong end of it.</p>',
+    keys: () => state.phase === 'lit' ? '<kbd>E</kbd>pull the big red handle' : '',
+    act() {
+      if (state.phase === 'dark') { sfx.nope(); toast('No power. The generator is out in the yard.'); return; }
+      if (state.phase !== 'lit') return;
+      if (!inRing()) { sfx.nope(); toast('The interlock will not let you: the painted ring is empty.'); return; }
+      pullLever();
+    },
+  },
+  rayLever: {
+    kicker: 'tripod', title: 'The big red handle',
+    text: () => state.phase === 'lit'
+      ? `<p>${inRing() ? 'The interlock is happy: stand still and pull.' : 'You are <b>not</b> in the ring.'}</p>`
+      : '<p>The handle is dead until the shop has power.</p>',
+    keys: () => state.phase === 'lit' ? '<kbd>E</kbd>pull it' : '',
+    act() { THINGS.ray.act(); },
+  },
+  monitor: {
+    kicker: 'desk', title: 'Monitor',
+    text: () => '<p>NO SIGNAL, in patient blue letters.</p>',
+    keys: () => '', act() { },
+  },
+  keyboard: {
+    kicker: 'desk', title: 'Keyboard',
+    text: () => '<p>Big, heavy, and unplugged. From where you are standing it looks like a runway.</p>',
+    keys: () => '', act() { },
+  },
+  mouse: {
+    kicker: 'desk', title: 'Mouse',
+    text: () => '<p>On a mousepad, cable coiled. The intake form was right about this one.</p>',
+    keys: () => '', act() { },
+  },
+};
+
+/* ------------------------------------------------------------- voicemail */
+const MSG = [
+  [86, 'PC Doctor, Gerrit speaking.'],
+  [12, 'I am at the wholesaler, back by five.'],
+  [78, 'The customer\'s tower is on the bench. She says it beeps, there is no picture, and the mouse is playing up.'],
+  [96, 'If you want to get inside it, use the shrink ray. Stand in the ring and pull the lever. And mind the generator first — the sticker on it tells you the order, it is bad-tempered.'],
+  [88, 'The manual is open on the bench. Read the codes before you start pulling cables.'],
+  [92, 'Oh — and she never remembers the password. It is the first thing she says, every single time. Good luck, doctor.'],
+];
+let speaking = false;
+const voice = { lines: [], done: false, utt: null, voices: [], best: null, spoke: false };
+
+/* Speech synthesis needs its voice list warmed up, and it needs picking by hand:
+   lang="en-GB" alone silently does nothing on a machine with no en-GB voice. */
+function warmVoices() {
+  if (typeof speechSynthesis === 'undefined') return;
+  const grab = () => {
+    voice.voices = speechSynthesis.getVoices() || [];
+    voice.best = pickVoice(voice.voices);
+  };
+  grab();
+  speechSynthesis.addEventListener?.('voiceschanged', grab);
+}
+function pickVoice(vs) {
+  if (!vs || !vs.length) return null;
+  const score = v => {
+    const n = (v.name + ' ' + v.voiceURI).toLowerCase();
+    let s = 0;
+    if ((v.lang || '').toLowerCase().startsWith('en-gb')) s += 6;
+    else if ((v.lang || '').toLowerCase().startsWith('en')) s += 4;
+    if (/daniel|arthur|george|oliver|graham|male|alex|fred/.test(n)) s += 3;
+    if (/natural|neural|premium|enhanced|siri/.test(n)) s += 3;
+    if (v.localService) s += 1;
+    return s;
+  };
+  return vs.slice().sort((a, b) => score(b) - score(a))[0];
+}
+warmVoices();
+
+/* Gerrit's message is a real recording (vendor/voicemail/N.mp3, 272 KB in total),
+   played through the audio bus so mute and the room reverb apply to it too.       */
+const VOICE_SRC = [1, 2, 3, 4, 5, 6].map(n => `./vendor/voicemail/${n}.mp3`);
+const voiceBuf = {};
+let voiceLoading = null;
+function loadVoices() {
+  if (!A.ctx) return Promise.resolve();
+  if (voiceLoading) return voiceLoading;
+  voiceLoading = Promise.all(VOICE_SRC.map(async (u, i) => {
+    if (voiceBuf[i]) return;
+    try {
+      const r = await fetch(u);
+      voiceBuf[i] = await A.ctx.decodeAudioData(await r.arrayBuffer());
+    } catch (e) { voiceBuf[i] = null; }
+  }));
+  return voiceLoading;
+}
+function playClip(i, onEnd) {
+  if (!A.ctx || !voiceBuf[i]) return false;
+  const src = A.ctx.createBufferSource();
+  src.buffer = voiceBuf[i];
+  src.connect(A.bus);
+  src.onended = onEnd;
+  src.start();
+  voice.clip = src;
+  return true;
+}
+function playMessage() {
+  if (speaking) return;
+  audioInit();
+  if (voice.clip) { try { voice.clip.stop(); } catch (e) {} voice.clip = null; }
+  loadVoices();
+  speaking = true;
+  sfx.click();
+  const tray = $('#tray');
+  tray.hidden = false;
+  kickerEl.textContent = 'answering machine';
+  titleEl.textContent = 'One new message';
+  amLed.material.emissiveIntensity = 3;
+  let i = 0;
+  voice.lines = []; voice.done = false; voice.spoke = false;
+  sfx.click();                                    // the machine wakes up
+  const next = () => {
+    if (i >= MSG.length) {
+      speaking = false;
+      voice.done = true;
+      state.hovered = { id: 'answer', label: 'Answering machine' };
+      renderTray();
+      amLed.material.emissiveIntensity = 1.4;
+      if (!voice.spoke) setTimeout(() => toast('This browser has no speech voice — the transcript is on the left.', ''), 300);
+      return;
+    }
+    const [rate, text] = MSG[i++];
+    voice.lines.push(text);
+    renderTray();
+    if (playClip(i - 1, () => setTimeout(next, 260))) { voice.spoke = true; return; }
+    const canSpeak = typeof speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined';
+    if (!canSpeak || !voice.voices.length) { setTimeout(next, 2600); return; }
+    const u = new SpeechSynthesisUtterance(text);
+    if (voice.best) { u.voice = voice.best; u.lang = voice.best.lang; } else u.lang = 'en-GB';
+    u.rate = .92; u.pitch = .78; u.volume = 1;
+    let started = false, advanced = false;
+    const go = () => { if (advanced) return; advanced = true; setTimeout(next, 620); };
+    u.onstart = () => { started = true; voice.spoke = true; };
+    u.onend = go;
+    u.onerror = go;
+    voice.utt = u;                     // keep a reference: Chrome collects it otherwise
+    try { speechSynthesis.cancel(); } catch (e) {}
+    try { speechSynthesis.resume(); } catch (e) {}
+    speechSynthesis.speak(u);
+    // if the engine never starts, walk on with the subtitles instead of hanging
+    setTimeout(() => { if (!started) go(); }, 1400 + text.length * 28);
+  };
+  next();
+}
+
+/* --------------------------------------------------------------- shrink */
+let shrinking = false;
+function pullLever() {
+  if (shrinking) return;
+  shrinking = true;
+  state.phase = 'shrinking';
+  sfx.charge(1.5);
+  padRing.material.opacity = .9;
+  setTimeout(() => { bloom.style.opacity = '.96'; }, 1520);
+  setTimeout(() => {
+    bloom.style.opacity = '0';
+    doShrink();
+  }, 1700);
+}
+function doShrink() {
+  P = SHRUNK;
+  camera.near = P.near;
+  camera.fov = 78;
+  camera.updateProjectionMatrix();
+  renderer.toneMappingExposure = 1.02;
+  scene.fog.density = 0.006;
+  camera.position.set(-0.55, BENCH.top + P.eye, -2.05);
+  yaw = 1.35; pitch = -.12;
+  feet = BENCH.top;
+  state.phase = 'shrunk';
+  padRing.material.opacity = .25;
+  // at 17 mm every point light is a metre from your face: drop the inverse-square
+  // falloff entirely and ride the beam instead, or the floor burns out.
+  torchLight.intensity = 1.5;
+  torchLight.decay = 0;
+  torchLight.distance = 0;
+  torchLight.angle = .85;
+  torchLight.penumbra = .7;
+  shopLight.intensity = 5;
+  shopLight2.intensity = 4;
+  caseGlow.intensity = .60;
+  caseGlow.decay = 0;
+  caseGlow.position.set(TOWER.x, BENCH.top + .10, TOWER.z);
+  ledLight.intensity = .5;
+  ledLight.decay = 0;
+  caseGlow.intensity = .5;
+  sfx.whoom();
+  setTimeout(() => { shrinking = false; }, 600);
+  toast('The bench is a country. The tower is a building.', 'good');
+  setTimeout(() => toast('W A S D · Space to jump · I for the notepad', ''), 1800);
+}
+
+/* ------------------------------------------------------------ tray render */
+/* Things a 1.6 m person cannot fiddle with. The crosshair ignores them until you are inside the case. */
+const SMALL_ONLY = new Set(['led', 'bag', 'slotA2', 'slotB2', 'psuLabel', 'psuRocker', 'padlock', 'gpu', 'hpcie',
+  'h24', 'hcpu', 'hfan', 'plugRear', 'chaFan1', 'sysFan3', 'cpuFanHdr', 'screwdriver', 'gpuDrum',
+  'cable_atx', 'cable_eps', 'cable_pcie', 'cable_sata']);
+
+function transcriptHTML() {
+  if (!voice.lines.length) return '<p class="sub">a message is playing</p>';
+  return voice.lines.map((t, i) => {
+    const last = i === voice.lines.length - 1;
+    const hot = last && !voice.done;
+    return `<p class="${hot ? 'say' : 'sub'}" style="margin:.3em 0">${hot ? '▸ ' : ''}"${t}"</p>`;
+  }).join('') + (voice.done ? '<p class="sub">— end of message —</p>' : '');
+}
+
+function renderTray() {
+  if (speaking) {                       // the machine owns the tray while it talks
+    trayEl.hidden = false;
+    kickerEl.textContent = 'answering machine';
+    titleEl.textContent = 'One new message';
+    bodyEl.innerHTML = transcriptHTML();
+    keysEl.innerHTML = 'playing — turn the sound up';
+    state.trayTarget = 'answer';
+    return;
+  }
+  if (state.gpu && state.gpu.trying) {
+    trayEl.hidden = false;
+    kickerEl.textContent = 'the hoist';
+    titleEl.textContent = 'Padlock';
+    bodyEl.innerHTML = comboBody();
+    keysEl.innerHTML = '<kbd>↑↓</kbd>digit · <kbd>←→</kbd>wheel · <kbd>E</kbd>try it · <kbd>Q</kbd>let go';
+    return;
+  }
+  if (state.grab) {
+    trayEl.hidden = false;
+    kickerEl.textContent = 'in your hands';
+    titleEl.textContent = 'Starter cord';
+    const pct = Math.round((state.grab.p / state.grab.need) * 100);
+    bodyEl.innerHTML = `<p>${state.grab.label}.</p><div class="bar"><i style="width:${clamp(pct, 0, 100)}%"></i></div>
+      <p class="sub">${pct}% — keep dragging back.</p>`;
+    keysEl.innerHTML = '<kbd>Q</kbd>let go';
+    return;
+  }
+  const id = state.hovered && state.hovered.id;
+  const t = id && THINGS[id];
+  if (!t) { trayEl.hidden = true; state.trayTarget = null; return; }
+  if (state.trayTarget !== id && state.reads) sfx.scratch();
+  state.trayTarget = id;
+  trayEl.hidden = false;
+  kickerEl.textContent = t.kicker || '';
+  titleEl.textContent = t.title || '';
+  bodyEl.innerHTML = t.text ? t.text() : '';
+  keysEl.innerHTML = t.keys ? t.keys() : '';
+}
+
+/* ------------------------------------------------------------- interaction */
+const raycaster = new THREE.Raycaster();
+function currentTarget() {
+  raycaster.far = P.reach;
+  raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+  const hits = raycaster.intersectObjects(interact, true);
+  for (const h of hits) {
+    let o = h.object, id = null;
+    while (o) { if (o.userData && o.userData.interact) { id = o.userData.interact; break; } o = o.parent; }
+    if (id && SMALL_ONLY.has(id) && state.phase !== 'shrunk') continue;
+    if (id) return { id, label: THINGS[id] ? THINGS[id].title : id };
+  }
+  return null;
+}
+function use() {
+  const h = state.hovered;
+  if (!h || !THINGS[h.id]) return;
+  if (SMALL_ONLY.has(h.id) && state.phase !== 'shrunk') {
+    sfx.nope();
+    toast('You would need to be inside the case for that — about 17 mm tall.', 'bad');
+    return;
+  }
+  const t = THINGS[h.id];
+  if (t.act) t.act();
+  renderTray();
+}
+
+/* --------------------------------------------------------------- movement */
+const keys = new Set();
+let yaw = 0, pitch = 0, feet = 0, vy = 0, grounded = true, stepAcc = 0;
+HUMAN.r = 0.3; SHRUNK.r = 0.007;
+
+const S = (x0, x1, y0, y1, z0, z1) => ({ x0, x1, y0, y1, z0, z1 });
+const SOLID_H = [
+  S(BENCH.x0, BENCH.x1, 0, BENCH.top, BENCH.z0, BENCH.z1),
+  S(DESK.x0, DESK.x1, 0, DESK.top, DESK.z0, DESK.z1),
+  S(COUNTER.x0, COUNTER.x1, 0, COUNTER.top, COUNTER.z0, COUNTER.z1),
+  S(GEN.x - .40, GEN.x + .40, 0, .60, GEN.z - .30, GEN.z + .30),
+  S(2.72, 3.08, 0, 1.35, 1.15, 1.55),
+  S(ROOM.x0 - .5, ROOM.x0, 0, ROOM.h, -6, 4),
+  S(ROOM.x1, ROOM.x1 + .5, 0, ROOM.h, -6, 4),
+  S(-4, 4, 0, ROOM.h, ROOM.z1, ROOM.z1 + .5),
+  S(-4, 2.05, 0, ROOM.h, ROOM.z0 - .5, ROOM.z0),
+  S(2.85, 4, 0, ROOM.h, ROOM.z0 - .5, ROOM.z0),
+  S(YARD.x0 - .5, YARD.x0, 0, YARD.h, -6.2, YARD.z1),
+  S(YARD.x1, YARD.x1 + .5, 0, YARD.h, -6.2, YARD.z1),
+  S(.9, 3.6, 0, YARD.h, YARD.z0 - .5, YARD.z0),
+];
+const SOLID_S = [
+  S(TOWER.x - TOWER.w / 2 - .02, TOWER.x - TOWER.w / 2 + .02, .90, 1.95, TOWER.z - TOWER.d / 2, TOWER.z + TOWER.d / 2),
+  S(TOWER.x + TOWER.w / 2 - .02, TOWER.x + TOWER.w / 2 + .02, .90, 1.95, TOWER.z - TOWER.d / 2, TOWER.z + TOWER.d / 2),
+  S(TOWER.x - TOWER.w / 2, TOWER.x + TOWER.w / 2, .90, 1.95, TOWER.z - TOWER.d / 2 - .02, TOWER.z - TOWER.d / 2 + .02),
+  S(TOWER.x - .14, TOWER.x + .02, .90, 1.20, TOWER.z - .31, TOWER.z - .16),
+  S(BENCH.x0, BENCH.x0 + .02, .90, 1.60, BENCH.z0, BENCH.z1),
+  S(BENCH.x1 - .02, BENCH.x1, .90, 1.60, BENCH.z0, BENCH.z1),
+  S(BENCH.x0, BENCH.x1, .90, 1.60, BENCH.z0, BENCH.z0 + .02),
+  S(BENCH.x0, BENCH.x1, .90, 1.60, BENCH.z1 - .02, BENCH.z1),
+];
+
+function resolve(pos, r, fY, h, list) {
+  for (const s of list) {
+    if (fY >= s.y1 - .002 || fY + h <= s.y0 + .002) continue;
+    const cx = clamp(pos.x, s.x0, s.x1), cz = clamp(pos.z, s.z0, s.z1);
+    const dx = pos.x - cx, dz = pos.z - cz;
+    const d = Math.hypot(dx, dz);
+    if (d > r) continue;
+    if (d > 1e-6) { pos.x = cx + dx / d * r; pos.z = cz + dz / d * r; }
+    else {
+      const dl = pos.x - s.x0, dr = s.x1 - pos.x, db = pos.z - s.z0, df = s.z1 - pos.z;
+      const m = Math.min(dl, dr, db, df);
+      if (m === dl) pos.x = s.x0 - r;
+      else if (m === dr) pos.x = s.x1 + r;
+      else if (m === db) pos.z = s.z0 - r;
+      else pos.z = s.z1 + r;
+    }
+  }
+}
+
+function move(dt) {
+  const fast = keys.has('ShiftLeft') || keys.has('ShiftRight');
+  const speed = P.speed * (fast ? 1.45 : 1);
+  let fx = 0, fz = 0;
+  if (keys.has('KeyW') || keys.has('ArrowUp')) fz -= 1;
+  if (keys.has('KeyS') || keys.has('ArrowDown')) fz += 1;
+  if (keys.has('KeyA')) fx -= 1;
+  if (keys.has('KeyD')) fx += 1;
+  const sin = Math.sin(yaw), cos = Math.cos(yaw);
+  let nx = camera.position.x, nz = camera.position.z;
+  if (fx || fz) {
+    const len = Math.hypot(fx, fz);
+    fx /= len; fz /= len;
+    nx += (-sin * -fz + cos * fx) * speed * dt;
+    nz += (-cos * -fz - sin * fx) * speed * dt;
+  }
+  const list = state.phase === 'shrunk' ? SOLID_S : SOLID_H;
+  const pos = { x: nx, z: nz };
+  resolve(pos, P.r, feet, P.eye * 1.06, list);
+  const moved = Math.hypot(pos.x - camera.position.x, pos.z - camera.position.z);
+  camera.position.x = pos.x;
+  camera.position.z = pos.z;
+
+  // gravity and a ground plane per scale
+  const ground = state.phase === 'shrunk' ? BENCH.top : 0;
+  vy -= (state.phase === 'shrunk' ? 1.8 : 9.8) * dt;
+  feet += vy * dt;
+  if (feet <= ground) { feet = ground; vy = 0; grounded = true; } else grounded = false;
+  camera.position.y = feet + P.eye + (state.phase === 'shrunk' ? Math.sin(clock.elapsedTime * 6) * .00025 * (moved > 0 ? 1 : 0) : 0);
+
+  if (moved > 1e-6) {
+    stepAcc += moved;
+    if (stepAcc > P.foot) { stepAcc = 0; sfx.step(state.phase !== 'shrunk'); }
+  }
+}
+
+/* ------------------------------------------------------------------- input */
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  audioInit();
+  if (!state.locked) { canvas.requestPointerLock?.(); return; }
+  if (state.grab) { state.grab = null; renderTray(); return; }
+  use();
+});
+document.addEventListener('pointerlockchange', () => {
+  state.locked = document.pointerLockElement === canvas;
+  unlockHint.hidden = state.locked || state.won;
+});
+document.addEventListener('mousemove', e => {
+  if (!state.locked) return;
+  if (state.grab) {
+    state.grab.p = clamp(state.grab.p + Math.max(0, e.movementY) + Math.max(0, e.movementX) * .4, 0, state.grab.need);
+    if (state.grab.id === 'gpuDrum') {
+      state.gpu.drop = clamp(state.grab.p / state.grab.need, 0, 1);
+      if (Math.random() < .07) sfx.ratchet();
+      renderTray();
+      return;
+    }
+    if (state.grab.p >= state.grab.need) {
+      const g = state.grab; state.grab = null;
+      if (g.id === 'genCord') genPull();
+      renderTray();
+    } else renderTray();
+    return;
+  }
+  const s = state.phase === 'shrunk' ? .0026 : .0021;
+  yaw -= e.movementX * s;
+  pitch = clamp(pitch - e.movementY * s, -1.35, 1.35);
+  if (Math.abs(e.movementX) + Math.abs(e.movementY) > 6 && state.phase === 'shrunk') sfx.scratch();
+});
+addEventListener('keydown', e => {
+  audioInit();
+  if (state.gpu && state.gpu.trying) {
+    e.preventDefault();
+    const g = state.gpu;
+    if (e.code === 'ArrowUp') { g.combo[g.sel] = (g.combo[g.sel] + 1) % 10; sfx.click(); renderTray(); }
+    else if (e.code === 'ArrowDown') { g.combo[g.sel] = (g.combo[g.sel] + 9) % 10; sfx.click(); renderTray(); }
+    else if (e.code === 'ArrowLeft') { g.sel = (g.sel + 2) % 3; renderTray(); }
+    else if (e.code === 'ArrowRight') { g.sel = (g.sel + 1) % 3; renderTray(); }
+    else if (e.code === 'KeyE') { tryCombo(); }
+    else if (e.code === 'KeyQ' || e.code === 'Escape') { g.trying = false; renderTray(); }
+    return;
+  }
+  if (e.code === 'KeyI' || e.code === 'Tab') { e.preventDefault(); togglePad(); return; }
+  if (e.code === 'KeyM') {                       // music only: the room keeps its noises
+    if (!A.ctx) audioInit();
+    if (A.ctx && A.ctx.state === 'suspended') A.ctx.resume();
+    A.musicOn = !A.musicOn;
+    if (A.music) A.music.gain.value = A.musicOn ? .35 : 0;
+    if (A.musicOn) startMusic();
+    else MUS.next = 0;
+    toast(A.musicOn ? 'Music on' : 'Music off — effects stay', '');
+    return;
+  }
+  if (e.code === 'KeyN') {                       // everything
+    if (!A.ctx) audioInit();
+    if (A.ctx && A.ctx.state === 'suspended') A.ctx.resume();
+    A.muted = !A.muted;
+    if (A.master) A.master.gain.value = A.muted ? 0 : .85;
+    if (!A.muted) { startMusic(); setTimeout(() => sfx.click(), 120); }
+    toast(A.muted ? 'All sound off' : 'All sound on');
+    return;
+  }
+  if (e.code === 'KeyH') { giveHint(); return; }
+  if (e.code === 'KeyQ') {
+    if (state.grab) { state.grab = null; renderTray(); }
+    if (state.gpu && state.gpu.trying) { state.gpu.trying = false; renderTray(); }
+    return;
+  }
+  if (e.code === 'Escape') {
+    if (state.grab) { state.grab = null; renderTray(); }
+    if (state.gpu && state.gpu.trying) { state.gpu.trying = false; renderTray(); }
+    return;
+  }
+  if (e.code === 'KeyE') { use(); return; }
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (grounded && !shrinking && state.phase !== 'shrinking') { vy = P.jump; grounded = false; sfx.step(false); }
+    return;
+  }
+  keys.add(e.code);
+});
+addEventListener('keyup', e => keys.delete(e.code));
+
+/* -------------------------------------------------------- generator pulls */
+function genPull() {
+  const g = state.gen;
+  if (g.running) return;
+  if (g.flooded) { sfx.cough(); toast('Still flooded. Three squeezes on the primer bulb.', 'bad'); return; }
+  if (!g.fuel) { sfx.cough(); toast('It turns over once and dies. No fuel getting through.'); return; }
+  if (g.choke !== 'closed') {
+    sfx.cough(); g.flooded = 3; g.pulls = 0;
+    toast('It floods — choke was open. Primer bulb, three times.', 'bad');
+    return;
+  }
+  g.pulls++;
+  sfx.cough();
+  cordHandle.position.y = .46;
+  setTimeout(() => { cordHandle.position.y = .40; }, 160);
+  if (g.pulls >= 3) startGenerator();
+  else toast(`Pull ${g.pulls} of 3.`);
+}
+function startGenerator() {
+  const g = state.gen;
+  g.running = true;
+  g.choke = 'open';
+  chokeLever.rotation.z = .9;
+  sfx.roar(); setHum(.17);
+  shopLight.intensity = 46;
+  shopLight2.intensity = 34;
+  benchLamp.intensity = 9;
+  bulb.material.emissiveIntensity = 3.2;
+  state.phase = 'lit';
+  rayLed.material.emissive.setHex(0x59ff9a);
+  rayLed.material.emissiveIntensity = 3;
+  lens.material.emissiveIntensity = 1.6;
+  padRing.material.opacity = .45;
+  powerCase();
+  setTimeout(() => toast('Lights, relay, and the case is already complaining.', 'good'), 700);
+}
+
+/* ------------------------------------------------------------------ hints */
+function giveHint() {
+  if (!state.gen.running && !state.torch) return toast('Hint · it is dark. The torch is on the counter, blinking green.', '');
+  if (!state.gen.running) return toast('Hint · the generator, back yard. Fuel open, choke closed, three pulls on the cord.', '');
+  if (state.phase !== 'shrunk') return toast('Hint · stand in the ring on the floor and pull the shrink ray lever.', '');
+  if (!state.ram.a2) return toast('Hint · slot A2: that module is leaning out of the socket. Push it home.', '');
+  if (!state.ram.seated) {
+    if (!state.ram.b2Out) return toast('Hint · C1 is still up. Pull the scorched module out of B2.', '');
+    if (!state.ram.spare) return toast('Hint · the sealed bag beside the slots is labelled SPARE > B2.', '');
+    return toast('Hint · seat the spare in B2. The scorched one is scrap.', '');
+  }
+  if (!state.psu.rocker) return toast('Hint · the PSU rocker, on the power unit by the case opening.', '');
+  if (!state.psu.atx || !state.psu.cpu) return toast('Hint · 24-pin to the board, then the EPS 8-pin. Pick a cable end up first, then the socket.', '');
+  if (!fanDone()) {
+    if (state.fans.rear !== true && state.held !== 'fan4') return toast('Hint · the rear fan plug is lying by the back wall. Pick it up, then CHA_FAN1.', '');
+    if (!state.fans.cpu) return toast('Hint · the CPU fan cable is in SYS_FAN3. Pull it and move it to CPU_FAN.', '');
+    return toast('Hint · a screwdriver is jammed in the intake fan.', '');
+  }
+  if (!state.gpu.unlocked) return toast('Hint · the padlock takes the last three digits of the shop number on the side panel.', '');
+  if (state.gpu.drop < .92) return toast('Hint · grab the winch drum and drag back.', '');
+  if (!state.gpu.seated) return toast('Hint · the card is at the rail. Push it in.', '');
+  if (!state.gpu.powered) return toast('Hint · the card wants its own 8-pin. The PCIe one.', '');
+  return toast('Hint · C1, F1 and d4 are clear. Slices 3-5 build the rest.', 'good');
+}
+
+/* ==================================================================== slice 2
+   Power routing, the three fans, and the graphics card on its hoist.
+   Everything reachable sits within arm's length of a 17 mm person: the board
+   is the floor, so all hardware is laid out on it like a town.              */
+
+const B2 = boardY;                                     // 0.956
+const CX = TOWER.x, CZ = TOWER.z;
+
+/* --- extra sounds ------------------------------------------------------- */
+Object.assign(sfx, {
+  ratchet() { hiss({ dur: .05, vol: .07, f: 2200, q: 2 }); tone({ f: 320, f2: 210, dur: .05, vol: .07, type: 'square' }); },
+  spin()    { hiss({ dur: 1.1, vol: .1, f: 240, q: .7, f2: 1500 }); tone({ f: 70, f2: 220, dur: 1.0, vol: .05, type: 'sawtooth', filter: 900 }); },
+  chunk()   { hiss({ dur: .2, vol: .16, f: 900, q: .6, f2: 260 }); tone({ f: 110, f2: 52, dur: .3, vol: .16, type: 'triangle' }); },
+  pop()     { hiss({ dur: .06, vol: .12, f: 3200, q: 1.4 }); tone({ f: 820, f2: 400, dur: .1, vol: .1, type: 'square' }); },
+  buzz()    { tone({ f: 132, f2: 96, dur: .3, vol: .1, type: 'sawtooth', filter: 620 }); },
+});
+
+/* --- state ------------------------------------------------------------- */
+state.psu = { rocker: false, atx: false, cpu: false, sata: false, pcie: false };
+state.fans = { rear: false, cpu: false, intake: false, spinning: false };
+state.gpu = { combo: [0, 0, 0], sel: 0, trying: false, unlocked: false, drop: 0, seated: false, powered: false };
+state.held = null;
+
+/* --- small helpers ----------------------------------------------------- */
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+function tube(a, b, r, mat) {
+  const dir = new THREE.Vector3().subVectors(b, a);
+  const len = Math.max(dir.length(), 1e-4);
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 6), mat);
+  m.position.copy(a).add(b).multiplyScalar(.5);
+  m.quaternion.setFromUnitVectors(V3(0, 1, 0), dir.normalize());
+  scene.add(m);
+  return m;
+}
+function plate(x, z, w, d, mat, y = B2 + .004) {
+  const m = box(w, .008, d, mat, x, y, z);
+  return m;
+}
+
+/* --- the PSU, lying in the front-right corner like a test-rig unit ------ */
+const PSU = { x: -1.87, z: -2.24, w: .18, d: .12 };
+box(PSU.w, .060, PSU.d, M.metalDark, PSU.x, B2 + .030, PSU.z);
+box(PSU.w - .02, .004, PSU.d - .02, M.metal, PSU.x, B2 + .062, PSU.z);
+const psuLabel = decal(.11, .03, stickerTex([['CORSAIR 550 · 12V', 20, true]], { bg: '#14181a', ink: '#8fe6ff', h: 140, top: 82 }),
+  PSU.x - .03, B2 + .065, PSU.z);
+psuLabel.rotation.x = -Math.PI / 2;
+register(psuLabel, 'psuLabel', 'the PSU');
+const rocker = box(.020, .014, .012, M.red, PSU.x + .05, B2 + .070, PSU.z + PSU.d / 2 - .016);
+register(rocker, 'psuRocker', 'the PSU rocker switch');
+
+/* --- four cables, two of the plugs identical --------------------------- */
+const CABLE = {
+  atx:  { x: -1.83, z: -2.44, w: .030, d: .012, col: 0x2a2f33, name: '24-pin ATX', to: 'h24' },
+  eps:  { x: -1.89, z: -2.44, w: .018, d: .012, col: 0x2a2f33, name: '8-pin, label says EPS', to: 'hcpu' },
+  pcie: { x: -1.95, z: -2.44, w: .018, d: .012, col: 0x2a2f33, name: '8-pin, label says PCIe', to: 'hpcie' },
+  sata: { x: -1.83, z: -2.50, w: .022, d: .010, col: 0x22262a, name: 'SATA power', to: 'hfan' },
+};
+const cableMesh = {};
+for (const [k, c] of Object.entries(CABLE)) {
+  const m = box(c.w, .010, c.d, new THREE.MeshStandardMaterial({ color: c.col, roughness: .7 }), c.x, B2 + .006, c.z);
+  cableMesh[k] = m;
+  register(m, 'cable_' + k, 'a ' + c.name + ' cable end');
+  tube(V3(PSU.x + PSU.w / 2, B2 + .03, PSU.z + .04), V3(c.x, B2 + .006, c.z), .0025, M.black);
+}
+const cableOf = id => id.startsWith('cable_') ? id.slice(6) : null;
+
+/* --- the destinations --------------------------------------------------- */
+function header(x, z, w, d, label, col = 0x1b1f22) {
+  const g = box(w, .012, d, new THREE.MeshStandardMaterial({ color: col, roughness: .7 }), x, B2 + .006, z);
+  box(w * .8, .004, d * .5, M.gold, x, B2 + .013, z);
+  return g;
+}
+const h24 = header(-1.82, -2.36, .036, .016, '24-pin');
+const hcpu = header(-2.06, -2.42, .016, .012, 'EPS');
+const hfan = header(-1.92, -2.56, .018, .012, 'SATA', 0x2b2f33);
+register(h24, 'h24', 'the 24-pin socket on the board');
+register(hcpu, 'hcpu', 'the CPU power socket');
+register(hfan, 'hfan', 'the fan hub SATA socket');
+
+/* --- the three fans ----------------------------------------------------- */
+function makeFan(x, y, z, r, facing) {
+  const g = new THREE.Group();
+  g.position.set(x, y, z);
+  scene.add(g);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(r, .004, 6, 18), M.metalDark);
+  g.add(ring);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * .22, r * .22, .008, 10), M.plastic);
+  hub.rotation.x = Math.PI / 2;
+  g.add(hub);
+  const blades = new THREE.Group();
+  for (let i = 0; i < 5; i++) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(r * .78, .002, r * .28), new THREE.MeshStandardMaterial({ color: 0x1a1e21, roughness: .8 }));
+    b.position.set(Math.cos(i / 5 * 6.283) * r * .45, 0, Math.sin(i / 5 * 6.283) * r * .45);
+    b.rotation.y = -i / 5 * 6.283;
+    blades.add(b);
+  }
+  // a square shroud, so a fan reads as a fan and not as a loose hoop
+  const s = r * 2.2, t = r * .17;
+  [[0, r * 1.1, s, t], [0, -r * 1.1, s, t], [r * 1.1, 0, t, s], [-r * 1.1, 0, t, s]].forEach(([bx, by, bw, bh]) => {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, .012), M.metalDark);
+    bar.position.set(bx, by, -.004);
+    g.add(bar);
+  });
+  g.add(blades);
+  if (facing === 'up') g.rotation.x = -Math.PI / 2;
+  if (facing === 'side') g.rotation.y = Math.PI / 2;
+  return { g, blades };
+}
+// rear exhaust: low on the back wall, its 4-pin lying loose beside it
+const fanRear = makeFan(-1.86, B2 + .072, -2.758, .048, 'front');
+box(.115, .115, .006, M.metalDark, -1.86, B2 + .072, -2.763);   // the mount it is bolted to
+const chaFan1 = header(-1.80, -2.62, .016, .012, 'CHA_FAN1', 0x2b2f33);
+const plugRear = box(.014, .010, .008, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }), -1.80, B2 + .006, -2.68);
+tube(V3(-1.80, B2 + .006, -2.68), V3(-1.86, B2 + .03, -2.72), .0022, M.black);
+register(plugRear, 'plugRear', 'a loose 4-pin fan plug');
+register(chaFan1, 'chaFan1', 'the CHA_FAN1 header');
+
+// the CPU fan sits on the front of the heatsink; its cable is in the wrong header
+const fanCpu = makeFan(-2.02, B2 + .09, -2.590, .034, 'front');
+const sysFan3 = header(-2.09, -2.50, .014, .010, 'SYS_FAN3', 0x2b2f33);
+const cpuFanHdr = header(-2.03, -2.47, .014, .010, 'CPU_FAN', 0x2b2f33);
+const cpuPlug = box(.012, .009, .007, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }), -2.09, B2 + .012, -2.50);
+register(sysFan3, 'sysFan3', 'SYS_FAN3 (occupied)');
+register(cpuFanHdr, 'cpuFanHdr', 'the CPU_FAN header');
+
+// front intake, lying on the board with a screwdriver jammed in the blades
+const fanIn = makeFan(-2.19, B2 + .014, -2.24, .046, 'up');
+const screwdriver = new THREE.Group();
+scene.add(screwdriver);
+const sdShaft = cyl(.004, .004, .12, 6, M.metal, -2.16, B2 + .028, -2.24, screwdriver);
+sdShaft.rotation.z = Math.PI / 2;
+const sdHandle = box(.03, .022, .022, new THREE.MeshStandardMaterial({ color: 0xb03a2a, roughness: .6 }), -2.10, B2 + .028, -2.24, screwdriver);
+screwdriver.position.set(0, 0, 0);
+register(sdHandle, 'screwdriver', 'a screwdriver, jammed in the fan');
+
+/* --- the hoist, the padlock, and the card ------------------------------ */
+const HOIST = { x: -1.97, z: -2.70, high: .40, low: .026 };
+box(TOWER.w - .06, .012, .020, M.metalDark, CX, B2 + .95, HOIST.z);         // the beam
+cyl(.012, .012, .05, 10, M.metal, -1.80, B2 + .026, -2.66).rotation.z = Math.PI / 2;  // the drum
+const drum = cyl(.018, .018, .05, 12, M.metalDark, -1.78, B2 + .030, -2.66);
+drum.rotation.z = Math.PI / 2;
+// the bracket the padlock actually hangs from: base plate, post, eye, and an arm to the drum
+box(.06, .008, .06, M.metalDark, -1.78, B2 + .004, -2.62);
+box(.012, .046, .012, M.metal, -1.78, B2 + .027, -2.62);
+box(.012, .012, .050, M.metal, -1.78, B2 + .048, -2.642);
+const eyelet = new THREE.Mesh(new THREE.TorusGeometry(.009, .0022, 6, 12), M.metal);
+eyelet.position.set(-1.78, B2 + .058, -2.62);
+eyelet.rotation.y = Math.PI / 2;
+scene.add(eyelet);
+const padlock = new THREE.Group();
+padlock.position.set(-1.78, B2 + .046, -2.62);
+scene.add(padlock);
+box(.022, .018, .008, M.gold, 0, 0, 0, padlock);
+const shackle = new THREE.Mesh(new THREE.TorusGeometry(.008, .0022, 5, 10, Math.PI), M.metal);
+shackle.rotation.y = Math.PI / 2;
+shackle.position.y = .010;
+padlock.add(shackle);
+register(padlock, 'padlock', 'a three-digit padlock');
+
+const gpuGroup = new THREE.Group();
+scene.add(gpuGroup);
+const GPU = { hangY: B2 + .21, seatY: B2 + .054, h: .088, w: .22 };
+// on edge: x is its length, y its height, z its thickness. The gold finger points down at the rail.
+const cardMat = new THREE.MeshStandardMaterial({ color: 0x14181b, roughness: .6 });
+const gpuCard = box(GPU.w, GPU.h, .018, cardMat, 0, 0, 0, gpuGroup);
+box(.20, .074, .003, new THREE.MeshStandardMaterial({ color: 0x24292c, roughness: .5, metalness: .3 }), 0, .002, -.011, gpuGroup);
+const gpuPcb = box(.21, .076, .004, new THREE.MeshStandardMaterial({ color: 0x1d5c3a, roughness: .85 }), 0, 0, .011, gpuGroup);
+[-.055, .055].forEach(x => {
+  const f = cyl(.026, .026, .006, 16, M.metalDark, x, .004, .013, gpuGroup);
+  f.rotation.x = Math.PI / 2;
+});
+box(.09, .010, .012, M.gold, 0, -GPU.h / 2 - .004, 0, gpuGroup);       // the finger that goes in the slot
+const gpuRope = cyl(.0018, .0018, 1, 6, M.black, HOIST.x, B2 + .5, HOIST.z);
+register(gpuCard, 'gpu', 'the graphics card');
+gpuGroup.visible = true;
+
+/* the PCIe power socket lives on the card, close to the slot, so you can reach it */
+const pcieSock = box(.016, .010, .012, new THREE.MeshStandardMaterial({ color: 0x1b1f22, roughness: .7 }), .078, -.030, .013, gpuGroup);
+register(pcieSock, 'hpcie', 'the PCIe power socket');
+
+/* --- the model --------------------------------------------------------- */
+const railLive = () => state.psu.rocker && state.psu.atx && state.psu.cpu;
+const fanDone = () => state.fans.rear && state.fans.cpu && state.fans.intake;
+
+function clearCode(c, note, key, msg) {
+  if (!state.codes.includes(c)) return;
+  state.codes = state.codes.filter(x => x !== c);
+  if (note) state.notes[key] = note;
+  renderPad();
+  toast(msg, 'good');
+}
+function checkRam() {
+  if (!state.ram.a2 || !state.ram.seated) return;
+  if (!state.codes.includes('C1')) return;
+  state.codes = state.codes.filter(c => c !== 'C1');
+  state.notes.RAM = 'B';
+  renderPad();
+  toast('Both modules home. C1 drops out of the cycle, and the sticker gives up a B.', 'good');
+}
+function checkFans() {
+  if (!fanDone() || !railLive() || state.fans.spinning) return;
+  state.fans.spinning = true;
+  sfx.spin();
+  clearCode('F1', 'O', 'fans', 'All three spin. F1 drops out of the cycle.');
+}
+function checkGpu() {
+  if (state.gpu.seated && state.gpu.powered && railLive()) {
+    clearCode('d4', 'K', 'GPU', 'The card posts. d4 is gone.');
+  }
+}
+
+/* --- plugging cables --------------------------------------------------- */
+function plug(dest) {
+  const need = { h24: 'atx', hcpu: 'eps', hfan: 'sata', hpcie: 'pcie' }[dest];
+  const label = { h24: 'the 24-pin socket', hcpu: 'the CPU power socket', hfan: 'the fan hub', hpcie: 'the card' }[dest];
+  if (dest === 'h24' && state.psu.atx) { toast('Already in.'); return; }
+  if (dest === 'hcpu' && state.psu.cpu) { toast('Already in.'); return; }
+  if (dest === 'hfan' && state.psu.sata) { toast('Already in.'); return; }
+  if (dest === 'hpcie' && state.psu.pcie) { toast('Already in.'); return; }
+  if (!state.held) {
+    sfx.nope();
+    toast('Your hands are empty. Pick up a cable end first.');
+    return;
+  }
+  if (state.held !== need) {
+    sfx.buzz();
+    const wrong = CABLE[state.held].name;
+    if ((state.held === 'eps' && dest === 'hpcie') || (state.held === 'pcie' && dest === 'hcpu')) {
+      toast('Those two 8-pins are the same plug. This one goes in the other socket — read the label.', 'bad');
+    } else {
+      toast(`A ${wrong} will not go into ${label}.`, 'bad');
+    }
+    return;
+  }
+  if (dest === 'hcpu' && !state.psu.atx) {
+    sfx.buzz(); toast('Nothing there yet — the board is not even on 24-pin.', 'bad'); return;
+  }
+  if (!state.psu.rocker) {
+    sfx.buzz(); toast('Dead. The rocker on the PSU is still off.', 'bad'); return;
+  }
+  state.psu[need === 'atx' ? 'atx' : need === 'eps' ? 'cpu' : need] = true;
+  state.held = null;
+  cableMesh[need].visible = false;
+  box(need === 'atx' ? .030 : .018, .012, .012,
+    new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }),
+    dest === 'h24' ? -1.82 : dest === 'hcpu' ? -2.06 : dest === 'hfan' ? -1.92 : -.07,
+    B2 + .014, dest === 'h24' ? -2.36 : dest === 'hcpu' ? -2.42 : dest === 'hfan' ? -2.56 : 0);
+  sfx.snap();
+  if (need === 'atx' || need === 'eps') {
+    setTimeout(() => sfx.relay(), 120);
+    if (railLive() && !state.notes.PSU) {
+      state.notes.PSU = 'R';
+      renderPad();
+      setTimeout(() => toast('12 V on the board. The fans have power to waste.', 'good'), 260);
+    }
+  }
+  if (need === 'pcie') { state.gpu.powered = true; checkGpu(); }
+  if (need === 'sata') checkFans();
+  renderPad();
+}
+
+/* --- the tray: a three-digit lock -------------------------------------- */
+function comboBody() {
+  const g = state.gpu;
+  const digits = g.combo.map((d, i) => `<b style="color:${i === g.sel ? '#ffd166' : '#cfe6ee'}">${d}</b>`).join('');
+  return `<p>Three brass wheels, stiff with grease.</p>
+    <p style="font-size:1.3rem;letter-spacing:.35em">${digits}</p>
+    <p class="sub">${g.sel + 1} of 3 selected. The shop number is on the side panel of the case.</p>`;
+}
+function tryCombo() {
+  const g = state.gpu;
+  if (g.combo.join('') === '456') {
+    g.unlocked = true; g.trying = false;
+    padlock.visible = false;
+    sfx.pop();
+    setTimeout(() => sfx.chime(), 160);
+    toast('The shackle pops. The drum is free.', 'good');
+    renderTray();
+  } else {
+    sfx.buzz();
+    g.combo = [0, 0, 0]; g.sel = 0;
+    toast('Nothing. It resets.', 'bad');
+    renderTray();
+  }
+}
+
+/* --- the things you can look at --------------------------------------- */
+Object.assign(THINGS, {
+  psuLabel: {
+    kicker: 'power', title: 'The power supply',
+    text: () => `<p>A test-rig unit, lying on the board with its cables spilling out.</p>
+      <p class="sub">Rail label: <b>+12 V · 45 A</b> — and a sticky note: "rocker first, then the board."</p>`,
+    keys: () => '', act() { },
+  },
+  psuRocker: {
+    kicker: 'power', title: 'The rocker switch',
+    text: () => state.psu.rocker
+      ? '<p>Down. The unit is awake and humming a little.</p>'
+      : '<p>Up: mains off. Nothing downstream of this will work.</p>',
+    keys: () => `<kbd>E</kbd>${state.psu.rocker ? 'switch it off' : 'switch it on'}`,
+    act() {
+      state.psu.rocker = !state.psu.rocker;
+      rocker.position.y = B2 + .070 + (state.psu.rocker ? -.004 : .004);
+      if (state.psu.rocker) { sfx.relay(); toast('Clunk. The PSU is live.'); }
+      else { sfx.click(); toast('Mains off.'); }
+      checkFans();
+    },
+  },
+  padlock: {
+    kicker: 'the hoist', title: 'Padlock',
+    text: () => state.gpu.unlocked
+      ? '<p>Open, hanging off the drum bracket.</p>'
+      : '<p>Three digits, and grease in the wheels. Gerrit\'s note is on the case: <i>the last three of the shop number</i>.</p>',
+    keys: () => state.gpu.unlocked ? '' : '<kbd>E</kbd>work the wheels',
+    act() { if (!state.gpu.unlocked) { state.gpu.trying = true; sfx.click(); renderTray(); } },
+  },
+  gpu: {
+    kicker: 'the hoist', title: 'Graphics card',
+    text: () => !state.gpu.unlocked
+      ? '<p>It hangs over the slot, held by the winch and a padlock.</p>'
+      : state.gpu.seated
+        ? `<p>Seated in the PCIe rail. The serial plate says <b>K</b>.</p>`
+        : state.gpu.drop < .92
+          ? `<p>Hanging ${Math.round((1 - state.gpu.drop) * 100)}% of the way up. It has to come down to the rail.</p>`
+          : '<p>It is at the rail, rocking a little. One push and it will drop in.</p>',
+    keys: () => state.gpu.unlocked && !state.gpu.seated && state.gpu.drop > .92 ? '<kbd>E</kbd>seat it' : '',
+    act() {
+      if (state.gpu.seated || !state.gpu.unlocked) return;
+      if (state.gpu.drop < .92) { sfx.buzz(); toast('It is still hanging too high.'); return; }
+      state.gpu.seated = true;
+      sfx.chunk();
+      setTimeout(() => sfx.snap(), 140);
+      toast('It drops into the rail and clicks. Now it wants power.', 'good');
+      pcieSock.visible = true;
+      checkGpu();
+    },
+  },
+  hpcie: {
+    kicker: 'the card', title: 'PCIe power socket',
+    text: () => state.psu.pcie ? '<p>Fed.</p>' : '<p>An 8-pin socket on the end of the card.</p>',
+    keys: () => state.psu.pcie ? '' : '<kbd>E</kbd>plug the card in',
+    act() { plug('hpcie'); },
+  },
+  h24: { kicker: 'the board', title: '24-pin socket', text: () => state.psu.atx ? '<p>In, clipped.</p>' : '<p>The big one. The board lives or dies here.</p>', keys: () => state.psu.atx ? '' : '<kbd>E</kbd>plug it', act() { plug('h24'); } },
+  hcpu: { kicker: 'the board', title: 'CPU power socket', text: () => state.psu.cpu ? '<p>In.</p>' : '<p>An 8-pin, just like the one for the card. The label on the plug is the only difference.</p>', keys: () => state.psu.cpu ? '' : '<kbd>E</kbd>plug it', act() { plug('hcpu'); } },
+  hfan: { kicker: 'the fans', title: 'Fan hub', text: () => state.psu.sata ? '<p>Powered. The hub has its 12 V.</p>' : '<p>A little hub with three empty ports and one SATA socket.</p>', keys: () => state.psu.sata ? '' : '<kbd>E</kbd>plug the SATA', act() { plug('hfan'); } },
+  plugRear: {
+    kicker: 'the fans', title: 'Loose 4-pin',
+    text: () => '<p>The rear fan\'s plug, lying where Gerrit left it.</p>',
+    keys: () => '<kbd>E</kbd>pick it up',
+    act() { state.held = 'fan4'; sfx.snap(); toast('A 4-pin fan plug. It goes to a header.'); },
+  },
+  chaFan1: {
+    kicker: 'the fans', title: 'CHA_FAN1',
+    text: () => state.fans.rear ? '<p>Occupied.</p>' : '<p>An empty 4-pin header, stencilled on the board.</p>',
+    keys: () => state.fans.rear ? '' : '<kbd>E</kbd>plug the loose 4-pin in',
+    act() {
+      if (state.fans.rear) return;
+      if (state.held !== 'fan4') { sfx.buzz(); toast('Pick the loose plug up first.'); return; }
+      state.held = null; state.fans.rear = true; plugRear.visible = false;
+      sfx.snap(); toast('Rear fan connected.');
+      checkFans();
+    },
+  },
+  sysFan3: {
+    kicker: 'the fans', title: 'SYS_FAN3',
+    text: () => state.fans.cpu ? '<p>Empty now.</p>' : '<p>The CPU fan\'s cable is plugged in here. It should not be.</p>',
+    keys: () => state.fans.cpu ? '' : '<kbd>E</kbd>pull the 4-pin out',
+    act() {
+      if (state.fans.cpu) return;
+      cpuPlug.visible = false; state.held = 'fan4';
+      sfx.pop(); toast('Out. The cable is in your hand.');
+      renderTray();
+    },
+  },
+  cpuFanHdr: {
+    kicker: 'the fans', title: 'CPU_FAN',
+    text: () => state.fans.cpu ? '<p>Occupied — and the board is happy about it.</p>'
+      : '<p>Empty. The manual underlines this one: <b>CPU_FAN must be occupied</b>.</p>',
+    keys: () => state.fans.cpu ? '' : '<kbd>E</kbd>plug the cable in',
+    act() {
+      if (state.fans.cpu) return;
+      if (state.held !== 'fan4') { sfx.buzz(); toast('You are not holding the 4-pin.'); return; }
+      state.held = null; state.fans.cpu = true;
+      sfx.snap(); toast('CPU fan connected to the right header.');
+      checkFans();
+    },
+  },
+  screwdriver: {
+    kicker: 'the fans', title: 'Screwdriver',
+    text: () => '<p>Wedged in the intake blades. Gerrit\'s note: <i>never with your fingers in a spinning fan</i> — it is not spinning, so it is fine.</p>',
+    keys: () => state.fans.intake ? '' : '<kbd>E</kbd>pull it out',
+    act() {
+      if (state.fans.intake) return;
+      screwdriver.visible = false;
+      state.fans.intake = true;
+      state.items.push('screwdriver');
+      sfx.pop(); sfx.clack();
+      toast('The blades spring free. The screwdriver goes in your pocket.', 'good');
+      renderPad(); checkFans();
+    },
+  },
+  cable_atx: { kicker: 'cables', title: 'Cable end', text: () => `<p>The 24-pin. Fat, obvious, impossible to get wrong.</p>`, keys: () => state.psu.atx ? '' : '<kbd>E</kbd>pick it up', act() { take('atx'); } },
+  cable_eps: { kicker: 'cables', title: 'Cable end', text: () => `<p>An 8-pin. The moulded label says <b>EPS</b>.</p>`, keys: () => state.psu.cpu ? '' : '<kbd>E</kbd>pick it up', act() { take('eps'); } },
+  cable_pcie: { kicker: 'cables', title: 'Cable end', text: () => `<p>An 8-pin. The moulded label says <b>PCIe</b>. It looks exactly like the other one.</p>`, keys: () => state.psu.pcie ? '' : '<kbd>E</kbd>pick it up', act() { take('pcie'); } },
+  cable_sata: { kicker: 'cables', title: 'Cable end', text: () => `<p>A flat SATA power connector.</p>`, keys: () => state.psu.sata ? '' : '<kbd>E</kbd>pick it up', act() { take('sata'); } },
+});
+function take(k) {
+  if (state[`taken_${k}`]) { return; }
+  state.held = k;
+  sfx.pickup();
+  toast(`Holding the ${CABLE[k].name}.`);
+  renderTray();
+}
+
+register(drum, 'gpuDrum', 'the winch drum');
+
+// the PSU and the standing memory module are buildings, not scenery
+SOLID_S.push(S(PSU.x - PSU.w / 2, PSU.x + PSU.w / 2, .90, B2 + .062, PSU.z - PSU.d / 2, PSU.z + PSU.d / 2));
+SOLID_S.push(S(-2.114, -2.086, .90, B2 + .26, -2.476, -2.464));
+Object.assign(THINGS, {
+  gpuDrum: {
+    kicker: 'the hoist', title: 'Winch drum',
+    text: () => !state.gpu.unlocked
+      ? '<p>A hand winch, padlocked through its bracket. The drum will not turn.</p>'
+      : state.gpu.seated
+        ? '<p>Slack rope, one card lighter.</p>'
+        : `<p>Free to turn. Grab the drum and drag back: the card comes down on its rope.</p>
+           <p class="sub">${Math.round(state.gpu.drop * 100)}% down.</p>`,
+    keys: () => state.gpu.unlocked && !state.gpu.seated ? '<kbd>E</kbd>take hold · drag to lower' : '',
+    act() {
+      if (!state.gpu.unlocked) { sfx.buzz(); toast('Padlocked. Three digits.'); return; }
+      if (state.gpu.seated) return;
+      state.grab = { id: 'gpuDrum', p: state.gpu.drop * 420, need: 420, label: 'turn the drum, lower the card' };
+      sfx.ratchet(); renderTray();
+    },
+  },
+});
+
+/* --- per-frame animation ----------------------------------------------- */
+function slice2Tick(dt, t) {
+  const yC = state.gpu.seated ? GPU.seatY : GPU.hangY + (GPU.seatY - GPU.hangY) * state.gpu.drop;
+  gpuGroup.position.set(HOIST.x, yC, HOIST.z);
+  const topY = B2 + .95;
+  const ropeTo = yC + GPU.h / 2;
+  const h = Math.max(.02, topY - ropeTo);
+  gpuRope.scale.y = h;
+  gpuRope.position.set(HOIST.x, (topY + ropeTo) / 2, HOIST.z);
+  gpuRope.visible = !state.gpu.seated;
+  const spin = state.fans.spinning ? 1 : 0;
+  const w = t * 9 * spin;
+  if (spin) {
+    fanRear.blades.rotation.z = w; fanIn.blades.rotation.z = w; fanCpu.blades.rotation.z = w;
+  }
+  if (state.gpu.trying) { /* tray already drawn by renderTray */ }
+}
+
+/* ------------------------------------------------------------------- loop */
+const clock = new THREE.Clock();
+let hoverT = 0, humT = 0;
+drawLed(null);
+renderPad();
+
+function tick() {
+  const dt = Math.min(clock.getDelta(), .1);   // slow machines should not crawl
+  const t = clock.elapsedTime;
+
+  if (state.running && state.locked && state.phase !== 'shrinking') move(dt);
+  camera.rotation.set(pitch, yaw, 0);
+
+  // music chord every 3.6 s
+  musicTick();
+
+  // the generator is louder when you are near it
+  humT -= dt;
+  if (humT <= 0 && A.on) {
+    humT = .18;
+    if (state.gen.running) {
+      // inverse square, with no floor: the generator is loud in the yard and gone indoors
+      const d = Math.hypot(camera.position.x - GEN.x, camera.position.z - GEN.z);
+      setHum(.17 / (1 + d * d * 1.15));
+    }
+  }
+
+  // the debug display cycles every fault in turn
+  if (ledOn) {
+    state.codeT += dt;
+    if (state.codeT > 2) {
+      state.codeT = 0;
+      state.codeIndex = (state.codeIndex + 1) % Math.max(1, state.codes.length);
+      drawLed(state.codes.length ? state.codes[state.codeIndex] : '--');
+    }
+  }
+
+  // torch sway
+  if (state.torch) {
+    torchLight.target.position.set(Math.sin(t * .7) * .06, Math.sin(t * 1.1) * .05, -1);
+    torchLight.intensity = 24 + Math.sin(t * 9) * 1.2 + Math.sin(t * 23) * .6;
+  }
+  if (!state.torch) torchPin.material.emissiveIntensity = 1.2 + (Math.sin(t * 2.6) > .3 ? 2.4 : 0);
+  if (state.gen.running) {
+    shopLight.intensity = 46 + Math.sin(t * 17) * 1.6 + Math.sin(t * 41) * .8;
+    shopLight2.intensity = 34 + Math.sin(t * 13 + 2) * 1.2;
+    benchLamp.intensity = 9 + Math.sin(t * 19) * .5;
+    amLed.material.emissiveIntensity = 1.2 + Math.sin(t * 2.2) * .9;
+  }
+
+  // hover check
+  hoverT -= dt;
+  if (hoverT <= 0) {
+    hoverT = .07;
+    state.hovered = currentTarget();
+    if (state.hovered) {
+      crosshair.classList.add('hot');
+      crosshair.classList.toggle('grab', !!state.grab);
+      const th = THINGS[state.hovered.id];
+      const acts = th && th.keys ? th.keys() : '';
+      const actionable = /<kbd>E<\/kbd>/.test(acts);
+      promptEl.innerHTML = actionable ? `<kbd>E</kbd>${state.hovered.label}` : state.hovered.label;
+      promptEl.classList.toggle('read', !actionable);
+      promptEl.hidden = false;
+    } else {
+      crosshair.classList.remove('hot');
+      promptEl.hidden = true;
+    }
+    const id = state.hovered ? state.hovered.id : null;
+    if (id !== state.trayTarget) renderTray();
+  }
+  if (state.grab) crosshair.classList.add('grab'); else crosshair.classList.remove('grab');
+
+  if (state.running && state.phase !== 'shrinking') {
+    state.elapsed += dt;
+    const s = Math.floor(state.elapsed);
+    timerEl.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  slice2Tick(dt, t);
+  renderer.render(scene, camera);
+}
+renderer.setAnimationLoop(tick);
+
+/* ------------------------------------------------------------------ start */
+camera.position.set(0.25, 1.62, 2.6);
+yaw = 0.12; pitch = -.10;
+setTimeout(() => toast('Dark shop, dead meter, one tower on the bench.', ''), 500);
+setTimeout(() => toast('Something on the floor is reflecting your eye.', ''), 3200);
+
+/* -------------------------------------------------- test hook (?debug|?test) */
+if (new URLSearchParams(location.search).has('debug') || new URLSearchParams(location.search).has('test')) {
+  window.__doctor = {
+    state, THINGS, sfx, drawLed, use, currentTarget, genPull, pullLever, doShrink, startGenerator, giveHint,
+    interact, camera, scene, THREE, raycaster, ledCanvas, ledCtx, ledTexture, ledMat, led, A, audioInit,
+    setFeet(f) { feet = f; camera.position.y = f + P.eye; },
+    look(y, pi) { yaw = y; pitch = pi; camera.rotation.set(pitch, yaw, 0); },
+    aimAt(id, dist = 1.1, fy = null, at = null) {
+      const cands = interact.filter(o => o.userData.interact === id);
+      if (!cands.length) return null;
+      if (fy != null) feet = fy;
+      let out = null;
+      const approaches = at ? [[at[0], at[1]]] : [
+        [0, 1], [0, -1], [1, 0], [-1, 0],        // front, behind, right, left
+      ];
+      for (const g of cands) {
+        const bb = new THREE.Box3().setFromObject(g);
+        const mid = bb.getCenter(new THREE.Vector3());
+        for (const [ax, az] of approaches) {
+        const px = at ? at[0] : mid.x + ax * dist, pz = at ? at[1] : mid.z + az * dist;
+        camera.position.set(px, feet + P.eye, pz);
+        const c = bb.containsPoint(camera.position) ? mid
+          : bb.clampPoint(camera.position.clone(), new THREE.Vector3()).lerp(mid, .3);
+        const dx = c.x - px, dz = c.z - pz, dy = c.y - (feet + P.eye);
+        const flat = Math.hypot(dx, dz) || 1e-6;
+        yaw = Math.atan2(-dx, -dz);
+        pitch = Math.atan2(dy, flat);
+        camera.rotation.set(pitch, yaw, 0);
+        camera.updateMatrixWorld(true);
+        const hit = currentTarget();
+        if (hit) { out = hit.id; break; }
+        }
+        if (out) break;
+      }
+      state.hovered = out ? { id: out, label: THINGS[out] ? THINGS[out].title : out } : null;
+      renderTray();
+      return out;
+    },
+    aim(x, z, yawV = 0, pitchV = null, fy = null) {
+      if (fy != null) { feet = fy; }
+      camera.position.set(x, feet + P.eye, z);
+      yaw = yawV;
+      const tries = pitchV == null ? [0, -.1, -.2, -.3, -.45, -.7, -.95, -1.2, .1, .2, .35, .6] : [pitchV];
+      let hit = null;
+      for (const p of tries) {
+        pitch = p; camera.rotation.set(p, yaw, 0); camera.updateMatrixWorld(true);
+        hit = currentTarget(); if (hit) break;
+      }
+      state.hovered = hit; renderTray();
+      return hit ? hit.id : null;
+    },
+    get P() { return P; },
+  };
+}
+</script>
+</body>
+</html>

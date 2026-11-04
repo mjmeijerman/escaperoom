@@ -1,0 +1,1514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Founders' Chamber — 3D Escape Room</title>
+<style>
+  :root{
+    --parchment:#e8dcc0; --ink:#141010; --stone:#2a2723; --gold:#c9a55f; --crimson:#8f2c22;
+    --serif: "Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:#070605;color:var(--parchment);font-family:var(--serif);overflow:hidden;-webkit-font-smoothing:antialiased}
+  canvas#scene{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
+  .vignette{position:fixed;inset:0;pointer-events:none;z-index:2;
+    background:radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 42%, rgba(0,0,0,.58) 100%),
+               linear-gradient(180deg, rgba(0,0,0,.3), rgba(0,0,0,0) 22%, rgba(0,0,0,0) 78%, rgba(0,0,0,.4));}
+  kbd{font-family:var(--serif);font-size:.74em;border:1px solid rgba(232,220,192,.45);border-bottom-width:2px;
+      border-radius:4px;padding:.06em .38em;margin-right:.35em;color:#f3ead2;background:rgba(0,0,0,.35)}
+  [hidden]{display:none !important}
+
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;inset:0;z-index:5;pointer-events:none}
+  #crosshair{position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;
+    border:1px solid rgba(240,230,205,.55);background:rgba(0,0,0,.25);transition:transform .12s,background .12s,border-color .12s}
+  #crosshair.hot{background:var(--gold);border-color:#fff3cf;transform:scale(1.55);box-shadow:0 0 12px rgba(201,165,95,.85)}
+  #prompt{position:absolute;left:50%;top:calc(50% + 34px);transform:translateX(-50%);white-space:nowrap;
+    background:rgba(10,8,6,.72);border:1px solid rgba(232,220,192,.28);padding:.35em .75em;border-radius:3px;
+    font-size:.85rem;letter-spacing:.04em;backdrop-filter:blur(3px)}
+  .topbar{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:center;
+    padding:14px 20px;font-size:.8rem;letter-spacing:.16em;text-transform:uppercase;
+    background:linear-gradient(180deg,rgba(6,5,4,.74),rgba(6,5,4,0))}
+  .brand{display:flex;align-items:center;gap:.7em}
+  .seal{display:inline-grid;place-items:center;width:34px;height:34px;border:1px solid var(--crimson);
+    color:#e8c9a3;background:rgba(143,44,34,.24);font-size:.95rem;letter-spacing:0}
+  .timer{font-variant-numeric:tabular-nums;color:#cbbfa5;font-size:.85rem}
+  #notes{position:absolute;right:18px;top:74px;width:262px;padding:14px 15px 12px;
+    background:linear-gradient(180deg,rgba(20,17,14,.88),rgba(12,10,8,.92));border:1px solid rgba(201,165,95,.28);
+    box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  #notes h2{margin:0 0 10px;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:#a8977a;font-weight:500;
+    display:flex;justify-content:space-between;align-items:baseline}
+  #notes h2 .sig{font-size:1rem;color:var(--gold);letter-spacing:0}
+  #lockList{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+  #lockList li{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;
+    padding:6px 0;border-bottom:1px solid rgba(232,220,192,.1)}
+  #lockList li:last-child{border-bottom:0}
+  #lockList .k{color:var(--gold);font-size:.95rem;min-width:1.1em;letter-spacing:.06em}
+  #lockList .n{font-size:.7rem;color:#b7a98d;letter-spacing:.03em;line-height:1.25}
+  #lockList b{font-size:1.15rem;color:#6a5f4d;font-variant-numeric:tabular-nums;min-width:1.1em;text-align:right}
+  #lockList li.done b{color:#f0d9a6;text-shadow:0 0 14px rgba(201,165,95,.6)}
+  #lockList li.done .k{color:#e6c477}
+  .objective{margin:10px 0 0;font-size:.68rem;line-height:1.45;color:#8d8069;letter-spacing:.03em}
+  .hintbar{position:absolute;left:18px;bottom:14px;font-size:.68rem;color:#8b7e68;letter-spacing:.06em}
+  .hintbar kbd{font-size:.7em}
+
+  /* ---------- wand and tray: HUD furniture, nothing covers the room ---------- */
+  #tray{position:fixed;left:18px;bottom:62px;z-index:6;width:min(312px,30vw);padding:12px 14px;
+    background:linear-gradient(180deg,rgba(18,15,12,.87),rgba(10,8,7,.91));border:1px solid rgba(201,165,95,.3);
+    box-shadow:0 16px 44px rgba(0,0,0,.55);font-size:.82rem;line-height:1.5}
+  #tray .head{display:flex;align-items:baseline;gap:.5em;margin-bottom:.35em;flex-wrap:wrap}
+  #tray .head b{font-size:.95rem;font-weight:500;letter-spacing:.03em;color:#f2e5c8}
+  #tray .head span{font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:#8b7e68}
+  #tray p{margin:.4em 0;color:#cfc3aa;font-size:.82rem}
+  #tray p b{color:#f2e5c8}
+  #tray .keys{margin-top:.55em;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:#7d715c}
+  #tray .recorded{color:#8fc79c;font-size:.82rem;margin-top:.45em}
+  #tray .keyrow{display:grid;grid-template-columns:auto 1fr;gap:.15em .8em;font-size:.78rem;margin-top:.55em;color:#cfc3aa}
+  #tray .keyrow span:nth-child(odd){color:#b08c4e;text-align:right}
+  #tray .mirrored{display:inline-block;transform:scaleX(-1);font-size:1.5rem;letter-spacing:.1em;color:#e8dcc0}
+  #notes h2 .sig{font-size:1rem;color:var(--gold);letter-spacing:0}
+  #tray .dial{display:flex;align-items:center;gap:9px;margin-top:10px}
+  #tray .dial .val{font-size:1.6rem;min-width:1.4em;text-align:center;border-bottom:1px solid rgba(232,220,192,.3);
+    font-variant-numeric:tabular-nums;color:#f2e5c8}
+  #tray .wheels{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  #tray .wheel{display:grid;justify-items:center;gap:3px;padding:3px 5px;border:1px solid transparent}
+  #tray .wheel.sel{border-color:rgba(201,165,95,.55);background:rgba(201,165,95,.08)}
+  #tray .wheel .k{font-size:.58rem;color:var(--gold);letter-spacing:.06em;text-align:center;max-width:5.4em}
+  #tray .wheel b{font-size:1.3rem;font-variant-numeric:tabular-nums}
+  #tray button{font-size:.78rem;padding:.32em .62em;border:1px solid #6b5333;color:#e6dcc4;background:transparent}
+  #tray button:hover{background:rgba(232,220,192,.09)}
+  #tray .dial button,#tray .wheels button{width:32px;padding:.18em 0;font-size:.78rem;line-height:1}
+  #tray button.primary{background:var(--crimson);border-color:var(--crimson);color:#fff0e2}
+
+  #wand{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:7;
+    width:min(410px,39vw);padding:10px 12px 9px;
+    background:linear-gradient(180deg,rgba(16,13,10,.9),rgba(8,7,6,.94));
+    border:1px solid rgba(201,165,95,.34);box-shadow:0 18px 50px rgba(0,0,0,.6)}
+  #wand .whead{display:flex;justify-content:space-between;align-items:baseline;gap:.6em;font-size:.6rem;
+    letter-spacing:.2em;text-transform:uppercase;color:#8b7e68;margin-bottom:6px}
+  #wand .whead b{color:#e6c477;letter-spacing:.08em;font-weight:500;white-space:nowrap}
+  canvas#tracepad{display:block;width:100%;height:150px;border:1px solid rgba(232,220,192,.16);
+    touch-action:none;cursor:crosshair}
+  #sigils{display:flex;gap:6px;margin-top:8px}
+  #sigils button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:.4em .2em;
+    font-size:1.05rem;line-height:1;color:#b7a98d;background:transparent;border:1px solid rgba(232,220,192,.16);
+    cursor:pointer}
+  #sigils button.on{color:#f6e3b8;border-color:rgba(201,165,95,.7);background:rgba(201,165,95,.12)}
+  #sigils button em{font-style:normal;font-size:.55rem;letter-spacing:.1em;color:#7d715c}
+
+  #banner{position:fixed;left:50%;top:60px;transform:translateX(-50%);z-index:8;text-align:center;
+    padding:10px 22px;background:rgba(12,10,8,.84);border:1px solid rgba(201,165,95,.5);
+    color:#f6e3b8;letter-spacing:.14em;text-transform:uppercase;font-size:.86rem}
+  #banner small{display:block;margin-top:.45em;font-size:.62rem;letter-spacing:.14em;color:#8b7e68;text-transform:none}
+
+  /* while a charm is being traced, lift the tray clear of the wand strip */
+  body.casting #tray{bottom:214px}
+
+  @media (max-width:820px){
+    #tray{width:min(300px,44vw);bottom:56px}
+    #wand{width:min(340px,88vw)}
+    canvas#tracepad{height:126px}
+  }
+
+  .toasts{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);z-index:40;display:grid;gap:8px;
+    justify-items:center;pointer-events:none;width:min(560px,92vw)}
+  .toast{padding:.55em 1.05em;background:rgba(14,11,8,.92);border:1px solid rgba(201,165,95,.42);color:#ecdfc2;
+    font-size:.83rem;letter-spacing:.04em;animation:tin .22s ease-out;box-shadow:0 8px 30px rgba(0,0,0,.6);text-align:center}
+  .toast.bad{border-color:rgba(180,55,42,.7);color:#f0c4bb}
+  .toast.good{border-color:rgba(201,165,95,.8);color:#f6e3b8}
+  @keyframes tin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  #unlockHint{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:6;font-size:.76rem;
+    letter-spacing:.12em;text-transform:uppercase;color:#b7a98d;background:rgba(10,8,6,.6);
+    border:1px solid rgba(232,220,192,.18);padding:.5em .9em;pointer-events:none}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+
+<div id="hud">
+  <div id="crosshair" aria-hidden="true"></div>
+  <div id="prompt" hidden><kbd>E</kbd><span id="promptText"></span></div>
+  <div class="topbar">
+    <div class="brand"><span class="seal">✦</span><span>The Founders' Chamber</span></div>
+    <div class="timer" id="timer">00:00</div>
+  </div>
+  <aside id="notes">
+    <h2>Charms found <span class="sig">✦</span></h2>
+    <ul id="lockList"></ul>
+    <p class="objective" id="objective">Four charms, four digits. The door will not open until all four are known.</p>
+  </aside>
+  <div class="hintbar"><kbd>Ctrl</kbd>cast · <kbd>E</kbd>act · <kbd>H</kbd>hint · <kbd>Esc</kbd>release mouse</div>
+</div>
+
+<div id="unlockHint">Click to look around</div>
+
+<aside id="tray" hidden aria-live="polite">
+  <div class="head"><span id="trayKicker"></span><b id="trayTitle"></b></div>
+  <div id="trayBody"></div>
+  <div class="keys" id="trayKeys"></div>
+</aside>
+
+<div id="wand" hidden>
+  <div class="whead"><span>Hold <kbd>Ctrl</kbd> · trace the movement</span><b id="wandScore">—</b></div>
+  <canvas id="tracepad"></canvas>
+  <div id="sigils"></div>
+</div>
+
+<div id="banner" hidden></div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script type="module">
+import * as THREE from './vendor/three.module.min.js';
+
+/* ------------------------------------------------------------------ setup */
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const canvas = document.getElementById('scene');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.22;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080706);
+scene.fog = new THREE.FogExp2(0x14100c, 0.021);
+
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 60);
+camera.rotation.order = 'YXZ';
+camera.position.set(0, 1.62, 3.0);
+
+const W = 10, D = 9, H = 3.6, HALF_W = W / 2, HALF_D = D / 2;
+
+/* --------------------------------------------------------------- textures */
+function tex(w, h, draw, opt = {}) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  draw(g, w, h);
+  const t = new THREE.CanvasTexture(c);
+  if (opt.srgb !== false) t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(opt.rx || 1, opt.ry || 1);
+  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return t;
+}
+const rnd = (a, b) => a + Math.random() * (b - a);
+function grain(g, w, h, alpha = 0.06) {
+  for (let i = 0; i < (w * h) / 90; i++) {
+    g.fillStyle = `rgba(${Math.random() < .5 ? 0 : 255},${Math.random() < .5 ? 0 : 255},255,${Math.random() * alpha})`;
+    g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1 + Math.random() * 2);
+  }
+}
+
+/* castle stone: courses of irregular blocks */
+const stoneTex = tex(1024, 1024, (g, w, h) => {
+  g.fillStyle = '#3a352f'; g.fillRect(0, 0, w, h);
+  const rows = 8, bh = h / rows;
+  for (let r = 0; r < rows; r++) {
+    let x = r % 2 ? -rnd(30, 90) : 0;
+    while (x < w) {
+      const bw = rnd(110, 210);
+      const tone = rnd(-16, 18);
+      g.fillStyle = `rgb(${62 + tone},${57 + tone},${50 + tone})`;
+      g.fillRect(x + 3, r * bh + 3, bw - 6, bh - 6);
+      g.fillStyle = `rgba(255,250,235,${rnd(.03, .09)})`;
+      g.fillRect(x + 3, r * bh + 3, bw - 6, 2);
+      g.fillStyle = `rgba(0,0,0,${rnd(.16, .3)})`;
+      g.fillRect(x + 3, r * bh + bh - 6, bw - 6, 3);
+      x += bw;
+    }
+  }
+  for (let i = 0; i < 2600; i++) {
+    g.fillStyle = `rgba(${20 + Math.random() * 160},${20 + Math.random() * 150},${20 + Math.random() * 140},${Math.random() * .07})`;
+    g.fillRect(Math.random() * w, Math.random() * h, rnd(1, 6), rnd(1, 6));
+  }
+  grain(g, w, h, .05);
+}, { rx: 2, ry: 1 });
+
+/* flagstone floor */
+const flagTex = tex(1024, 1024, (g, w, h) => {
+  g.fillStyle = '#2b2724'; g.fillRect(0, 0, w, h);
+  const cells = 4, cw = w / cells, ch = h / cells;
+  for (let r = 0; r < cells; r++) for (let c = 0; c < cells; c++) {
+    const x = c * cw, y = r * ch, tone = rnd(-14, 14);
+    g.fillStyle = `rgb(${54 + tone},${50 + tone},${46 + tone})`;
+    g.fillRect(x + 5, y + 5, cw - 10, ch - 10);
+    for (let i = 0; i < 90; i++) {
+      g.fillStyle = `rgba(${Math.random() < .5 ? 20 : 120},${Math.random() < .5 ? 18 : 110},${Math.random() < .5 ? 16 : 100},${Math.random() * .09})`;
+      g.fillRect(x + Math.random() * cw, y + Math.random() * ch, rnd(2, 12), rnd(1, 5));
+    }
+    g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 3;
+    g.strokeRect(x + 4, y + 4, cw - 8, ch - 8);
+  }
+  grain(g, w, h, .05);
+}, { rx: 3, ry: 3 });
+
+const woodTex = tex(512, 512, (g, S) => {
+  g.fillStyle = '#3a2618'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 260; i++) {
+    const y = Math.random() * S;
+    g.strokeStyle = `rgba(${20 + Math.random() * 60},${14 + Math.random() * 40},${8 + Math.random() * 26},${.15 + Math.random() * .35})`;
+    g.lineWidth = rnd(.5, 2.4);
+    g.beginPath();
+    for (let x = 0; x <= S; x += 16) g.lineTo(x, y + Math.sin((x + i * 7) * .02) * 3);
+    g.stroke();
+  }
+  grain(g, S, S, .07);
+});
+
+const shadowTex = tex(256, 256, (g, S) => {
+  const grd = g.createRadialGradient(S / 2, S / 2, 4, S / 2, S / 2, S / 2);
+  grd.addColorStop(0, 'rgba(0,0,0,.62)');
+  grd.addColorStop(.55, 'rgba(0,0,0,.28)');
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, S, S);
+});
+
+/* the founders' tapestry: crest, motto, and the order riddle */
+const tapestryTex = tex(512, 900, (g, w, h) => {
+  g.fillStyle = '#3d2418'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 2200; i++) {
+    g.fillStyle = `rgba(${90 + Math.random() * 90},${50 + Math.random() * 60},${30 + Math.random() * 40},${Math.random() * .18})`;
+    g.fillRect(Math.random() * w, Math.random() * h, rnd(1, 4), rnd(2, 6));
+  }
+  g.strokeStyle = 'rgba(201,165,95,.75)'; g.lineWidth = 8; g.strokeRect(22, 22, w - 44, h - 44);
+  g.strokeStyle = 'rgba(201,165,95,.35)'; g.lineWidth = 2; g.strokeRect(40, 40, w - 80, h - 80);
+  // four staff-and-torch sigils for the founders
+  const cx = w / 2;
+  g.strokeStyle = 'rgba(226,206,160,.82)'; g.lineWidth = 5;
+  [[-120, 0], [-40, 1], [40, 2], [120, 3]].forEach(([dx, i]) => {
+    const x = cx + dx, y = 210;
+    g.beginPath(); g.arc(x, y, 34, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.moveTo(x, y + 34); g.lineTo(x, y + 84); g.stroke();
+    g.beginPath(); g.moveTo(x - 22, y + 84); g.lineTo(x + 22, y + 84); g.stroke();
+    if (i % 2) { g.beginPath(); g.moveTo(x - 18, y); g.lineTo(x + 18, y); g.stroke(); }
+  });
+  g.fillStyle = 'rgba(232,220,192,.9)';
+  g.font = '600 30px "Palatino Linotype",Palatino,Georgia,serif';
+  g.textAlign = 'center';
+  g.fillText('THE DOOR ANSWERS IN ORDER', cx, 400);
+  g.font = 'italic 27px "Palatino Linotype",Palatino,Georgia,serif';
+  g.fillStyle = 'rgba(226,206,160,.85)';
+  ['first the lock,', 'then the stone,', 'then the light,', 'then the feather.'].forEach((line, i) => {
+    g.fillText(line, cx, 470 + i * 56);
+  });
+  g.font = '600 22px "Palatino Linotype",Palatino,Georgia,serif';
+  g.fillStyle = 'rgba(180,140,80,.8)';
+  g.fillText('FOUR CHARMS · FOUR WHEELS', cx, 800);
+});
+
+/* the mirror in the niche: a numeral cut as its own reflection */
+const mirrorTex = tex(512, 640, (g, w, h) => {
+  const grd = g.createLinearGradient(0, 0, w, h);
+  grd.addColorStop(0, '#c8d3d8'); grd.addColorStop(.4, '#8e9ba3');
+  grd.addColorStop(.62, '#c3ced4'); grd.addColorStop(1, '#6f7c85');
+  g.fillStyle = grd; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 16; i++) {
+    g.strokeStyle = `rgba(255,255,255,${rnd(.02, .07)})`; g.lineWidth = rnd(2, 20);
+    g.beginPath(); g.moveTo(rnd(0, w), 0); g.lineTo(rnd(0, w), h); g.stroke();
+  }
+  g.save();
+  g.translate(w / 2, h / 2 + 40);
+  g.scale(-1, 1);                       // the numeral is cut mirrored
+  g.fillStyle = 'rgba(40,44,48,.85)';
+  g.font = '700 300px "Palatino Linotype",Palatino,Georgia,serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('5', 0, 0);
+  g.restore();
+  g.strokeStyle = 'rgba(30,26,22,.75)'; g.lineWidth = 14; g.strokeRect(7, 7, w - 14, h - 14);
+});
+
+/* the bronze tablet under the dome: the banner riddle */
+const tabletTex = tex(700, 460, (g, w, h) => {
+  const grd = g.createLinearGradient(0, 0, w, h);
+  grd.addColorStop(0, '#b08b4e'); grd.addColorStop(.5, '#8d6d38'); grd.addColorStop(1, '#a58247');
+  g.fillStyle = grd; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 900; i++) {
+    g.fillStyle = `rgba(${Math.random() < .5 ? 60 : 240},${Math.random() < .5 ? 50 : 220},${Math.random() < .5 ? 30 : 180},${Math.random() * .06})`;
+    g.fillRect(Math.random() * w, Math.random() * h, rnd(2, 10), rnd(1, 5));
+  }
+  g.fillStyle = 'rgba(40,26,12,.86)';
+  g.textAlign = 'center';
+  g.font = '600 34px "Palatino Linotype",Palatino,Georgia,serif';
+  g.fillText('THE FOUNDERS’ BANNERS', w / 2, 90);
+  g.font = '26px "Palatino Linotype",Palatino,Georgia,serif';
+  ['the lion keeps three', 'the serpent keeps two', 'the badger keeps four', 'the eagle keeps none']
+    .forEach((l, i) => g.fillText(l, w / 2, 170 + i * 48));
+  g.font = 'italic 24px "Palatino Linotype",Palatino,Georgia,serif';
+  g.fillText('how many banners hang in this chamber?', w / 2, h - 60);
+  g.strokeStyle = 'rgba(60,40,20,.6)'; g.lineWidth = 6; g.strokeRect(10, 10, w - 20, h - 20);
+});
+
+/* the plaque hidden behind the loose block: the letters riddle */
+const plaqueTex = tex(520, 420, (g, w, h) => {
+  g.fillStyle = '#6d675c'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 900; i++) {
+    g.fillStyle = `rgba(${30 + Math.random() * 120},${28 + Math.random() * 110},${24 + Math.random() * 100},${Math.random() * .1})`;
+    g.fillRect(Math.random() * w, Math.random() * h, rnd(2, 8), rnd(2, 6));
+  }
+  g.fillStyle = 'rgba(28,22,16,.88)';
+  g.textAlign = 'center';
+  g.font = '600 26px "Palatino Linotype",Palatino,Georgia,serif';
+  g.fillText('THE CHARM', w / 2, 130);
+  g.fillText('THAT BROKE ME', w / 2, 168);
+  g.fillText('IS MY NUMBER', w / 2, 206);
+  g.font = 'italic 24px "Palatino Linotype",Palatino,Georgia,serif';
+  g.fillText('count its letters', w / 2, 276);
+  g.strokeStyle = 'rgba(30,24,18,.45)'; g.lineWidth = 5; g.strokeRect(9, 9, w - 18, h - 18);
+});
+
+/* a cracked stone slab, used on the west arch */
+const crackedTex = tex(512, 512, (g, S) => {
+  g.fillStyle = '#4a443c'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 1400; i++) {
+    g.fillStyle = `rgba(${30 + Math.random() * 150},${28 + Math.random() * 140},${24 + Math.random() * 130},${Math.random() * .1})`;
+    g.fillRect(Math.random() * S, Math.random() * S, rnd(2, 9), rnd(2, 9));
+  }
+  g.strokeStyle = 'rgba(0,0,0,.55)';
+  for (let i = 0; i < 3; i++) {
+    g.lineWidth = rnd(2, 5);
+    g.beginPath();
+    let x = rnd(60, S - 60), y = rnd(20, 120);
+    g.moveTo(x, y);
+    for (let k = 0; k < 7; k++) { x += rnd(-42, 42); y += rnd(40, 70); g.lineTo(x, y); }
+    g.stroke();
+  }
+  g.strokeStyle = 'rgba(255,250,235,.1)'; g.lineWidth = 2;
+  g.strokeRect(6, 6, S - 12, S - 12);
+});
+
+/* -------------------------------------------------------------- materials */
+const M = {
+  stone: new THREE.MeshStandardMaterial({ map: stoneTex, roughness: .96, metalness: .02 }),
+  stoneDark: new THREE.MeshStandardMaterial({ color: 0x2b2723, roughness: .95 }),
+  flag: new THREE.MeshStandardMaterial({ map: flagTex, roughness: .92 }),
+  wood: new THREE.MeshStandardMaterial({ map: woodTex, roughness: .84, metalness: .03 }),
+  woodDark: new THREE.MeshStandardMaterial({ color: 0x261914, roughness: .85 }),
+  brass: new THREE.MeshStandardMaterial({ color: 0xb08b3e, roughness: .34, metalness: .78 }),
+  bronze: new THREE.MeshStandardMaterial({ color: 0x8d6d38, roughness: .45, metalness: .6 }),
+  iron: new THREE.MeshStandardMaterial({ color: 0x241f1c, roughness: .55, metalness: .68 }),
+  paper: new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: .95 }),
+  crimson: new THREE.MeshStandardMaterial({ color: 0x7c231b, roughness: .78 }),
+  glass: new THREE.MeshPhysicalMaterial({ color: 0xbfd6d8, roughness: .08, metalness: 0, transparent: true, opacity: .22, side: THREE.DoubleSide }),
+  glassDome: new THREE.MeshPhysicalMaterial({ color: 0xcfe0e2, roughness: .05, metalness: 0, transparent: true, opacity: .17, side: THREE.DoubleSide }),
+  flame: new THREE.MeshStandardMaterial({ color: 0xffce7a, emissive: 0xff9d3c, emissiveIntensity: 2.2, roughness: .8 }),
+};
+
+function box(w, h, d, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  (parent || scene).add(m);
+  return m;
+}
+function plane(w, h, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  m.position.set(x, y, z);
+  (parent || scene).add(m);
+  return m;
+}
+function cyl(rt, rb, h, seg, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat);
+  m.position.set(x, y, z);
+  (parent || scene).add(m);
+  return m;
+}
+function sphere(r, mat, x, y, z, parent, seg = 16) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg / 2)), mat);
+  m.position.set(x, y, z);
+  (parent || scene).add(m);
+  return m;
+}
+function contactShadow(x, z, size = 1.4, opacity = .5) {
+  const m = plane(size, size, new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity, depthWrite: false }), x, 0.012, z);
+  m.rotation.x = -Math.PI / 2;
+  return m;
+}
+
+/* ------------------------------------------------------------------ room */
+const floor = plane(W, D, M.flag, 0, 0, 0);
+floor.rotation.x = -Math.PI / 2;
+
+const ceiling = plane(W, D, M.stoneDark, 0, H, 0);
+ceiling.rotation.x = Math.PI / 2;
+
+// vaulted ribs and beams
+for (let i = -1; i <= 1; i++) box(W, .26, .3, M.stoneDark, 0, H - .13, i * 2.7);
+for (let i = -1; i <= 1; i += 2) box(.34, H, .34, M.stoneDark, i * 3.1, H / 2, 2.7);
+
+// walls: south, east, west solid; north has the door
+function wall(width, px, pz, ry, doorway) {
+  const g = new THREE.Group();
+  g.position.set(px, 0, pz);
+  g.rotation.y = ry;
+  scene.add(g);
+  if (doorway) {
+    const gap = 1.5;
+    box((width - gap) / 2, H, .3, M.stone, -(width + gap) / 4, H / 2, 0, g);
+    box((width - gap) / 2, H, .3, M.stone, (width + gap) / 4, H / 2, 0, g);
+    box(gap, H - 2.5, .3, M.stone, 0, 2.5 + (H - 2.5) / 2, 0, g);
+  } else {
+    box(width, H, .3, M.stone, 0, H / 2, 0, g);
+  }
+  box(width, .34, .42, M.stoneDark, 0, .17, 0, g);
+  box(width, .24, .38, M.stoneDark, 0, H - .12, 0, g);
+  return g;
+}
+wall(W, 0, HALF_D, Math.PI, false);        // south (+z), behind spawn
+wall(D, HALF_W, 0, -Math.PI / 2, false);   // east (+x)
+wall(D, -HALF_W, 0, Math.PI / 2, false);   // west (-x)
+wall(W, 0, -HALF_D, 0, true);              // north (-z), the door
+
+// corner pillars
+[[-HALF_W, -HALF_D], [HALF_W, -HALF_D], [-HALF_W, HALF_D], [HALF_W, HALF_D]].forEach(([x, z]) =>
+  box(.4, H, .4, M.stoneDark, x, H / 2, z));
+
+scene.add(new THREE.HemisphereLight(0xa8bcd8, 0x2c2015, .62));
+const moon = new THREE.DirectionalLight(0x9fb6da, .3);
+moon.position.set(-7, 6, 5);
+scene.add(moon);
+
+/* --------------------------------------------------------------- braziers */
+const lanterns = [];
+function brazier(x, z, phase) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  scene.add(g);
+  cyl(.26, .34, .1, 12, M.iron, 0, .05, 0, g);
+  cyl(.07, .09, .9, 8, M.iron, 0, .5, 0, g);
+  cyl(.42, .22, .34, 12, M.iron, 0, 1.06, 0, g);
+  const coal = sphere(.3, new THREE.MeshStandardMaterial({ color: 0x3a1206, emissive: 0xff5a12, emissiveIntensity: 1.5, roughness: .9 }), 0, 1.13, 0, g, 12);
+  coal.scale.y = .35;
+  const flameA = sphere(.15, M.flame, 0, 1.3, 0, g, 10);
+  flameA.scale.set(1, 1.7, 1);
+  const flameB = sphere(.09, M.flame, .05, 1.42, .04, g, 8);
+  flameB.scale.set(1, 2.1, 1);
+  contactShadow(x, z, 1.5, .5);
+  const light = new THREE.PointLight(0xff9a44, 10.5, 11, 2);
+  light.position.set(0, 1.35, 0);
+  g.add(light);
+  lanterns.push({ g: flameA, light, base: 10.5, phase, y: 1.3, child: flameB });
+  return g;
+}
+brazier(-3.55, -3.3, 0.4);
+brazier(3.55, -3.3, 2.1);
+brazier(-3.6, 3.1, 4.2);
+brazier(3.6, 3.1, 5.6);
+
+/* torches either side of the door: the goal should read from across the room */
+function sconce(x, z) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  scene.add(g);
+  box(.16, .5, .16, M.iron, 0, 2.05, 0, g);
+  cyl(.1, .05, .22, 8, M.iron, 0, 2.36, 0, g);
+  const tip = sphere(.1, M.flame, 0, 2.56, 0, g, 10);
+  tip.scale.set(1, 1.9, 1);
+  const l = new THREE.PointLight(0xff9d52, 6.5, 8, 2);
+  l.position.set(0, 2.5, .1);
+  g.add(l);
+  lanterns.push({ g: tip, light: l, base: 6.5, phase: Math.random() * 6.28, y: 2.56 });
+  return g;
+}
+sconce(-1.55, -HALF_D + .34);
+sconce(1.55, -HALF_D + .34);
+
+/* ------------------------------------------------------------- interactivity */
+const interactList = [];
+function register(group, id, label) {
+  group.traverse(o => { if (o.isMesh) o.userData.interact = id; });
+  interactList.push(group);
+  group.userData.interact = id;
+  group.userData.label = label;
+  return group;
+}
+
+/* ------------------------------------------------------------------ charms */
+const CHARMS = {
+  alohomora:  { name: 'Alohomora',          shape: 'loop',  glyph: '◉',
+    hint: 'A closed loop, drawn in one turn — a key turning in its ward.' },
+  flipendo:   { name: 'Flipendo',           shape: 'zag',   glyph: '⚡',
+    hint: 'A zigzag, three strokes — the knockback jest.' },
+  lumos:      { name: 'Lumos',              shape: 'rise',  glyph: '☼',
+    hint: 'One clean stroke upward — light rising from the wand.' },
+  wingardium: { name: 'Wingardium Leviosa', shape: 'swish', glyph: '❧',
+    hint: 'A swish to the right, then a flick up — the feather.' },
+};
+
+/* gesture templates, in canvas coordinates (-1..1, y down) */
+function resample(points, n = 32) {
+  const cum = [0];
+  for (let i = 1; i < points.length; i++) {
+    cum.push(cum[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]));
+  }
+  const total = cum[cum.length - 1];
+  if (!total) return new Array(n).fill(points[0]);
+  const out = [];
+  let j = 1;
+  for (let k = 0; k < n; k++) {
+    const target = (total * k) / (n - 1);
+    while (j < cum.length - 1 && cum[j] < target) j++;
+    const i0 = j - 1;
+    const segLen = (cum[j] - cum[i0]) || 1;
+    const t = (target - cum[i0]) / segLen;
+    out.push([
+      points[i0][0] + (points[j][0] - points[i0][0]) * t,
+      points[i0][1] + (points[j][1] - points[i0][1]) * t,
+    ]);
+  }
+  return out;
+}
+
+const SHAPES = {
+  loop: (() => {
+    const p = [];
+    for (let i = 0; i <= 48; i++) {
+      const a = -Math.PI / 2 + (i / 48) * Math.PI * 2;
+      p.push([Math.cos(a) * .85, Math.sin(a) * .85]);
+    }
+    return { points: resample(p), closed: true };
+  })(),
+  zag: (() => {
+    const p = [[-.85, -.75], [.85, -.75], [-.85, .75], [.85, .75]];
+    const dense = [];
+    for (let i = 1; i < p.length; i++) {
+      for (let k = 0; k < 12; k++) {
+        const t = k / 12;
+        dense.push([p[i - 1][0] + (p[i][0] - p[i - 1][0]) * t, p[i - 1][1] + (p[i][1] - p[i - 1][1]) * t]);
+      }
+    }
+    dense.push(p[p.length - 1]);
+    return { points: resample(dense), closed: false };
+  })(),
+  rise: (() => {
+    const p = [[0, .92], [.04, .3], [-.02, -.25], [0, -.92]];
+    return { points: resample(p), closed: false };
+  })(),
+  swish: (() => {
+    const p = [];
+    for (let i = 0; i <= 30; i++) {
+      const t = i / 30;
+      p.push([-.92 + t * 1.4, Math.sin(t * Math.PI * 2) * .18]);
+    }
+    p.push([.62, -.2], [.9, -.9]);
+    return { points: resample(p), closed: false };
+  })(),
+};
+
+function normalizeShape(raw) {
+  const n = raw.length;
+  let cx = 0, cy = 0;
+  for (const [x, y] of raw) { cx += x; cy += y; }
+  cx /= n; cy /= n;
+  let rms = 0;
+  for (const [x, y] of raw) rms += (x - cx) ** 2 + (y - cy) ** 2;
+  rms = Math.sqrt(rms / n) || 1;
+  return raw.map(([x, y]) => [(x - cx) / rms, (y - cy) / rms]);
+}
+
+/* 1 = perfect match. Closed shapes are compared at every cyclic offset and both directions. */
+function matchScore(templateKey, drawn) {
+  const tpl = SHAPES[templateKey];
+  if (!tpl) return 0;
+  const a = normalizeShape(resample(drawn, 32));
+  const b = normalizeShape(tpl.points);
+  const costOf = (points, reversed) => {
+    const seq = reversed ? points.slice().reverse() : points;
+    let best = Infinity;
+    const shifts = tpl.closed ? 32 : 1;
+    for (let s = 0; s < shifts; s++) {
+      let sum = 0;
+      for (let i = 0; i < 32; i++) {
+        const p = a[i], q = seq[(i + s) % 32];
+        sum += Math.hypot(p[0] - q[0], p[1] - q[1]);
+      }
+      best = Math.min(best, sum / 32);
+    }
+    return best;
+  };
+  let cost = costOf(b, false);
+  if (tpl.closed) cost = Math.min(cost, costOf(b, true));
+  return clamp(1 - cost / 0.62, 0, 1);
+}
+const PASS = 0.66;   // a hand-drawn charm scores 0.7+; a wrong shape scores 0
+
+/* ---------------------------------------------------------------- puzzles */
+const CODE_ORDER = ['alohomora', 'flipendo', 'lumos', 'wingardium'];
+const CODE = [2, 8, 5, 9];
+const DIGIT_OF = { cabinet: 2, stone: 8, niche: 5, dome: 9 };
+
+const PUZZLES = {
+  cabinet: {
+    charm: 'alohomora', glyph: '◉',
+    kicker: 'East wall · glass cabinet',
+    title: 'The sealed cabinet',
+    sealed: `A tall cabinet of dark wood, its doors shut behind two panes of old glass.
+      A brass lock the size of a thumb sits between them, and the lock is filled with lead — nothing was ever
+      meant to turn here. A lock like this wants a charm, not a key.`,
+    body: `The doors stand open. Inside, on the middle shelf, a brass balance.
+      The left pan holds <b>nine</b> runestones, the right pan <b>five</b>.
+      A card wedged under the beam reads: <i>“move them one at a time, a stone to the other pan,
+      until the beam hangs level.”</i>`,
+    question: 'How many stones must move before the beam hangs level?',
+    hint: 'Nine against five. Take the difference, then halve it: moving one stone changes both pans.',
+    answer: 2,
+    done: 'Two stones — the beam swings flat, and the cabinet answers with a chime. 2.',
+  },
+  stone: {
+    charm: 'flipendo', glyph: '⚡',
+    kicker: 'West wall · a cracked arch',
+    title: 'The loose stone',
+    sealed: `The old arch is filled in with a slab of stone, and one block near the top sits proud of the rest,
+      cracked all round. Too heavy for hands. A charm that knocks things back would shift it.`,
+    body: `The block crashes down and breaks. Behind it, in a hollow the size of a book, a chiselled plaque:<br>
+      <i>“THE CHARM THAT BROKE ME IS MY NUMBER. COUNT ITS LETTERS.”</i><br>
+      The hollow smells of old soot. Someone sealed this with the number in mind.`,
+    question: 'FLIPENDO — how many letters does the charm that broke the stone have?',
+    hint: 'F-L-I-P-E-N-D-O. Count them out on your fingers.',
+    answer: 8,
+    done: 'Eight letters — the hollow seems to warm under your hand. 8.',
+  },
+  niche: {
+    charm: 'lumos', glyph: '☼',
+    kicker: 'South wall · a blind niche',
+    title: 'The dark niche',
+    sealed: `An arched niche in the south wall, no more than two hands deep, and black as a pocket.
+      Something in there catches a little light but gives none back. You cannot see what it is —
+      not until you make some light.`,
+    body: `Wandlight spills into the niche and finds a mirror set flat against the back, its silver gone cloudy —
+      and a numeral cut deep into the glass, cut the way a mirror cuts it: <b>backwards</b>.
+      <div style="margin:14px 0;text-align:center;font-size:1.1rem">
+        <span class="mirrored">5</span>
+      </div>
+      Held to the light, the cut reads as it was written.`,
+    question: 'What digit is cut into the mirror?',
+    hint: 'Read the cut shape, not the reflection. Turn your head if it helps — the numeral is a single stroke group.',
+    answer: 5,
+    done: 'Five. The mirror keeps the number and gives it back. 5.',
+  },
+  dome: {
+    charm: 'wingardium', glyph: '❧',
+    kicker: 'Northeast · a glass cloche',
+    title: 'Under the dome',
+    sealed: `A stone pedestal carries a glass cloche the size of a bell jar, sealed to the stone with wax.
+      Under the glass there is something bronze. The cloche is far too smooth to grip — but it weighs
+      almost nothing — far less than glass should.`,
+    body: `The cloche lifts, sways, and settles on the flagstones. Under it: a bronze tablet, cast in relief.
+      <div class="keyrow" style="grid-template-columns:auto 1fr;margin-top:12px">
+        <span>lion</span><span>keeps three banners</span>
+        <span>serpent</span><span>keeps two banners</span>
+        <span>badger</span><span>keeps four banners</span>
+        <span>eagle</span><span>keeps none</span>
+      </div>`,
+    question: 'How many banners hang in this chamber?',
+    hint: 'Three and two and four and none. Add them, including the nought.',
+    answer: 9,
+    done: 'Nine banners — the bronze ticks once under your hand. 9.',
+  },
+  tapestry: {
+    glyph: '✦',
+    kicker: 'West wall · a hanging',
+    title: 'The founders’ tapestry',
+    body: `Woven in wool gone the colour of dried blood: four sigils above a line of script that has outlived
+      everyone who wrote it.<br><br>
+      <b>THE DOOR ANSWERS IN ORDER:</b><br>
+      <i>first the lock, then the stone, then the light, then the feather.</i><br><br>
+      Four charms, in that sequence. Lock, stone, light, feather.`,
+    question: null,
+  },
+  door: {
+    glyph: '⟡', kicker: 'North wall · the door',
+    title: 'The four wheels',
+  },
+};
+
+/* ----------------------------------------------------------------- state */
+const state = {
+  solved: {}, digits: {}, unlocked: {},
+  startTime: 0, elapsed: 0, running: false, won: false,
+  doorOpen: false, doorT: 0, hovered: null, locked: false,
+};
+
+/* ------------------------------------------------------------- hud wiring */
+const hud = document.getElementById('hud');
+const promptEl = document.getElementById('prompt');
+const promptText = document.getElementById('promptText');
+const crosshair = document.getElementById('crosshair');
+const lockList = document.getElementById('lockList');
+const timerEl = document.getElementById('timer');
+const objective = document.getElementById('objective');
+const toasts = document.getElementById('toasts');
+const unlockHint = document.getElementById('unlockHint');
+const trayEl = document.getElementById('tray');
+const trayKicker = document.getElementById('trayKicker');
+const trayTitle = document.getElementById('trayTitle');
+const trayBody = document.getElementById('trayBody');
+const trayKeys = document.getElementById('trayKeys');
+const bannerEl = document.getElementById('banner');
+
+const CHARM_OF = { cabinet: 'alohomora', stone: 'flipendo', niche: 'lumos', dome: 'wingardium' };
+
+function buildLockList() {
+  lockList.innerHTML = CODE_ORDER.map(k => `
+    <li data-k="${k}"><span class="k">${CHARMS[k].glyph}</span><span class="n">${CHARMS[k].name}</span><b>?</b></li>`).join('');
+}
+buildLockList();
+
+function syncHud() {
+  let done = 0;
+  CODE_ORDER.forEach(k => {
+    const li = lockList.querySelector(`li[data-k="${k}"]`);
+    const d = state.digits[k];
+    if (d != null) { li.classList.add('done'); li.querySelector('b').textContent = d; done++; }
+    else { li.classList.remove('done'); li.querySelector('b').textContent = '?'; }
+  });
+  objective.textContent = done === 4
+    ? 'All four digits known. The door on the north wall is waiting.'
+    : `${done} of 4 charms answered. Inspect what the crosshair touches (E).`;
+}
+
+function toast(msg, kind = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.textContent = msg;
+  toasts.appendChild(el);
+  setTimeout(() => { el.style.transition = 'opacity .4s'; el.style.opacity = '0'; }, 2600);
+  setTimeout(() => el.remove(), 3100);
+}
+
+/* ------------------------------------------------------------- the wand */
+const wandEl = document.getElementById('wand');
+const tracepad = document.getElementById('tracepad');
+const tctx = tracepad.getContext('2d');
+const wandScore = document.getElementById('wandScore');
+const sigilRow = document.getElementById('sigils');
+
+const WAND_ORDER = ['alohomora', 'flipendo', 'lumos', 'wingardium'];
+const trace = { charm: 'alohomora', stroke: [], drawing: false, dpr: 1, w: 0, h: 0, open: false };
+
+sigilRow.innerHTML = WAND_ORDER.map((k, i) =>
+  `<button data-charm="${k}" title="${CHARMS[k].name}"><span>${CHARMS[k].glyph}</span><em>${i + 1}</em></button>`).join('');
+
+function selectCharm(k) {
+  if (!SHAPES[CHARMS[k].shape]) return;
+  trace.charm = k;
+  trace.stroke = [];
+  sigilRow.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.charm === k));
+  wandScore.textContent = CHARMS[k].name;
+  redrawTrace();
+}
+
+function sizeWandpad() {
+  const rect = tracepad.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  tracepad.width = Math.round(rect.width * dpr);
+  tracepad.height = Math.round(rect.height * dpr);
+  trace.dpr = dpr; trace.w = rect.width; trace.h = rect.height;
+  redrawTrace();
+}
+
+function toShape(points) {
+  const cx = trace.w / 2, cy = trace.h / 2;
+  const scale = Math.min(trace.w, trace.h) * 0.36;
+  return points.map(([x, y]) => [cx + x * scale, cy + y * scale]);
+}
+
+function redrawTrace() {
+  const g = tctx;
+  g.setTransform(trace.dpr, 0, 0, trace.dpr, 0, 0);
+  g.clearRect(0, 0, trace.w, trace.h);
+  const grd = g.createRadialGradient(trace.w / 2, trace.h / 2, 8, trace.w / 2, trace.h / 2, Math.max(trace.w, trace.h) * .62);
+  grd.addColorStop(0, 'rgba(54,42,28,.5)');
+  grd.addColorStop(1, 'rgba(8,7,6,.12)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, trace.w, trace.h);
+
+  const tpl = SHAPES[CHARMS[trace.charm]?.shape];
+  if (tpl) {
+    const pts = toShape(tpl.points);
+    g.save();
+    g.setLineDash([4, 6]);
+    g.lineWidth = 1.8;
+    g.strokeStyle = 'rgba(201,165,95,.42)';
+    g.beginPath();
+    pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    if (tpl.closed) g.closePath();
+    g.stroke();
+    g.restore();
+    g.fillStyle = 'rgba(201,165,95,.7)';
+    g.beginPath(); g.arc(pts[0][0], pts[0][1], 3.5, 0, Math.PI * 2); g.fill();
+    const end = pts[pts.length - 1], prev = pts[pts.length - 3] || pts[0];
+    g.save();
+    g.translate(end[0], end[1]);
+    g.rotate(Math.atan2(end[1] - prev[1], end[0] - prev[0]));
+    g.fillStyle = 'rgba(240,220,170,.8)';
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(-9, 4); g.lineTo(-9, -4); g.closePath(); g.fill();
+    g.restore();
+  }
+
+  if (trace.stroke.length > 1) {
+    g.save();
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    g.shadowColor = 'rgba(255,214,140,.85)'; g.shadowBlur = 14;
+    g.strokeStyle = 'rgba(255,238,200,.95)';
+    g.lineWidth = 3;
+    g.beginPath();
+    trace.stroke.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    g.stroke();
+    g.restore();
+  }
+}
+
+function openWand() {
+  if (!wandEl.hidden) return;
+  wandEl.hidden = false;
+  document.body.classList.add('casting');
+  trace.open = true;
+  if (document.pointerLockElement) document.exitPointerLock();
+  selectCharm(trace.charm);
+  sizeWandpad();
+}
+
+function closeWand() {
+  if (wandEl.hidden) return;
+  wandEl.hidden = true;
+  document.body.classList.remove('casting');
+  trace.open = false;
+  trace.drawing = false;
+  trace.stroke = [];
+  if (state.running && !state.won) canvas.requestPointerLock?.();
+}
+
+function padPoint(e) {
+  const r = tracepad.getBoundingClientRect();
+  return [e.clientX - r.left, e.clientY - r.top];
+}
+
+tracepad.addEventListener('pointerdown', e => {
+  tracepad.setPointerCapture?.(e.pointerId);
+  trace.drawing = true;
+  trace.stroke = [padPoint(e)];
+  redrawTrace();
+});
+tracepad.addEventListener('pointermove', e => {
+  if (!trace.drawing) return;
+  const p = padPoint(e);
+  const last = trace.stroke[trace.stroke.length - 1];
+  if (last && Math.hypot(p[0] - last[0], p[1] - last[1]) < 2.5) return;
+  trace.stroke.push(p);
+  redrawTrace();
+});
+tracepad.addEventListener('pointerup', e => {
+  if (!trace.drawing) return;
+  trace.drawing = false;
+  tracepad.releasePointerCapture?.(e.pointerId);
+  judgeTrace();
+});
+tracepad.addEventListener('pointercancel', () => { trace.drawing = false; });
+
+sigilRow.addEventListener('click', e => {
+  const b = e.target.closest('button[data-charm]');
+  if (b) selectCharm(b.dataset.charm);
+});
+
+/* ---------------------------------------------------------------- casting */
+const SHORT = { cabinet: 'cabinet', stone: 'cracked arch', niche: 'niche', dome: 'cloche', door: 'door', tapestry: 'tapestry' };
+const WRONG = {
+  cabinet: 'the brass lock rings like a bell, and holds.',
+  stone: 'dust falls from the joint. The crack does not widen.',
+  niche: 'nothing in the niche answers to that.',
+  dome: 'the cloche sits exactly where it sat before.',
+  door: 'the wheels are brass and patience, not spellwork.',
+  tapestry: 'the wool does not care.',
+};
+
+function judgeTrace() {
+  const charm = trace.charm;
+  const tpl = SHAPES[CHARMS[charm].shape];
+  if (!tpl) return;
+  let len = 0;
+  for (let i = 1; i < trace.stroke.length; i++) {
+    len += Math.hypot(trace.stroke[i][0] - trace.stroke[i - 1][0], trace.stroke[i][1] - trace.stroke[i - 1][1]);
+  }
+  const minLen = Math.min(trace.w, trace.h) * 0.42;
+  let score = 0;
+  if (trace.stroke.length >= 6 && len >= minLen) {
+    const cx = trace.w / 2, cy = trace.h / 2;
+    const scale = Math.min(trace.w, trace.h) * 0.36;
+    score = matchScore(CHARMS[charm].shape, trace.stroke.map(([x, y]) => [(x - cx) / scale, (y - cy) / scale]));
+  }
+  const pct = Math.round(score * 100);
+  trace.stroke = [];
+  redrawTrace();
+  if (score >= PASS) { castCharm(charm); return; }
+  if (len < minLen) { toast(`${CHARMS[charm].name} needs a longer stroke.`, 'bad'); return; }
+  toast(`${CHARMS[charm].name} frays — ${pct}% of the movement.`, 'bad');
+}
+
+function castCharm(key) {
+  const t = state.hovered;
+  const c = CHARMS[key];
+  if (!t || !PUZZLES[t.id]) { toast(`${c.name} fizzles in the air — nothing in reach.`, 'bad'); return; }
+  const def = PUZZLES[t.id];
+  if (def.charm === key) {
+    unlockProp(t.id);
+    toast(`${c.name} — the ${SHORT[t.id]} gives way`, 'good');
+  } else {
+    toast(`${c.name} on the ${SHORT[t.id]}: ${WRONG[t.id] || 'nothing happens.'}`, 'bad');
+  }
+}
+
+function unlockProp(id) {
+  if (state.unlocked[id]) return;
+  state.unlocked[id] = true;
+  if (id === 'cabinet') openCabinet();
+  if (id === 'stone') dropBlock();
+  if (id === 'niche') lightNiche();
+  if (id === 'dome') liftDome();
+  renderTray();
+}
+
+/* ------------------------------------------------------------------ tray */
+let trayTarget = null;
+let dialValue = 0;
+let wheelSel = 0;
+const doorDigits = [0, 0, 0, 0];
+
+function renderTray() {
+  const t = state.hovered;
+  const def = t && PUZZLES[t.id];
+  if (!def) { trayEl.hidden = true; trayTarget = null; return; }
+  if (trayTarget !== t.id) { dialValue = 0; wheelSel = 0; }
+  trayTarget = t.id;
+  trayEl.hidden = false;
+  trayKicker.textContent = def.kicker || '';
+  trayTitle.textContent = def.title || '';
+
+  if (t.id === 'door') {
+    trayBody.innerHTML = `
+      <div class="wheels">
+        ${CODE_ORDER.map((k, i) => `
+          <div class="wheel ${i === wheelSel ? 'sel' : ''}" data-i="${i}">
+            <span class="k">${CHARMS[k].glyph} ${CHARMS[k].name.split(' ')[0]}</span>
+            <button data-whl="${i}" data-dir="1" aria-label="up">▲</button>
+            <b>${doorDigits[i]}</b>
+            <button data-whl="${i}" data-dir="-1" aria-label="down">▼</button>
+          </div>`).join('')}
+      </div>`;
+    trayKeys.textContent = '← → wheel · ↑ ↓ digit · E turn the wheels';
+    return;
+  }
+
+  if (def.question == null) {
+    trayBody.innerHTML = `<p>${def.body}</p>`;
+    trayKeys.textContent = '';
+    return;
+  }
+  if (!state.unlocked[t.id]) {
+    trayBody.innerHTML = `<p>${def.sealed}</p>`;
+    trayKeys.textContent = 'hold Ctrl · trace a charm';
+    return;
+  }
+  if (state.solved[t.id]) {
+    trayBody.innerHTML = `<p>${def.body}</p>
+      <div class="recorded">✓ recorded — ${def.done}</div>`;
+    trayKeys.textContent = '';
+    return;
+  }
+  trayBody.innerHTML = `<p>${def.body}</p>
+    <p style="margin-top:.55em"><b>${def.question}</b></p>
+    <div class="dial">
+      <button data-dir="-1" aria-label="decrease">▼</button>
+      <span class="val" id="dialVal">${dialValue}</span>
+      <button data-dir="1" aria-label="increase">▲</button>
+      <button class="primary" data-act="set">Set</button>
+    </div>`;
+  trayKeys.textContent = '↑ ↓ dial · E set the number';
+}
+
+function setDial(v) {
+  dialValue = (v + 10) % 10;
+  const el = document.getElementById('dialVal');
+  if (el) el.textContent = dialValue;
+}
+
+function setWheel(i, delta) {
+  doorDigits[i] = (doorDigits[i] + delta + 10) % 10;
+  const b = trayBody.querySelector(`.wheel[data-i="${i}"] b`);
+  if (b) b.textContent = doorDigits[i];
+}
+
+function submitAnswer(id) {
+  const def = PUZZLES[id];
+  if (!def || !def.question) return;
+  if (dialValue === def.answer) {
+    state.solved[id] = true;
+    state.digits[CHARM_OF[id]] = def.answer;
+    syncHud();
+    toast(`${def.answer} · recorded`, 'good');
+    renderTray();
+  } else {
+    toast('The chamber does not answer. Read it again.', 'bad');
+  }
+}
+
+function tryDoor() {
+  if (CODE_ORDER.every((k, i) => doorDigits[i] === CODE[i])) {
+    openDoor();
+  } else {
+    const right = CODE_ORDER.filter((k, i) => doorDigits[i] === CODE[i]).length;
+    toast(`The wheels bind. ${right} of 4 are in place.`, 'bad');
+  }
+}
+
+function trayStep(dir) {
+  if (trayEl.hidden || !trayTarget) return;
+  if (trayTarget === 'door') { setWheel(wheelSel, dir); return; }
+  if (state.unlocked[trayTarget] && !state.solved[trayTarget] && PUZZLES[trayTarget].question) setDial(dialValue + dir);
+}
+
+function trayCycle() {
+  if (trayEl.hidden || trayTarget !== 'door') return;
+  wheelSel = (wheelSel + 1) % CODE_ORDER.length;
+  renderTray();
+}
+
+function trayAct() {
+  if (trayEl.hidden || !trayTarget) return;
+  if (trayTarget === 'door') { tryDoor(); return; }
+  if (state.unlocked[trayTarget] && !state.solved[trayTarget] && PUZZLES[trayTarget].question) submitAnswer(trayTarget);
+}
+
+trayEl.addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  if (btn.dataset.whl != null) {
+    const i = +btn.dataset.whl;
+    wheelSel = i;
+    setWheel(i, +btn.dataset.dir);
+    return;
+  }
+  if (btn.dataset.dir) { trayStep(+btn.dataset.dir); return; }
+  if (btn.dataset.act === 'set') { trayAct(); return; }
+});
+
+function showBanner(html) {
+  bannerEl.innerHTML = html;
+  bannerEl.hidden = false;
+}
+
+/* ---------------------------------------------------------------- props */
+/* 1 · the glass cabinet (Alohomora) */
+const CAB = { x: HALF_W - .42, z: 1.5 };
+const cabinet = new THREE.Group();
+cabinet.position.set(CAB.x, 0, CAB.z);
+cabinet.rotation.y = -Math.PI / 2;
+scene.add(cabinet);
+box(1.5, .12, .62, M.woodDark, 0, .06, 0, cabinet);
+box(1.5, 2.2, .6, M.woodDark, 0, 1.16, -.02, cabinet);
+box(1.36, 2.0, .5, new THREE.MeshStandardMaterial({ color: 0x120d0a, roughness: .95 }), 0, 1.16, 0, cabinet);
+box(1.5, .16, .64, M.wood, 0, 2.3, 0, cabinet);
+box(.1, 2.24, .1, M.wood, -.7, 1.15, .28, cabinet);
+box(.1, 2.24, .1, M.wood, .7, 1.15, .28, cabinet);
+box(1.5, .1, .1, M.wood, 0, 1.2, .28, cabinet);        // shelf
+const cabDoorL = new THREE.Group();
+cabDoorL.position.set(-.34, 1.22, .29);
+cabinet.add(cabDoorL);
+box(.66, .98, .04, new THREE.MeshStandardMaterial({ map: woodTex, roughness: .8 }), -.33, 0, 0, cabDoorL);
+plane(.56, .86, M.glass, -.33, 0, .028, cabDoorL);
+const cabDoorR = new THREE.Group();
+cabDoorR.position.set(.34, 1.22, .29);
+cabinet.add(cabDoorR);
+box(.66, .98, .04, new THREE.MeshStandardMaterial({ map: woodTex, roughness: .8 }), .33, 0, 0, cabDoorR);
+plane(.56, .86, M.glass, .33, 0, .028, cabDoorR);
+// the brass lock between the doors
+const cabLock = box(.16, .22, .1, M.brass, 0, 1.22, .33, cabinet);
+// inside: a balance with nine stones left, five right
+const balance = new THREE.Group();
+balance.position.set(0, 1.26, .06);
+cabinet.add(balance);
+cyl(.014, .014, .78, 6, M.brass, 0, .34, 0, balance);
+box(.72, .028, .028, M.brass, 0, .72, 0, balance);
+sphere(.02, M.brass, 0, .04, 0, balance, 8);
+cyl(.12, .12, .012, 16, M.iron, -.34, .36, 0, balance);
+cyl(.12, .12, .012, 16, M.iron, .34, .36, 0, balance);
+for (let i = 0; i < 9; i++) sphere(.022, new THREE.MeshStandardMaterial({ color: 0x6f7f8c, roughness: .5, metalness: .4 }), -.34 + rnd(-.07, .07), .39 + rnd(0, .03), rnd(-.07, .07), balance, 6);
+for (let i = 0; i < 5; i++) sphere(.022, new THREE.MeshStandardMaterial({ color: 0x7f8f6f, roughness: .5, metalness: .4 }), .34 + rnd(-.07, .07), .39 + rnd(0, .03), rnd(-.07, .07), balance, 6);
+// a candle stub so the cabinet is not a black hole
+const cabGlow = new THREE.PointLight(0xffb877, 1.6, 2.4, 2);
+cabGlow.position.set(0, 1.7, .1);
+cabinet.add(cabGlow);
+contactShadow(CAB.x, CAB.z, 1.8, .45);
+register(cabinet, 'cabinet', '◉ Glass cabinet');
+
+function openCabinet() {
+  cabDoorL.rotation.y = -1.9;
+  cabDoorR.rotation.y = 1.9;
+  cabLock.position.y = .82;
+  cabLock.rotation.z = .6;
+  cabGlow.intensity = 4.2;
+}
+
+/* 2 · the cracked arch (Flipendo) */
+const ARCH = { x: -HALF_W + .28, z: -1.4 };
+const arch = new THREE.Group();
+arch.position.set(ARCH.x, 0, ARCH.z);
+arch.rotation.y = Math.PI / 2;
+scene.add(arch);
+box(.5, 2.4, .28, M.stoneDark, -.82, 1.2, 0, arch);
+box(.5, 2.4, .28, M.stoneDark, .82, 1.2, 0, arch);
+box(2.2, .5, .3, M.stoneDark, 0, 2.62, 0, arch);
+const slab = plane(2.1, 2.2, new THREE.MeshStandardMaterial({ map: crackedTex, roughness: .95 }), 0, 1.18, .16, arch);
+slab.rotation.y = 0;
+const looseBlock = box(.52, .44, .26, new THREE.MeshStandardMaterial({ map: crackedTex, roughness: .94 }), .1, 1.85, .2, arch);
+const hollow = plane(.42, .34, new THREE.MeshStandardMaterial({ color: 0x080605, roughness: 1 }), .1, 1.85, .155, arch);
+hollow.visible = false;
+const plaque = plane(.4, .32, new THREE.MeshStandardMaterial({ map: plaqueTex, roughness: .8, metalness: .1 }), .1, 1.85, .165, arch);
+plaque.visible = false;
+register(arch, 'stone', '⚡ Cracked arch');
+
+let blockT = 0, blockAnim = false;
+function dropBlock() {
+  blockAnim = true;
+  hollow.visible = true;
+  plaque.visible = true;
+}
+
+/* 3 · the dark niche (Lumos) */
+const NICHE = { x: -1.9, z: HALF_D - .34 };
+const niche = new THREE.Group();
+niche.position.set(NICHE.x, 0, NICHE.z);
+niche.rotation.y = Math.PI;
+scene.add(niche);
+box(1.5, 2.0, .34, M.stoneDark, 0, 1.32, -.06, niche);
+box(1.28, 1.78, .3, new THREE.MeshStandardMaterial({ color: 0x050404, roughness: 1 }), 0, 1.32, .04, niche);
+const mirror = plane(.9, 1.2, new THREE.MeshStandardMaterial({ map: mirrorTex, roughness: .35, metalness: .4 }), 0, 1.34, .116, niche);
+mirror.material.color = new THREE.Color(0x1e1e1e);     // unlit until Lumos
+box(1.6, .14, .42, M.stoneDark, 0, 2.28, 0, niche);
+box(1.6, .12, .4, M.stoneDark, 0, .34, .02, niche);
+register(niche, 'niche', '☼ Blind niche');
+
+const nicheLight = new THREE.PointLight(0xffe6b0, 0, 4.5, 2);
+nicheLight.position.set(NICHE.x, 1.5, NICHE.z - .5);
+scene.add(nicheLight);
+function lightNiche() {
+  mirror.material.color = new THREE.Color(0xffffff);
+  nicheLight.intensity = 5.5;
+  nicheLight.distance = 6;
+}
+
+/* 4 · the glass cloche (Wingardium Leviosa) */
+const PED = { x: 2.7, z: .7 };
+const pedestal = new THREE.Group();
+pedestal.position.set(PED.x, 0, PED.z);
+scene.add(pedestal);
+cyl(.42, .5, .1, 20, M.stoneDark, 0, .05, 0, pedestal);
+cyl(.2, .26, .9, 16, M.stone, 0, .55, 0, pedestal);
+cyl(.46, .4, .1, 20, M.stone, 0, 1.05, 0, pedestal);
+const tablet = box(.52, .34, .04, new THREE.MeshStandardMaterial({ map: tabletTex, roughness: .48, metalness: .55 }), 0, 1.27, 0, pedestal);
+tablet.rotation.x = -.5;
+const domeGroup = new THREE.Group();
+domeGroup.position.set(0, 1.1, 0);
+pedestal.add(domeGroup);
+const domeMesh = new THREE.Mesh(new THREE.SphereGeometry(.44, 22, 14, 0, Math.PI * 2, 0, Math.PI / 2), M.glassDome);
+domeGroup.add(domeMesh);
+cyl(.44, .44, .04, 22, M.glassDome, 0, .01, 0, domeGroup);
+cyl(.46, .46, .05, 22, M.brass, 0, -.01, 0, domeGroup);
+contactShadow(PED.x, PED.z, 1.4, .45);
+register(pedestal, 'dome', '❧ Glass cloche');
+
+let domeT = 0, domeAnim = false;
+function liftDome() { domeAnim = true; }
+
+/* 5 · the tapestry (order clue) */
+const tapestry = new THREE.Group();
+tapestry.position.set(-HALF_W + .22, 0, 1.9);
+tapestry.rotation.y = Math.PI / 2;
+scene.add(tapestry);
+cyl(.05, .05, 1.7, 8, M.brass, 0, 3.16, 0, tapestry).rotation.z = Math.PI / 2;
+plane(1.47, 2.5, new THREE.MeshStandardMaterial({ map: tapestryTex, roughness: .95 }), 0, 1.88, .02, tapestry);
+register(tapestry, 'tapestry', '✦ Founders’ tapestry');
+
+/* ------------------------------------------------------------- the door */
+const DOOR = { z: -HALF_D + .18, w: 1.4, h: 2.5 };
+const doorGroup = new THREE.Group();
+doorGroup.position.set(0, 0, DOOR.z);
+scene.add(doorGroup);
+box(1.9, .22, .5, M.stoneDark, 0, DOOR.h + .16, 0, doorGroup);
+const doorLeafL = new THREE.Group();
+doorLeafL.position.set(-DOOR.w / 2, 0, 0);
+doorGroup.add(doorLeafL);
+box(DOOR.w / 2 - .02, DOOR.h, .12, M.wood, DOOR.w / 4, DOOR.h / 2, 0, doorLeafL);
+const doorLeafR = new THREE.Group();
+doorLeafR.position.set(DOOR.w / 2, 0, 0);
+doorGroup.add(doorLeafR);
+box(DOOR.w / 2 - .02, DOOR.h, .12, M.wood, -DOOR.w / 4, DOOR.h / 2, 0, doorLeafR);
+// iron bands
+[-.5, 0, .5].forEach((x, i) => {
+  box(.06, DOOR.h * .96, .16, M.iron, x, DOOR.h / 2, 0, doorLeafL);
+  box(.06, DOOR.h * .96, .16, M.iron, x, DOOR.h / 2, 0, doorLeafR);
+});
+const doorPlate = box(.52, .62, .08, M.brass, 0, 1.18, .12, doorGroup);
+for (let i = -1; i <= 1; i += 2) for (let j = 0; j < 2; j++) {
+  cyl(.055, .055, .04, 12, M.iron, i * .12, 1.04 + j * .28, .17, doorGroup).rotation.x = Math.PI / 2;
+}
+const doorPanelMat = new THREE.MeshStandardMaterial({ color: 0x2f2721, roughness: .7, metalness: .3, emissive: 0x120a04, emissiveIntensity: .6 });
+box(1.34, 2.44, .1, doorPanelMat, 0, 1.22, .07, doorGroup);
+const doorGlow = plane(DOOR.w + .2, DOOR.h, new THREE.MeshBasicMaterial({ color: 0xffdca8, transparent: true, opacity: 0 }), 0, DOOR.h / 2, -.3, doorGroup);
+const doorLight = new THREE.PointLight(0xffd7a0, 0, 9, 2);
+doorLight.position.set(0, 1.6, -.6);
+doorGroup.add(doorLight);
+register(doorGroup, 'door', '⟡ The four-wheel lock');
+
+/* ------------------------------------------------------------ door motion */
+function openDoor() {
+  state.doorOpen = true;
+  state.running = false;
+  toast('The door gives way', 'good');
+  setTimeout(() => {
+    state.won = true;
+    const t = state.elapsed;
+    const mm = String(Math.floor(t / 60)).padStart(2, '0');
+    const ss = String(Math.floor(t % 60)).padStart(2, '0');
+    showBanner(`⟡ You are out · ${mm}:${ss}<small>press R to walk it again</small>`);
+    document.exitPointerLock?.();
+  }, 2400);
+}
+
+/* --------------------------------------------------------------- controls */
+const keys = new Set();
+let yaw = 0, pitch = 0;
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (!wandEl.hidden) { closeWand(); return; }
+    document.exitPointerLock?.();
+    return;
+  }
+  if (e.key === 'Control') { if (!e.repeat) openWand(); return; }
+  if (!wandEl.hidden) {
+    if (e.key >= '1' && e.key <= '4') selectCharm(WAND_ORDER[+e.key - 1]);
+    return;                                   // the wand owns the keyboard while it is up
+  }
+  if (e.key === 'Tab') return;
+  if (e.code === 'KeyE') { trayAct(); return; }
+  if (e.code === 'KeyH') { giveHint(); return; }
+  if (e.code === 'KeyR' && state.won) { location.reload(); return; }
+  if (e.key === 'ArrowUp') { e.preventDefault(); trayStep(1); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); trayStep(-1); return; }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); trayCycle(); return; }
+  keys.add(e.code);
+});
+document.addEventListener('keyup', e => {
+  keys.delete(e.code);
+  if (e.key === 'Control') closeWand();
+});
+
+function giveHint() {
+  const left = CODE_ORDER.filter(k => !state.digits[k]);
+  if (!left.length) { toast('All four digits are known. Go to the door on the north wall.', 'good'); return; }
+  const charm = left[0];
+  const kind = Object.keys(CHARM_OF).find(k => CHARM_OF[k] === charm);
+  if (!state.unlocked[kind]) {
+    toast(`Hint · the ${kind === 'stone' ? 'cracked arch' : kind} wants ${CHARMS[charm].name} — ${CHARMS[charm].hint}`, '');
+    return;
+  }
+  toast(`Hint · ${CHARMS[charm].name} — ${PUZZLES[kind].hint}`, '');
+}
+
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  if (!wandEl.hidden) return;
+  if (!state.locked) { canvas.requestPointerLock?.(); return; }
+  trayAct();
+});
+
+document.addEventListener('pointerlockchange', () => {
+  state.locked = document.pointerLockElement === canvas;
+  unlockHint.hidden = state.locked || !state.running || state.won;
+  if (state.locked) canvas.focus?.();
+});
+
+document.addEventListener('mousemove', e => {
+  if (!state.locked) return;
+  yaw -= e.movementX * 0.0022;
+  pitch -= e.movementY * 0.0022;
+  pitch = clamp(pitch, -1.35, 1.35);
+});
+
+/* distance-based interaction */
+const raycaster = new THREE.Raycaster();
+raycaster.far = 3.4;
+function currentTarget() {
+  raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+  const hits = raycaster.intersectObjects(interactList, true);
+  for (const h of hits) {
+    let o = h.object, id = null;
+    while (o) { if (o.userData && o.userData.interact) { id = o.userData.interact; break; } o = o.parent; }
+    if (id) return { id, label: (h.object.userData.label || PUZZLES[id]?.title || id) };
+  }
+  return null;
+}
+/* a debug/test aim helper: stand at (x, z) looking along yaw, tilting until something is in reach */
+function aim(x, z, yawV = 0, pitchV = null) {
+  camera.position.set(x, 1.62, z);
+  yaw = yawV;
+  const tries = pitchV == null ? [0, -.12, -.24, -.36, -.48, .12, .24] : [pitchV];
+  let hit = null;
+  for (const p of tries) {
+    pitch = p;
+    camera.rotation.set(pitch, yaw, 0);
+    camera.updateMatrixWorld(true);
+    hit = currentTarget();
+    if (hit) break;
+  }
+  state.hovered = hit;
+  renderTray();
+  return hit ? hit.id : null;
+}
+
+/* --------------------------------------------------------------- movement */
+const SOLIDS = [
+  { x: CAB.x, z: CAB.z, r: .95 },
+  { x: PED.x, z: PED.z, r: .68 },
+  { x: -3.55, z: -3.3, r: .72 },
+  { x: 3.55, z: -3.3, r: .72 },
+  { x: -3.6, z: 3.1, r: .72 },
+  { x: 3.6, z: 3.1, r: .72 },
+];
+
+function move(dt) {
+  const speed = (keys.has('ShiftLeft') || keys.has('ShiftRight')) ? 3.5 : 2.05;
+  let fx = 0, fz = 0;
+  if (keys.has('KeyW')) fz -= 1;
+  if (keys.has('KeyS')) fz += 1;
+  if (keys.has('KeyA')) fx -= 1;
+  if (keys.has('KeyD')) fx += 1;
+  if (!fx && !fz) return;
+  const len = Math.hypot(fx, fz);
+  fx /= len; fz /= len;
+  const sin = Math.sin(yaw), cos = Math.cos(yaw);
+  const nx = camera.position.x + (-sin * -fz + cos * fx) * speed * dt;
+  const nz = camera.position.z + (-cos * -fz - sin * fx) * speed * dt;
+  const p = { x: nx, z: nz };
+  p.x = clamp(p.x, -HALF_W + .45, HALF_W - .45);
+  p.z = clamp(p.z, -HALF_D + .45, HALF_D - .45);
+  for (const s of SOLIDS) {
+    const ddx = p.x - s.x, ddz = p.z - s.z;
+    const d = Math.hypot(ddx, ddz);
+    if (d < s.r && d > .0001) { p.x = s.x + ddx / d * s.r; p.z = s.z + ddz / d * s.r; }
+  }
+  camera.position.x = p.x;
+  camera.position.z = p.z;
+}
+
+/* ------------------------------------------------------------------- loop */
+const clock = new THREE.Clock();
+let hoverCheck = 0;
+
+function tick() {
+  const dt = Math.min(clock.getDelta(), .05);
+  const t = clock.elapsedTime;
+
+  if (state.running && state.locked) move(dt);
+  camera.rotation.set(pitch, yaw, 0);
+
+  hoverCheck -= dt;
+  if (hoverCheck <= 0) {
+    hoverCheck = .08;
+    state.hovered = currentTarget();
+    if (state.hovered) {
+      crosshair.classList.add('hot');
+      const hv = state.hovered;
+      const sealed = PUZZLES[hv.id] && PUZZLES[hv.id].charm && !state.unlocked[hv.id];
+      promptEl.innerHTML = `<kbd>${sealed ? 'Ctrl' : 'E'}</kbd>${hv.label}`;
+      promptEl.hidden = false;
+    } else {
+      crosshair.classList.remove('hot');
+      promptEl.hidden = true;
+    }
+    if ((state.hovered ? state.hovered.id : null) !== trayTarget) renderTray();
+  }
+
+  // fires
+  lanterns.forEach((l, i) => {
+    const f = .88 + Math.sin(t * 5.4 + l.phase) * .07 + Math.sin(t * 17.1 + i) * .03;
+    l.light.intensity = l.base * f;
+    l.g.scale.y = 1.7 * (0.94 + Math.sin(t * 9 + l.phase) * .06);
+    if (l.child) l.child.scale.y = 2.1 * (0.92 + Math.sin(t * 11 + l.phase) * .08);
+  });
+
+  // the loose block falls
+  if (blockAnim && blockT < 1) {
+    blockT = Math.min(1, blockT + dt / .7);
+    looseBlock.position.y = 1.85 - blockT * 1.55;
+    looseBlock.rotation.z = blockT * .8;
+    looseBlock.position.z = .2 + blockT * .5;
+    if (blockT >= 1) { looseBlock.visible = false; blockAnim = false; }
+  }
+
+  // the cloche lifts and fades
+  if (domeAnim && domeT < 1) {
+    domeT = Math.min(1, domeT + dt / 1.6);
+    domeGroup.position.y = 1.1 + domeT * .55;
+    domeGroup.rotation.y = domeT * .5;
+    M.glassDome.opacity = .17 * (1 - domeT * .92);
+    if (domeT >= 1) { domeGroup.visible = false; domeAnim = false; }
+  }
+
+  // doors
+  if (state.doorOpen && state.doorT < 1) {
+    state.doorT = Math.min(1, state.doorT + dt / 2.2);
+    const e = state.doorT < .5 ? 2 * state.doorT * state.doorT : 1 - Math.pow(-2 * state.doorT + 2, 2) / 2;
+    doorLeafL.rotation.y = e * -1.15;
+    doorLeafR.rotation.y = e * 1.15;
+    doorGlow.material.opacity = e * .95;
+    doorLight.intensity = e * 12;
+    doorPanelMat.emissiveIntensity = e * .3;
+  }
+
+  if (state.running) {
+    state.elapsed += dt;
+    const s = Math.floor(state.elapsed);
+    timerEl.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  renderer.render(scene, camera);
+}
+renderer.setAnimationLoop(tick);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  if (!wandEl.hidden) sizeWandpad();
+});
+
+/* ------------------------------------------------------------------ start */
+/* no start card: the chamber is live the moment it loads */
+state.running = true;
+state.startTime = performance.now();
+syncHud();
+renderTray();
+setTimeout(() => toast('W A S D to walk · click to look · hold Ctrl and trace a charm', ''), 400);
+
+/* --------------------------------------------------- test hook (?test|?debug) */
+const _q = new URLSearchParams(location.search);
+if (_q.has('test') || _q.has('debug')) {
+  window.__wizard = {
+    state, PUZZLES, CHARMS, CODE, CODE_ORDER, DIGIT_OF, doorDigits, SHAPES, PASS, SHORT,
+    WAND_ORDER, trace, matchScore, aim, currentTarget,
+    openWand, closeWand, selectCharm, judgeTrace, castCharm, unlockProp,
+    renderTray, submitAnswer, setDial, setWheel, trayAct, trayStep, trayCycle, tryDoor,
+  };
+}
+
+// keep the renderer visible behind the start card
+setTimeout(() => { renderer.render(scene, camera); }, 50);
+</script>
+</body>
+</html>

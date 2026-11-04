@@ -1,0 +1,1424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Edo Room — 3D Escape Room</title>
+<style>
+  :root{
+    --washi:#e9dfc6; --sumi:#161210; --vermillion:#b4372a; --indigo:#22344d;
+    --gold:#c9a55f; --ink:#0c0a08;
+    --serif: "Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP","Noto Serif CJK JP","Takao Mincho",Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:#080605;color:var(--washi);font-family:var(--serif);overflow:hidden;-webkit-font-smoothing:antialiased}
+  canvas#scene{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
+  .vignette{position:fixed;inset:0;pointer-events:none;z-index:2;
+    background:radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 45%, rgba(0,0,0,.55) 100%),
+               linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,0) 22%, rgba(0,0,0,0) 78%, rgba(0,0,0,.38));}
+  kbd{font-family:var(--serif);font-size:.74em;border:1px solid rgba(233,223,198,.45);border-bottom-width:2px;
+      border-radius:4px;padding:.06em .38em;margin-right:.35em;color:#f3ead2;background:rgba(0,0,0,.35)}
+  [hidden]{display:none !important}
+
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;inset:0;z-index:5;pointer-events:none}
+  #crosshair{position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;
+    border:1px solid rgba(240,230,205,.55);background:rgba(0,0,0,.25);transition:transform .12s,background .12s,border-color .12s}
+  #crosshair.hot{background:var(--gold);border-color:#fff3cf;transform:scale(1.55);box-shadow:0 0 12px rgba(201,165,95,.85)}
+  #prompt{position:absolute;left:50%;top:calc(50% + 34px);transform:translateX(-50%);white-space:nowrap;
+    background:rgba(10,8,6,.72);border:1px solid rgba(233,223,198,.28);padding:.35em .75em;border-radius:3px;
+    font-size:.85rem;letter-spacing:.04em;backdrop-filter:blur(3px)}
+  .topbar{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:center;
+    padding:14px 20px;font-size:.8rem;letter-spacing:.16em;text-transform:uppercase;
+    background:linear-gradient(180deg,rgba(6,5,4,.72),rgba(6,5,4,0))}
+  .brand{display:flex;align-items:center;gap:.7em}
+  .seal{display:inline-grid;place-items:center;width:34px;height:34px;border:1px solid var(--vermillion);
+    color:#e8c9a3;background:rgba(180,55,42,.22);font-size:.9rem;letter-spacing:0}
+  .timer{font-variant-numeric:tabular-nums;color:#cbbfa5;font-size:.85rem}
+  #notes{position:absolute;right:18px;top:74px;width:250px;padding:14px 15px 12px;
+    background:linear-gradient(180deg,rgba(18,14,11,.86),rgba(12,9,7,.9));border:1px solid rgba(201,165,95,.28);
+    box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  #notes h2{margin:0 0 10px;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:#a8977a;font-weight:500;
+    display:flex;justify-content:space-between;align-items:baseline}
+  #notes h2 .jp{font-size:1rem;color:var(--gold);letter-spacing:0}
+  #lockList{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+  #lockList li{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;
+    padding:6px 0;border-bottom:1px solid rgba(233,223,198,.1)}
+  #lockList li:last-child{border-bottom:0}
+  #lockList .k{color:var(--gold);font-size:1.02rem;min-width:2.2em;letter-spacing:.06em}
+  #lockList .n{font-size:.7rem;color:#b7a98d;letter-spacing:.03em;line-height:1.25}
+  #lockList b{font-size:1.15rem;color:#6a5f4d;font-variant-numeric:tabular-nums;min-width:1.1em;text-align:right}
+  #lockList li.done b{color:#f0d9a6;text-shadow:0 0 14px rgba(201,165,95,.6)}
+  #lockList li.done .k{color:#e6c477}
+  .objective{margin:10px 0 0;font-size:.68rem;line-height:1.45;color:#8d8069;letter-spacing:.03em}
+  .hintbar{position:absolute;left:18px;bottom:14px;font-size:.68rem;color:#8b7e68;letter-spacing:.06em}
+  .hintbar kbd{font-size:.7em}
+
+  /* ---------- overlays ---------- */
+  .overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:22px;
+    background:radial-gradient(ellipse at 50% 40%,rgba(28,20,14,.82),rgba(6,5,4,.95));backdrop-filter:blur(3px)}
+  .card{width:min(680px,100%);max-height:92vh;overflow:auto;padding:30px 34px;
+    background:linear-gradient(170deg,#efe5cd,#e2d5b6);color:#241a12;border:1px solid #b9a67c;
+    box-shadow:0 30px 80px rgba(0,0,0,.7), inset 0 0 60px rgba(160,130,80,.25);position:relative}
+  .card::before{content:"";position:absolute;inset:7px;border:1px solid rgba(60,40,22,.25);pointer-events:none}
+  .card.dark{background:linear-gradient(170deg,#191410,#100c09);color:#e6dcc4;border-color:#4b3a24;
+    box-shadow:0 30px 80px rgba(0,0,0,.8), inset 0 0 70px rgba(160,110,50,.14)}
+  .kicker{font-size:.66rem;letter-spacing:.3em;text-transform:uppercase;color:#8a6a3d;margin-bottom:.7em}
+  .card.dark .kicker{color:#b08c4e}
+  .card h1{margin:0 0 .35em;font-size:clamp(1.6rem,4.4vw,2.3rem);font-weight:500;letter-spacing:.02em;line-height:1.15}
+  .card h2{margin:0 0 .5em;font-size:1.35rem;font-weight:500;display:flex;align-items:baseline;gap:.5em;flex-wrap:wrap}
+  .card h2 .jp{color:var(--vermillion);font-size:1.15em;letter-spacing:.08em}
+  .card p{margin:.55em 0;line-height:1.6;font-size:.94rem;color:#3b2c1e}
+  .card.dark p{color:#cfc3aa}
+  .card p b{color:#1c130c}
+  .card.dark p b{color:#f2e5c8}
+  .glyph{position:absolute;right:26px;top:22px;font-size:4.6rem;line-height:1;color:rgba(30,20,12,.13);
+    font-family:var(--serif);pointer-events:none;user-select:none}
+  .card.dark .glyph{color:rgba(233,223,198,.09)}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  button{font-family:var(--serif);font-size:.86rem;letter-spacing:.08em;text-transform:uppercase;
+    padding:.62em 1.15em;border:1px solid #6b5333;background:transparent;color:#2c2014;cursor:pointer;
+    transition:background .15s,color .15s,border-color .15s,transform .1s}
+  button:hover{background:rgba(60,40,20,.1)}
+  button:active{transform:translateY(1px)}
+  button.primary{background:#2c2014;color:#f0e4c8;border-color:#2c2014}
+  button.primary:hover{background:#46331f}
+  .card.dark button{color:#e6dcc4;border-color:#6b5333}
+  .card.dark button:hover{background:rgba(233,223,198,.09)}
+  .card.dark button.primary{background:var(--vermillion);border-color:var(--vermillion);color:#fff0e2}
+  .keyrow{display:grid;grid-template-columns:auto 1fr;gap:.25em 1em;font-size:.8rem;color:#5a472f;margin:14px 0 4px}
+  .keyrow span:nth-child(odd){text-align:right;color:#8a6a3d}
+  .card.dark .keyrow{color:#a89a80}
+  .card.dark .keyrow span:nth-child(odd){color:#b08c4e}
+  details{margin-top:14px;font-size:.82rem;color:#5a472f}
+  .card.dark details{color:#a89a80}
+  summary{cursor:pointer;letter-spacing:.08em;text-transform:uppercase;font-size:.66rem;color:#8a6a3d}
+  details p{margin:.5em 0 0;font-size:.84rem}
+  .dial{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap}
+  .dial .val{font-size:2.2rem;min-width:1.6em;text-align:center;font-variant-numeric:tabular-nums;
+    border-bottom:1px solid rgba(60,40,20,.35);line-height:1.1}
+  .card.dark .dial .val{border-color:rgba(233,223,198,.3)}
+  .dial button{width:44px;padding:.5em 0;text-align:center;font-size:1rem}
+  .wheels{display:flex;gap:16px;margin:18px 0 4px;flex-wrap:wrap}
+  .wheel{display:grid;justify-items:center;gap:6px}
+  .wheel .k{font-size:.85rem;color:var(--vermillion);letter-spacing:.1em}
+  .wheel b{font-size:1.9rem;font-variant-numeric:tabular-nums;min-width:1.2em;text-align:center}
+  .wheel button{width:40px;padding:.25em 0;font-size:.8rem;line-height:1}
+  .solved{display:flex;align-items:center;gap:.6em;margin-top:16px;color:#2f6b3f;font-size:.9rem}
+  .card.dark .solved{color:#8fc79c}
+  .solved .jp{font-size:1.5rem;color:var(--vermillion)}
+  .shake{animation:shake .38s}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+
+  .toasts{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);z-index:40;display:grid;gap:8px;
+    justify-items:center;pointer-events:none;width:min(560px,92vw)}
+  .toast{padding:.55em 1.05em;background:rgba(14,11,8,.92);border:1px solid rgba(201,165,95,.42);color:#ecdfc2;
+    font-size:.83rem;letter-spacing:.04em;animation:tin .22s ease-out;box-shadow:0 8px 30px rgba(0,0,0,.6);text-align:center}
+  .toast.bad{border-color:rgba(180,55,42,.7);color:#f0c4bb}
+  .toast.good{border-color:rgba(201,165,95,.8);color:#f6e3b8}
+  @keyframes tin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  #unlockHint{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:6;font-size:.76rem;
+    letter-spacing:.12em;text-transform:uppercase;color:#b7a98d;background:rgba(10,8,6,.6);
+    border:1px solid rgba(233,223,198,.18);padding:.5em .9em;pointer-events:none}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+
+<div id="hud" hidden>
+  <div id="crosshair" aria-hidden="true"></div>
+  <div id="prompt" hidden><kbd>E</kbd><span id="promptText"></span></div>
+  <div class="topbar">
+    <div class="brand"><span class="seal">江戸</span><span>The Edo Room</span></div>
+    <div class="timer" id="timer">00:00</div>
+  </div>
+  <aside id="notes">
+    <h2>Locks <span class="jp">錠</span></h2>
+    <ul id="lockList"></ul>
+    <p class="objective" id="objective">Four puzzles. Four digits. The door will not open until all four are known.</p>
+  </aside>
+  <div class="hintbar"><kbd>E</kbd>inspect · <kbd>H</kbd>hint · <kbd>Esc</kbd>release mouse</div>
+</div>
+
+<div id="unlockHint" hidden>Click to look around</div>
+
+<div class="overlay" id="start">
+  <div class="card dark">
+    <div class="kicker">Kyōhō era · a merchant's house</div>
+    <h1>江戸 · The Edo Room</h1>
+    <p>The house is shuttered. Behind you the shoji are sealed; ahead, one door is held by a four-wheel lock.
+    Four objects in this room each hide a single digit. Read them, then open the door.</p>
+    <div class="keyrow">
+      <span>W A S D</span><span>Walk</span>
+      <span>Mouse</span><span>Look (click to capture)</span>
+      <span>E</span><span>Inspect what the crosshair touches</span>
+      <span>Esc</span><span>Release the mouse / close a panel</span>
+    </div>
+    <div class="actions">
+      <button class="primary" id="startBtn">Enter the room</button>
+      <button id="hintBtnTop">Show hints</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="panel" hidden>
+  <div class="card" id="panelCard" role="dialog" aria-modal="true" aria-labelledby="panelTitle">
+    <div class="glyph" id="panelGlyph"></div>
+    <div class="kicker" id="panelKicker"></div>
+    <h2 id="panelTitle"></h2>
+    <div id="panelBody"></div>
+    <div class="actions" id="panelActions"></div>
+  </div>
+</div>
+
+<div class="overlay" id="win" hidden>
+  <div class="card">
+    <div class="kicker">The lock yields</div>
+    <h1>出口 · You are out</h1>
+    <p>The four wheels fall into line and the door slides into the wall. Cold night air, the smell of rain on stone,
+    and the street lanterns of Edo beyond the gate.</p>
+    <p id="winStats" style="color:#6a5233"></p>
+    <div class="actions">
+      <button class="primary" onclick="location.reload()">Walk it again</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script type="module">
+import * as THREE from './vendor/three.module.min.js';
+
+/* ------------------------------------------------------------------ setup */
+const CJK = '"Yu Mincho","YuMincho","Hiragino Mincho ProN","Noto Serif JP","Noto Serif CJK JP","Takao Mincho","TakaoPGothic","IPAMincho","MS Mincho",serif';
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const canvas = document.getElementById('scene');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.12;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0705);
+scene.fog = new THREE.FogExp2(0x100b07, 0.03);
+
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 60);
+camera.rotation.order = 'YXZ';
+camera.position.set(0, 1.62, 2.9);
+
+const W = 10, D = 9, H = 3.4, HALF_W = W / 2, HALF_D = D / 2;
+
+/* --------------------------------------------------------------- textures */
+function tex(w, h, draw, opt = {}) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  draw(g, w, h);
+  const t = new THREE.CanvasTexture(c);
+  if (opt.srgb !== false) t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(opt.rx || 1, opt.ry || 1);
+  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return t;
+}
+const rnd = (a, b) => a + Math.random() * (b - a);
+function grain(g, w, h, amount = 0.05, alpha = 0.06) {
+  for (let i = 0; i < (w * h) / 90; i++) {
+    g.fillStyle = `rgba(${Math.random() < .5 ? 0 : 255},${Math.random() < .5 ? 0 : 255},255,${Math.random() * alpha})`;
+    g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1 + Math.random() * 2);
+  }
+}
+function kanji(g, ch, cx, cy, size, color, weight = 500) {
+  g.save();
+  g.fillStyle = color;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.font = `${weight} ${size}px ${CJK}`;
+  g.fillText(ch, cx, cy + size * 0.03);
+  g.restore();
+}
+
+/* tatami: 5 mats across, 9 deep */
+const tatamiTex = tex(1024, 922, (g, w, h) => {
+  g.fillStyle = '#c6b67f'; g.fillRect(0, 0, w, h);
+  const cols = 5, rows = 9, mw = w / cols, mh = h / rows;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x = c * mw, y = r * mh;
+      const tone = rnd(-11, 11);
+      g.fillStyle = `rgb(${198 + tone},${184 + tone},${128 + tone})`;
+      g.fillRect(x, y, mw, mh);
+      // weave
+      const horizontal = (r + c) % 2 === 0;
+      g.globalAlpha = 0.16;
+      for (let i = 0; i < (horizontal ? mh : mw); i += 3) {
+        g.fillStyle = i % 6 ? 'rgba(90,75,35,.5)' : 'rgba(255,245,205,.45)';
+        if (horizontal) g.fillRect(x, y + i, mw, 1); else g.fillRect(x + i, y, 1, mh);
+      }
+      g.globalAlpha = 1;
+      // heri (dark cloth border)
+      g.fillStyle = 'rgba(42,32,22,.9)';
+      if (horizontal) { g.fillRect(x, y, mw, 7); g.fillRect(x, y + mh - 7, mw, 7); }
+      else { g.fillRect(x, y, 7, mh); g.fillRect(x + mw - 7, y, 7, mh); }
+      g.fillStyle = 'rgba(20,16,12,.35)';
+      g.fillRect(x, y, mw, 1); g.fillRect(x, y, 1, mh);
+    }
+  }
+  grain(g, w, h, 0.05, 0.05);
+});
+
+/* shoji panel: paper + kumiko lattice */
+const shojiTex = tex(512, 512, (g, S) => {
+  g.fillStyle = '#e9dfc4'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 900; i++) {
+    g.strokeStyle = `rgba(150,135,100,${Math.random() * .09})`;
+    const x = Math.random() * S, y = Math.random() * S;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + rnd(-40, 40), y + rnd(-40, 40)); g.stroke();
+  }
+  g.strokeStyle = '#43301d'; g.lineWidth = 18; g.strokeRect(9, 9, S - 18, S - 18);
+  g.lineWidth = 8;
+  for (let i = 1; i < 4; i++) { g.beginPath(); g.moveTo(i * S / 4, 0); g.lineTo(i * S / 4, S); g.stroke(); }
+  for (let i = 1; i < 3; i++) { g.beginPath(); g.moveTo(0, i * S / 3); g.lineTo(S, i * S / 3); g.stroke(); }
+  g.strokeStyle = 'rgba(255,250,235,.16)'; g.lineWidth = 2;
+  for (let i = 1; i < 4; i++) { g.beginPath(); g.moveTo(i * S / 4 + 5, 0); g.lineTo(i * S / 4 + 5, S); g.stroke(); }
+});
+
+const woodTex = tex(512, 512, (g, S) => {
+  g.fillStyle = '#3b2717'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 260; i++) {
+    const y = Math.random() * S;
+    g.strokeStyle = `rgba(${20 + Math.random() * 60},${14 + Math.random() * 40},${8 + Math.random() * 26},${.15 + Math.random() * .35})`;
+    g.lineWidth = rnd(.5, 2.4);
+    g.beginPath();
+    for (let x = 0; x <= S; x += 16) g.lineTo(x, y + Math.sin((x + i * 7) * .02) * 3);
+    g.stroke();
+  }
+  grain(g, S, S, .04, .07);
+});
+
+const plasterTex = tex(512, 512, (g, S) => {
+  g.fillStyle = '#5a4527'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 2400; i++) {
+    g.fillStyle = `rgba(${200 + Math.random() * 40},${170 + Math.random() * 40},${120 + Math.random() * 40},${Math.random() * .12})`;
+    g.fillRect(Math.random() * S, Math.random() * S, rnd(1, 4), rnd(1, 4));
+  }
+});
+
+const ceilingTex = tex(512, 512, (g, S) => {
+  g.fillStyle = '#26190f'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 10; i++) {
+    const x = i * S / 10;
+    g.fillStyle = i % 2 ? '#2b1d12' : '#241810';
+    g.fillRect(x, 0, S / 10 - 2, S);
+    g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(x + S / 10 - 3, 0, 3, S);
+  }
+  grain(g, S, S, .03, .05);
+});
+
+const shadowTex = tex(256, 256, (g, S) => {
+  const grd = g.createRadialGradient(S / 2, S / 2, 4, S / 2, S / 2, S / 2);
+  grd.addColorStop(0, 'rgba(0,0,0,.6)');
+  grd.addColorStop(.55, 'rgba(0,0,0,.28)');
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, S, S);
+}, { srgb: true });
+
+const inkPaintingTex = tex(512, 1024, (g, w, h) => {
+  g.fillStyle = '#eee3c6'; g.fillRect(0, 0, w, h);
+  g.globalAlpha = .9;
+  for (let i = 0; i < 5; i++) {
+    g.strokeStyle = `rgba(24,18,14,${.4 + Math.random() * .5})`;
+    g.lineWidth = 3 + Math.random() * 9;
+    g.beginPath();
+    const x0 = w * (.2 + Math.random() * .5);
+    g.moveTo(x0, h * .92);
+    g.bezierCurveTo(x0 + rnd(-60, 60), h * .68, x0 + rnd(-90, 90), h * .42, x0 + rnd(-60, 40), h * .16);
+    g.stroke();
+  }
+  for (let i = 0; i < 26; i++) {
+    const x = rnd(w * .1, w * .85), y = rnd(h * .18, h * .8);
+    g.save(); g.translate(x, y); g.rotate(rnd(-1.2, 1.2));
+    g.fillStyle = `rgba(28,22,16,${rnd(.35, .8)})`;
+    g.beginPath(); g.ellipse(0, 0, rnd(14, 34), rnd(3, 7), 0, 0, Math.PI * 2); g.fill();
+    g.restore();
+  }
+  // red seal
+  kanji(g, '雪', w - 62, h - 96, 54, 'rgba(160,52,36,.85)', 600);
+  g.strokeStyle = 'rgba(150,40,30,.55)'; g.lineWidth = 3;
+  g.strokeRect(w - 96, h - 132, 68, 68);
+});
+
+/* -------------------------------------------------------------- materials */
+const M = {
+  tatami: new THREE.MeshStandardMaterial({ map: tatamiTex, roughness: .95, metalness: 0 }),
+  wood: new THREE.MeshStandardMaterial({ map: woodTex, roughness: .82, metalness: .03 }),
+  woodDark: new THREE.MeshStandardMaterial({ color: 0x2a1b11, roughness: .85 }),
+  woodMid: new THREE.MeshStandardMaterial({ color: 0x4a3120, roughness: .8 }),
+  plaster: new THREE.MeshStandardMaterial({ map: plasterTex, roughness: .98 }),
+  ceiling: new THREE.MeshStandardMaterial({ map: ceilingTex, roughness: .95 }),
+  shoji: new THREE.MeshStandardMaterial({ map: shojiTex, roughness: .92, emissive: 0x1a140c, emissiveIntensity: .35 }),
+  paper: new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: .95 }),
+  brass: new THREE.MeshStandardMaterial({ color: 0xb08b3e, roughness: .35, metalness: .7 }),
+  iron: new THREE.MeshStandardMaterial({ color: 0x241f1c, roughness: .55, metalness: .65 }),
+  cypress: new THREE.MeshStandardMaterial({ color: 0x8a6a42, roughness: .8 }),
+  lacquer: new THREE.MeshStandardMaterial({ color: 0x180f0b, roughness: .35, metalness: .15 }),
+  vermilion: new THREE.MeshStandardMaterial({ color: 0x8f2c22, roughness: .6 }),
+  indigo: new THREE.MeshStandardMaterial({ color: 0x1e3149, roughness: .9 }),
+  leaf: new THREE.MeshStandardMaterial({ color: 0x2c4a2a, roughness: .9 }),
+};
+
+function box(w, h, d, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  (parent || scene).add(m);
+  return m;
+}
+function plane(w, h, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  m.position.set(x, y, z);
+  (parent || scene).add(m);
+  return m;
+}
+function cyl(rt, rb, h, seg, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat);
+  m.position.set(x, y, z);
+  (parent || scene).add(m);
+  return m;
+}
+function contactShadow(x, z, size = 1.4, opacity = .5) {
+  const m = plane(size, size, new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity, depthWrite: false }), x, 0.012, z);
+  m.rotation.x = -Math.PI / 2;
+  return m;
+}
+
+/* ------------------------------------------------------------------ room */
+const floor = plane(W, D, M.tatami, 0, 0, 0);
+floor.rotation.x = -Math.PI / 2;
+
+const ceiling = plane(W, D, M.ceiling, 0, H, 0);
+ceiling.rotation.x = Math.PI / 2;
+ceiling.material.map.repeat.set(5, 4.5);
+
+// beams
+for (let i = -1; i <= 1; i++) box(W, .22, .26, M.woodDark, 0, H - .11, i * 2.6);
+
+scene.add(new THREE.HemisphereLight(0xb9c6dd, 0x2a1c10, .5));
+const moon = new THREE.DirectionalLight(0xa9c2ea, .28);
+moon.position.set(-7, 5, 6);
+scene.add(moon);
+
+function shojiWall(width, px, pz, ry) {
+  const g = new THREE.Group();
+  g.position.set(px, 0, pz);
+  g.rotation.y = ry;
+  scene.add(g);
+  // stone/wood base
+  box(width, .38, .12, M.woodDark, 0, .19, 0, g);
+  // shoji panels
+  const panelW = 1.34;
+  const n = Math.max(1, Math.round(width / panelW));
+  const w = width / n;
+  const t = shojiTex.clone();
+  t.needsUpdate = true;
+  t.repeat.set(1, 1);
+  const matPanel = new THREE.MeshStandardMaterial({ map: t, roughness: .93, emissive: 0x20180e, emissiveIntensity: .32 });
+  for (let i = 0; i < n; i++) {
+    const p = plane(w - .04, 2.55, matPanel, -width / 2 + w * (i + .5), .38 + 1.275, .02, g);
+    // frame edges
+    box(w, .07, .07, M.woodDark, -width / 2 + w * (i + .5), .38, .03, g);
+    box(w, .07, .07, M.woodDark, -width / 2 + w * (i + .5), 2.93, .03, g);
+    box(.07, 2.62, .07, M.woodDark, -width / 2 + w * i + .035, 1.66, .03, g);
+  }
+  box(width, .14, .18, M.woodDark, 0, 3.0, 0, g);
+  box(width, .5, .05, M.plaster, 0, 3.02 + .32, -.01, g);
+  return g;
+}
+
+// south wall (+z): back, with tokonoma
+shojiWall(W, 0, HALF_D, Math.PI);
+// east wall (+x)
+shojiWall(D, HALF_W, 0, -Math.PI / 2);
+// west wall (-x)
+shojiWall(D, -HALF_W, 0, Math.PI / 2);
+
+// north wall (-z): plaster + door
+const north = new THREE.Group();
+north.position.set(0, 0, -HALF_D);
+scene.add(north);
+box(W, .4, .16, M.woodDark, 0, .2, 0, north);
+box(W, 3.4, .14, M.plaster, 0, 1.9, -.02, north);
+for (let i = -2; i <= 2; i++) box(.16, 3.4, .18, M.woodDark, i * 2.4, 1.7, 0, north);
+box(W, .16, .2, M.woodDark, 0, 2.64, 0, north);
+
+// corner posts
+[[-HALF_W, -HALF_D], [HALF_W, -HALF_D], [-HALF_W, HALF_D], [HALF_W, HALF_D]].forEach(([x, z]) =>
+  box(.22, H, .22, M.woodDark, x, H / 2, z));
+
+/* --------------------------------------------------------------- lanterns */
+const lanterns = [];
+function chouchin(x, y, z, glyph, scale = 1) {
+  const g = new THREE.Group();
+  g.position.set(x, y, z);
+  scene.add(g);
+  const t = tex(512, 256, (c, w, h) => {
+    c.fillStyle = '#f2dfb0'; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 24; i++) { c.strokeStyle = 'rgba(180,140,80,.22)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, i * h / 24); c.lineTo(w, i * h / 24); c.stroke(); }
+    kanji(c, glyph, w / 2, h / 2, 120, 'rgba(35,24,16,.85)', 600);
+  });
+  const paperMat = new THREE.MeshStandardMaterial({ map: t, emissive: 0xffb264, emissiveIntensity: 1.25, emissiveMap: t, roughness: .9, side: THREE.DoubleSide });
+  const pts = [];
+  [[.07, 0], [.16, .1], [.21, .26], [.2, .42], [.1, .52], [.07, .55]].forEach(([r, yy]) => pts.push(new THREE.Vector2(r, yy)));
+  const body = new THREE.Mesh(new THREE.LatheGeometry(pts, 20), paperMat);
+  body.position.y = -.28;
+  g.add(body);
+  cyl(.085, .085, .045, 14, M.lacquer, 0, -.28, 0, g);
+  cyl(.085, .085, .045, 14, M.lacquer, 0, .265, 0, g);
+  for (let i = 0; i < 4; i++) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.135 + i * .018, .004, 4, 20), M.woodDark);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = -.18 + i * .09;
+    g.add(ring);
+  }
+  const cord = cyl(.006, .006, 1.16, 5, M.lacquer, 0, .42, 0, g);
+  const light = new THREE.PointLight(0xffb066, 9, 9, 2);
+  light.position.y = -.05;
+  g.add(light);
+  lanterns.push({ g, light, base: 9, phase: Math.random() * 6.28, y });
+  return g;
+}
+chouchin(2.75, 2.55, -1.7, '祭');
+chouchin(-2.9, 2.62, 1.5, '宿');
+chouchin(2.2, 2.5, 3.1, '灯', .85);
+
+function andon(x, z) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  scene.add(g);
+  const glow = new THREE.MeshStandardMaterial({ color: 0xf3e2b8, emissive: 0xffb877, emissiveIntensity: 1.05, roughness: .95 });
+  box(.3, .44, .3, glow, 0, .29, 0, g);
+  [[-.17, -.17], [.17, -.17], [-.17, .17], [.17, .17]].forEach(([px, pz]) => box(.035, .55, .035, M.woodDark, px, .275, pz, g));
+  box(.36, .03, .36, M.woodDark, 0, .55, 0, g);
+  box(.36, .03, .36, M.woodDark, 0, .03, 0, g);
+  const l = new THREE.PointLight(0xffb26b, 6, 6, 2);
+  l.position.set(0, .4, 0);
+  g.add(l);
+  lanterns.push({ g, light: l, base: 6, phase: Math.random() * 6.28, y: 0 });
+  contactShadow(x, z, 1.1, .45);
+}
+andon(-3.65, -2.9);
+
+/* ------------------------------------------------------------------ byobu */
+const FOLD_SCREEN = { x: HALF_W - .16, z: -.5 };
+const byobu = new THREE.Group();
+byobu.position.set(FOLD_SCREEN.x, 0, FOLD_SCREEN.z);
+byobu.rotation.y = -Math.PI / 2;
+scene.add(byobu);
+
+function goldLeaf(g, w, h) {
+  const grd = g.createLinearGradient(0, 0, w, h);
+  grd.addColorStop(0, '#c2a05c'); grd.addColorStop(.45, '#d8b979'); grd.addColorStop(.7, '#b8964f'); grd.addColorStop(1, '#cbaa66');
+  g.fillStyle = grd; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 220; i++) {
+    g.fillStyle = `rgba(255,${220 + Math.random() * 30 | 0},${150 + Math.random() * 60 | 0},${Math.random() * .18})`;
+    g.fillRect(Math.random() * w, Math.random() * h, rnd(4, 22), rnd(4, 22));
+  }
+  for (let i = 0; i < 90; i++) {
+    g.strokeStyle = `rgba(120,90,40,${Math.random() * .18})`;
+    g.beginPath(); g.moveTo(Math.random() * w, Math.random() * h); g.lineTo(Math.random() * w, Math.random() * h); g.stroke();
+  }
+}
+
+const eastTex = tex(320, 900, (g, w, h) => {
+  goldLeaf(g, w, h);
+  // faint sumi wash
+  g.globalAlpha = .12;
+  g.fillStyle = '#20160e'; g.fillRect(0, h * .1, w, h * .8);
+  g.globalAlpha = 1;
+  kanji(g, '東', w / 2, h * .5, 230, '#1a120b', 600);
+  // brush spatter
+  for (let i = 0; i < 40; i++) {
+    g.fillStyle = `rgba(26,18,11,${Math.random() * .3})`;
+    g.beginPath(); g.arc(rnd(w * .15, w * .85), rnd(h * .2, h * .8), rnd(.6, 2.6), 0, 6.28); g.fill();
+  }
+  // red seal bottom-left
+  g.strokeStyle = 'rgba(150,40,30,.8)'; g.lineWidth = 3; g.strokeRect(w * .12, h * .84, 44, 44);
+  kanji(g, '雪', w * .12 + 22, h * .84 + 22, 34, 'rgba(160,45,32,.9)', 600);
+});
+
+function decorativePanel(i) {
+  const t = tex(320, 900, (g, w, h) => {
+    goldLeaf(g, w, h);
+    g.globalAlpha = .82;
+    if (i % 2 === 0) {
+      // bamboo
+      for (let k = 0; k < 3; k++) {
+        const x = w * (.22 + k * .26);
+        g.strokeStyle = 'rgba(30,22,14,.75)';
+        g.lineWidth = 7 - k * 1.6;
+        g.beginPath();
+        g.moveTo(x, h * .92);
+        g.bezierCurveTo(x + rnd(-20, 20), h * .6, x + rnd(-26, 26), h * .35, x + rnd(-30, 30), h * .1);
+        g.stroke();
+        for (let l = 0; l < 5; l++) {
+          g.save(); g.translate(x + rnd(-40, 40), rnd(h * .2, h * .8)); g.rotate(rnd(-1, 1));
+          g.fillStyle = 'rgba(28,20,13,.7)';
+          g.beginPath(); g.ellipse(0, 0, rnd(16, 30), 3.4, 0, 0, 6.28); g.fill();
+          g.restore();
+        }
+      }
+    } else {
+      // enso circle
+      g.strokeStyle = 'rgba(28,20,13,.7)';
+      g.lineWidth = 18;
+      g.beginPath();
+      g.arc(w / 2, h * .45, w * .28, .5, 5.6);
+      g.stroke();
+      for (let i = 0; i < 30; i++) {
+        g.fillStyle = `rgba(28,20,13,${Math.random() * .25})`;
+        g.beginPath(); g.arc(rnd(w * .2, w * .8), rnd(h * .2, h * .7), rnd(.5, 2), 0, 6.28); g.fill();
+      }
+    }
+    g.globalAlpha = 1;
+  });
+  return new THREE.MeshStandardMaterial({ map: t, roughness: .74, metalness: .12 });
+}
+byobu.userData = {};
+
+const panelW = .62, panelH = 1.92;
+for (let i = 0; i < 4; i++) {
+  const pg = new THREE.Group();
+  pg.position.set((i - 1.5) * (panelW + .012), 0, (i % 2 === 0 ? .035 : -.035));
+  pg.rotation.y = (i % 2 === 0 ? 1 : -1) * .1;
+  byobu.add(pg);
+  const mat = i === 1
+    ? new THREE.MeshStandardMaterial({ map: eastTex, roughness: .72, metalness: .14 })
+    : decorativePanel(i);
+  const back = new THREE.MeshStandardMaterial({ map: woodTex, roughness: .9 });
+  const p = box(panelW, panelH, .022, [mat, mat, mat, mat, mat, mat], 0, 1.18, 0, pg);
+  // frame
+  const fr = .035;
+  box(panelW + .01, fr, .04, M.lacquer, 0, 1.18 + panelH / 2, 0, pg);
+  box(panelW + .01, fr, .04, M.lacquer, 0, 1.18 - panelH / 2, 0, pg);
+  box(fr, panelH, .04, M.lacquer, -panelW / 2, 1.18, 0, pg);
+  box(fr, panelH, .04, M.lacquer, panelW / 2, 1.18, 0, pg);
+  box(.03, .22, .03, M.lacquer, (i % 2 ? 1 : -1) * panelW / 2, .22, 0, pg);
+}
+// wooden tag with brushstroke hint
+const byobuTag = (() => {
+  const t = tex(512, 200, (g, w, h) => {
+    g.fillStyle = '#b99b68'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 120; i++) { g.fillStyle = `rgba(80,55,28,${Math.random() * .18})`; g.fillRect(Math.random() * w, Math.random() * h, rnd(2, 30), 1.4); }
+    kanji(g, '筆数', w * .32, h / 2, 96, '#2b1c10', 600);
+    g.fillStyle = '#2b1c10'; g.font = `34px ${CJK}`;
+    g.fillText('hitsu-sū', w * .62, h / 2 + 12);
+  });
+  const m = box(.46, .17, .03, new THREE.MeshStandardMaterial({ map: t, roughness: .9 }), FOLD_SCREEN.x - .22, 1.2, FOLD_SCREEN.z + 1.32);
+  m.rotation.y = -Math.PI / 2;
+  return m;
+})();
+contactShadow(FOLD_SCREEN.x - .25, FOLD_SCREEN.z, 3.1, .5);
+
+/* -------------------------------------------------------------- low table */
+const tablePos = new THREE.Vector3(.3, 0, 1.15);
+const table = new THREE.Group();
+table.position.copy(tablePos);
+scene.add(table);
+box(1.0, .06, .95, M.wood, 0, .33, 0, table);
+[[-.4, -.36], [.4, -.36], [-.4, .36], [.4, .36]].forEach(([x, z]) => cyl(.035, .045, .33, 8, M.woodDark, x, .165, z, table));
+contactShadow(tablePos.x, tablePos.z, 1.8, .55);
+
+// tea set
+const teapot = new THREE.Mesh(new THREE.SphereGeometry(.085, 16, 12), M.lacquer);
+teapot.position.set(-.3, .43, .12); teapot.scale.y = .82; table.add(teapot);
+cyl(.03, .04, .05, 10, M.lacquer, -.3, .5, .12, table);
+for (let i = 0; i < 2; i++) {
+  const cup = new THREE.Mesh(new THREE.CylinderGeometry(.036, .028, .055, 12), new THREE.MeshStandardMaterial({ color: 0xdad0b4, roughness: .75 }));
+  cup.position.set(-.1 + i * .16, .39, .3);
+  table.add(cup);
+}
+// zabuton
+[[-.35, -.05], [-.95, .35]].forEach(([x, z]) => {
+  const c = box(.5, .09, .5, new THREE.MeshStandardMaterial({ color: 0x4b3550, roughness: .96 }), tablePos.x + x, .06, tablePos.z + z);
+  c.geometry.dispose();
+  c.geometry = new THREE.BoxGeometry(.5, .08, .5);
+  const sh = contactShadow(tablePos.x + x, tablePos.z + z, .9, .35);
+  sh.position.y = .005;
+});
+
+/* soroban */
+const soroban = new THREE.Group();
+soroban.position.set(.42, .38, .82);
+soroban.rotation.x = -Math.PI / 2;
+soroban.rotation.z = -.12;
+table.add(soroban);
+const sorMat = new THREE.MeshStandardMaterial({ color: 0x3a2413, roughness: .62 });
+box(.56, .02, .3, sorMat, 0, 0, 0, soroban);
+box(.56, .012, .022, M.lacquer, 0, .01, .15, soroban);
+box(.56, .012, .022, M.lacquer, 0, .01, -.15, soroban);
+box(.022, .012, .3, M.lacquer, .28, .01, 0, soroban);
+box(.022, .012, .3, M.lacquer, -.28, .01, 0, soroban);
+box(.56, .01, .012, M.lacquer, 0, .008, .045, soroban);
+const beadMat = new THREE.MeshStandardMaterial({ color: 0x20140c, roughness: .4, metalness: .1 });
+const beadHi = new THREE.MeshStandardMaterial({ color: 0x8e2f24, roughness: .45 });
+const rods = [-.16, 0, .16];
+// values: 4, 7, 2
+const values = [4, 7, 2];
+rods.forEach((rx, i) => {
+  cyl(.004, .004, .28, 6, M.brass, rx, .015, 0, soroban);
+  const red = i === 1;
+  const bm = red ? beadHi : beadMat;
+  const upper = Math.floor(values[i] / 5);
+  const lower = values[i] % 5;
+  // upper bead close to the reckoning bar when active
+  const ub = new THREE.Mesh(new THREE.CylinderGeometry(.026, .026, .014, 12), bm);
+  ub.position.set(rx, .03, upper ? .062 : .118);
+  soroban.add(ub);
+  for (let k = 0; k < 4; k++) {
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(.026, .026, .012, 12), beadMat);
+    b.position.set(rx, .028, lower > k ? .028 + k * .014 : .05 + k * .014);
+    soroban.add(b);
+  }
+});
+
+/* -------------------------------------------------------- hanging scrolls */
+function kakejiku(x, z, ry, ch, extra) {
+  const g = new THREE.Group();
+  g.position.set(x, 1.62, z);
+  g.rotation.y = ry;
+  scene.add(g);
+  const t = tex(384, 1024, (c, w, h) => {
+    c.fillStyle = '#efe4c8'; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 700; i++) { c.strokeStyle = `rgba(150,130,90,${Math.random() * .07})`; c.beginPath(); c.moveTo(Math.random() * w, Math.random() * h); c.lineTo(Math.random() * w, Math.random() * h); c.stroke(); }
+    c.strokeStyle = 'rgba(90,70,40,.35)'; c.lineWidth = 8; c.strokeRect(14, 14, w - 28, h - 28);
+    kanji(c, ch, w / 2, h * .46, 200, '#1c1410', 600);
+    c.strokeStyle = 'rgba(150,40,30,.7)'; c.lineWidth = 3; c.strokeRect(w * .68, h * .84, 46, 46);
+    kanji(c, '雪', w * .68 + 23, h * .84 + 23, 34, 'rgba(160,45,32,.85)', 600);
+    if (extra) extra(c, w, h);
+  });
+  const paper = plane(.56, 1.5, new THREE.MeshStandardMaterial({ map: t, roughness: .92 }), 0, 0, .012, g);
+  cyl(.014, .014, .62, 8, M.lacquer, 0, .77, 0, g).rotation.z = Math.PI / 2;
+  cyl(.018, .018, .66, 8, M.lacquer, 0, -.77, 0, g).rotation.z = Math.PI / 2;
+  return g;
+}
+kakejiku(-HALF_W + .1, -.95, Math.PI / 2, '四');
+kakejiku(-HALF_W + .1, .05, Math.PI / 2, '五');
+// red plus tag between them
+(() => {
+  const t = tex(256, 256, (c, S) => {
+    c.fillStyle = '#e7d9b8'; c.fillRect(0, 0, S, S);
+    c.strokeStyle = 'rgba(150,42,30,.9)'; c.lineWidth = 20; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(S / 2, S * .25); c.lineTo(S / 2, S * .75);
+    c.moveTo(S * .3, S / 2); c.lineTo(S * .7, S / 2); c.stroke();
+  });
+  const m = plane(.24, .24, new THREE.MeshStandardMaterial({ map: t, roughness: .9 }), -HALF_W + .11, 1.55, -.45);
+  m.rotation.y = Math.PI / 2;
+})();
+
+/* ------------------------------------------------------------ tokonoma */
+const toko = new THREE.Group();
+toko.position.set(1.9, 0, HALF_D - .55);
+scene.add(toko);
+box(2.6, .18, .95, M.woodDark, 0, .09, 0, toko);
+box(2.6, .06, .95, M.wood, 0, .21, 0, toko);
+box(.18, 2.5, .2, M.woodDark, -1.3, 1.25, 0, toko);
+box(.18, 2.5, .2, M.woodDark, 1.3, 1.25, 0, toko);
+box(2.78, .18, .26, M.woodDark, 0, 2.5, 0, toko);
+const ink = plane(1.0, 1.75, new THREE.MeshStandardMaterial({ map: inkPaintingTex, roughness: .95 }), 0, 1.45, .02, toko);
+ink.rotation.y = Math.PI;
+const vase = new THREE.Mesh(new THREE.LatheGeometry([
+  new THREE.Vector2(.045, 0), new THREE.Vector2(.085, .08), new THREE.Vector2(.1, .2), new THREE.Vector2(.055, .3), new THREE.Vector2(.05, .34)
+], 14), new THREE.MeshStandardMaterial({ color: 0x2f3a35, roughness: .5 }));
+vase.position.set(.85, .21, .1);
+toko.add(vase);
+for (let i = 0; i < 3; i++) {
+  const br = cyl(.006, .008, .5, 5, new THREE.MeshStandardMaterial({ color: 0x3a2a18, roughness: .9 }), .85 + rnd(-.02, .02), .55, .1, toko);
+  br.rotation.z = rnd(-.25, .25);
+  for (let k = 0; k < 3; k++) {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(.03, 6, 5), new THREE.MeshStandardMaterial({ color: 0x6f8a5e, roughness: .9 }));
+    leaf.position.set(.85 + rnd(-.12, .12), .62 + k * .12, .1 + rnd(-.04, .04));
+    toko.add(leaf);
+  }
+}
+contactShadow(1.9, HALF_D - .55, 3.2, .45);
+
+/* ------------------------------------------------------------------ ema */
+const emaGroup = new THREE.Group();
+emaGroup.position.set(-2.15, 1.55, -HALF_D + .12);
+scene.add(emaGroup);
+const emaTex = tex(512, 384, (g, w, h) => {
+  g.fillStyle = '#b99b68'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 160; i++) { g.fillStyle = `rgba(85,60,30,${Math.random() * .2})`; g.fillRect(Math.random() * w, Math.random() * h, rnd(4, 60), 1.6); }
+  g.strokeStyle = '#5d4425'; g.lineWidth = 2;
+  for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(w * .78, h * .3, 30 + i * 16, .4, 2.4); g.stroke(); }
+  kanji(g, '寅', w * .34, h * .5, 210, '#c8a04a', 700);
+  g.fillStyle = 'rgba(200,160,74,.75)';
+  g.font = `26px ${CJK}`; g.fillText('tora', w * .34, h * .9);
+});
+const emaShape = new THREE.Shape();
+emaShape.moveTo(-.26, -.18); emaShape.lineTo(.26, -.18); emaShape.lineTo(.26, .06);
+emaShape.lineTo(0, .24); emaShape.lineTo(-.26, .06); emaShape.closePath();
+const emaGeo = new THREE.ExtrudeGeometry(emaShape, { depth: .022, bevelEnabled: true, bevelSize: .006, bevelThickness: .004, bevelSegments: 2 });
+const emaMesh = new THREE.Mesh(emaGeo, [new THREE.MeshStandardMaterial({ map: emaTex, roughness: .8 }), new THREE.MeshStandardMaterial({ color: 0x8a6b40, roughness: .85 })]);
+emaGroup.add(emaMesh);
+emaMesh.position.z = .0;
+emaGroup.rotation.x = 0;
+const emaCord = cyl(.004, .004, .34, 4, new THREE.MeshStandardMaterial({ color: 0x6b2f26 }), 0, .36, 0, emaGroup);
+
+/* zodiac chart */
+const zodiacTex = tex(640, 860, (g, w, h) => {
+  g.fillStyle = '#ede2c5'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 800; i++) { g.strokeStyle = `rgba(150,130,90,${Math.random() * .06})`; g.beginPath(); g.moveTo(Math.random() * w, Math.random() * h); g.lineTo(Math.random() * w, Math.random() * h); g.stroke(); }
+  g.strokeStyle = 'rgba(80,60,35,.4)'; g.lineWidth = 6; g.strokeRect(12, 12, w - 24, h - 24);
+  kanji(g, '十二支', w / 2, 74, 56, '#241a10', 600);
+  const animals = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+  const nums = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
+  const colW = (w - 120) / 2, rowH = (h - 190) / 6;
+  animals.forEach((a, i) => {
+    const col = i < 6 ? 0 : 1;
+    const row = i % 6;
+    const x = 60 + col * (colW + 20);
+    const y = 140 + row * rowH;
+    g.strokeStyle = 'rgba(80,60,35,.18)'; g.lineWidth = 1; g.strokeRect(x, y, colW, rowH - 6);
+    g.fillStyle = 'rgba(120,40,30,.8)';
+    g.font = `26px ${CJK}`; g.textAlign = 'left'; g.textBaseline = 'top';
+    g.fillText(nums[i], x + 10, y + 10);
+    kanji(g, a, x + colW * .62, y + rowH * .5, 58, '#241a0f', 600);
+  });
+  g.fillStyle = 'rgba(120,40,30,.85)';
+  g.font = `24px ${CJK}`;
+  g.fillText('干支 · the twelve', w * .06, h - 44);
+});
+const zodiac = new THREE.Group();
+zodiac.position.set(2.45, 1.6, -HALF_D + .1);
+scene.add(zodiac);
+const zodiacPaper = plane(.68, .92, new THREE.MeshStandardMaterial({ map: zodiacTex, roughness: .92 }), 0, 0, .01, zodiac);
+zodiacPaper.rotation.y = 0;
+cyl(.012, .012, .74, 8, M.woodDark, 0, .48, 0, zodiac).rotation.z = Math.PI / 2;
+cyl(.012, .012, .74, 8, M.woodDark, 0, -.48, 0, zodiac).rotation.z = Math.PI / 2;
+
+/* ------------------------------------------------------------ north door */
+const doorGroup = new THREE.Group();
+doorGroup.position.set(0, 0, -HALF_D + .18);
+scene.add(doorGroup);
+const doorW = 1.6, doorH = 2.2;
+const doorLeaf = new THREE.Group();
+doorGroup.add(doorLeaf);
+const doorPanelMat = new THREE.MeshStandardMaterial({ map: woodTex, roughness: .6, metalness: .06, color: 0xa88a63, emissive: 0x2a1a08, emissiveIntensity: 0 });
+const leaf = box(doorW, doorH, .1, doorPanelMat, 0, doorH / 2, 0, doorLeaf);
+// studs + slats
+for (let i = 0; i < 3; i++) {
+  box(doorW - .16, .03, .02, M.iron, 0, .35 + i * .72, .06, doorLeaf);
+}
+for (let i = -1; i <= 1; i++) {
+  box(.045, doorH - .3, .02, M.iron, i * .5, doorH / 2, .06, doorLeaf);
+}
+const doorFrame = new THREE.Group();
+doorGroup.add(doorFrame);
+box(.16, doorH + .22, .24, M.woodDark, -doorW / 2 - .08, (doorH + .22) / 2, 0, doorFrame);
+box(.16, doorH + .22, .24, M.woodDark, doorW / 2 + .08, (doorH + .22) / 2, 0, doorFrame);
+box(doorW + .32, .18, .24, M.woodDark, 0, doorH + .11, 0, doorFrame);
+// 出口 sign
+(() => {
+  const t = tex(512, 180, (g, w, h) => {
+    g.fillStyle = '#211710'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#c9a55f'; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16);
+    kanji(g, '出口', w / 2, h / 2, 100, '#e9d9ae', 600);
+  });
+  const m = plane(1.0, .35, new THREE.MeshStandardMaterial({ map: t, roughness: .7, emissive: 0x3a2a12, emissiveIntensity: .4 }), 0, doorH + .52, .06, doorGroup);
+})();
+// light behind the door
+const doorLight = new THREE.PointLight(0xffd9a0, 0, 8, 2);
+doorLight.position.set(0, 1.2, -.9);
+doorGroup.add(doorLight);
+const doorGlow = plane(1.5, 2.2, new THREE.MeshBasicMaterial({ color: 0xffe6b8, transparent: true, opacity: 0 }), 0, doorH / 2, -.06, doorGroup);
+// lock plate
+const lockGroup = new THREE.Group();
+lockGroup.position.set(doorW / 2 + .42, 1.25, .12);
+doorGroup.add(lockGroup);
+box(.34, .5, .06, M.iron, 0, 0, 0, lockGroup);
+const lockDialMats = [];
+for (let i = 0; i < 4; i++) {
+  const t = tex(128, 128, (g, S) => {
+    g.fillStyle = '#15100c'; g.fillRect(0, 0, S, S);
+    g.fillStyle = '#cfae6c'; g.font = `700 ${S * .7}px ${CJK}`;
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('?', S / 2, S * .56);
+  });
+  const m = new THREE.MeshStandardMaterial({ map: t, roughness: .5, metalness: .3 });
+  lockDialMats.push({ mat: m, tex: t });
+  const d = new THREE.Mesh(new THREE.CircleGeometry(.045, 16), m);
+  d.position.set(-.115 + i * .077, .06, .035);
+  lockGroup.add(d);
+}
+const lockKnob = new THREE.Mesh(new THREE.SphereGeometry(.045, 14, 10), M.brass);
+lockKnob.position.set(0, -.14, .05);
+lockGroup.add(lockKnob);
+
+/* --------------------------------------------------------------- katana */
+const katanakake = new THREE.Group();
+katanakake.position.set(3.55, 0, -2.55);
+katanakake.rotation.y = -Math.PI / 2;
+scene.add(katanakake);
+box(.5, .05, .22, M.woodDark, 0, .55, 0, katanakake);
+box(.06, .56, .2, M.woodDark, -.22, .28, 0, katanakake);
+box(.06, .56, .2, M.woodDark, .22, .28, 0, katanakake);
+box(.5, .05, .22, M.woodDark, 0, .02, 0, katanakake);
+for (let i = 0; i < 2; i++) {
+  const y = .58 + i * .09;
+  const saya = new THREE.Mesh(new THREE.CylinderGeometry(.019, .016, 1.0, 10), new THREE.MeshStandardMaterial({ color: i ? 0x1a1512 : 0x241a14, roughness: .35 }));
+  saya.rotation.z = Math.PI / 2;
+  saya.position.set(0, y, 0);
+  katanakake.add(saya);
+  const tsuba = new THREE.Mesh(new THREE.CylinderGeometry(.045, .045, .012, 12), M.brass);
+  tsuba.rotation.z = Math.PI / 2;
+  tsuba.position.set(-.42, y, 0);
+  katanakake.add(tsuba);
+  const tsuka = new THREE.Mesh(new THREE.CylinderGeometry(.017, .016, .26, 8), new THREE.MeshStandardMaterial({ color: 0x241c2e, roughness: .8 }));
+  tsuka.rotation.z = Math.PI / 2;
+  tsuka.position.set(-.56, y, 0);
+  katanakake.add(tsuka);
+}
+contactShadow(3.55, -2.55, 1.3, .4);
+
+/* --------------------------------------------------------------- bonsai */
+const bonsai = new THREE.Group();
+bonsai.position.set(3.9, 0, 2.45);
+scene.add(bonsai);
+box(.9, .06, .5, M.woodDark, 0, .5, 0, bonsai);
+box(.06, .5, .4, M.woodDark, -.42, .25, 0, bonsai);
+box(.06, .5, .4, M.woodDark, .42, .25, 0, bonsai);
+const pot = new THREE.Mesh(new THREE.CylinderGeometry(.17, .13, .17, 6), new THREE.MeshStandardMaterial({ color: 0x3b3a33, roughness: .85 }));
+pot.position.set(0, .62, 0);
+bonsai.add(pot);
+const trunkPts = [[0, .68], [.02, .82], [-.05, .95], [.06, 1.08]];
+let prev = null;
+trunkPts.forEach(([x, y]) => {
+  const t = cyl(.018, .026, .16, 6, new THREE.MeshStandardMaterial({ color: 0x3a2c1e, roughness: .95 }), x, y, 0, bonsai);
+  t.rotation.z = rnd(-.2, .2);
+});
+for (let i = 0; i < 9; i++) {
+  const f = new THREE.Mesh(new THREE.IcosahedronGeometry(rnd(.09, .15), 0), M.leaf);
+  f.position.set(rnd(-.24, .24), rnd(.98, 1.28), rnd(-.16, .16));
+  f.scale.y = .6;
+  bonsai.add(f);
+}
+contactShadow(3.9, 2.45, 1.4, .4);
+
+/* --------------------------------------------------------------- noren */
+(() => {
+  const t = tex(512, 512, (g, w, h) => {
+    g.fillStyle = '#1d2f47'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * .03})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    kanji(g, '湯', w / 2, h * .42, 190, '#e8dfc8', 500);
+    g.fillStyle = '#e8dfc8'; g.font = `30px ${CJK}`; g.textAlign = 'center';
+    g.fillText('ゆ', w / 2, h * .72);
+  });
+  const mat = new THREE.MeshStandardMaterial({ map: t, roughness: .95, side: THREE.DoubleSide });
+  for (let i = 0; i < 3; i++) {
+    const p = plane(.42, 1.0, mat, -2.9 + (i - 1) * .44, 2.02, HALF_D - .06);
+    p.rotation.y = Math.PI;
+  }
+  cyl(.02, .02, 1.5, 8, M.woodDark, -2.9, 2.55, HALF_D - .06).rotation.z = Math.PI / 2;
+})();
+
+/* ---------------------------------------------------------- dust motes */
+const dustGeo = new THREE.BufferGeometry();
+const dustCount = 160;
+const dustPos = new Float32Array(dustCount * 3);
+for (let i = 0; i < dustCount; i++) {
+  dustPos[i * 3] = rnd(-HALF_W + .4, HALF_W - .4);
+  dustPos[i * 3 + 1] = rnd(.3, H - .3);
+  dustPos[i * 3 + 2] = rnd(-HALF_D + .4, HALF_D - .4);
+}
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xffe1b0, size: .022, transparent: true, opacity: .5, depthWrite: false, blending: THREE.AdditiveBlending }));
+scene.add(dust);
+
+/* --------------------------------------------------------- interactivity */
+const interactList = [];
+function register(group, id, label) {
+  group.traverse(o => { if (o.isMesh) o.userData.interact = id; });
+  interactList.push(group);
+  group.userData.interact = id;
+  group.userData.label = label;
+}
+register(byobu, 'byobu', '屏風 · folding screen');
+register(byobuTag, 'byobu', '屏風 · folding screen');
+register(table, 'soroban', '算盤 · soroban');
+register(zodiac, 'zodiac', '十二支 · zodiac chart');
+register(emaGroup, 'ema', '絵馬 · votive plaque');
+register(lockGroup, 'door', '錠 · combination lock');
+register(leaf, 'door', '錠 · combination lock');
+register(zodiacPaper, 'zodiac', '十二支 · zodiac chart');
+register(ink, 'scrollart', '掛軸 · ink scroll');
+
+// scroll art group for the puzzle (kakemono containing 四 and 五)
+const kakeGroup = new THREE.Group();
+scene.add(kakeGroup);
+// re-register actual scroll meshes by scanning scene for those positions
+const kakeObjects = [];
+scene.traverse(o => {
+  if (o.isGroup && Math.abs(o.position.x + HALF_W - .1) < .001 && Math.abs(o.position.y - 1.62) < .001) kakeObjects.push(o);
+});
+kakeObjects.forEach(o => { o.traverse(m => { if (m.isMesh) m.userData.interact = 'kakemono'; }); interactList.push(o); o.userData.label = '掛軸 · hanging scrolls'; });
+
+/* ----------------------------------------------------------------- state */
+const CODE_ORDER = ['byobu', 'soroban', 'kakemono', 'ema'];
+const CODE = [8, 7, 9, 3];
+const KANJI = { byobu: '屏風', soroban: '算盤', kakemono: '掛軸', ema: '絵馬', door: '錠', zodiac: '十二支', scrollart: '掛軸' };
+const NAMES = { byobu: 'Folding screen', soroban: 'Soroban', kakemono: 'Scrolls', ema: 'Votive plaque' };
+
+const state = {
+  solved: {}, digits: {}, startTime: 0, elapsed: 0, running: false,
+  panelOpen: false, doorOpen: false, doorT: 0, hovered: null, locked: false,
+};
+
+const PUZZLES = {
+  byobu: {
+    glyph: '東', title: 'The folding screen', sub: '屏風 · byōbu',
+    body: `Four panels of washi and gold leaf. One panel carries a single character in thick sumi ink:
+      <b>東</b> — <i>higashi</i>, "east".<br>
+      A wooden tag nailed to the frame is carved <b>筆数</b> (<i>hitsu-sū</i>) — <i>the count of strokes</i>.
+      Whoever painted it wanted the brushwork itself to be read.`,
+    question: `How many brushstrokes build 東?`,
+    hint: `Count them: 一 (1), the long vertical through it (1), 日 (4), and the two legs below (2).`,
+    answer: 8,
+    done: `Eight strokes. The screen settles — 8.`,
+  },
+  soroban: {
+    glyph: '算', title: 'The abacus', sub: '算盤 · soroban',
+    body: `A well-used soroban rests on the low table. Three rods are set; the middle one is bound with a
+      red silk cord.<br>On a soroban the single bead above the reckoning bar is worth <b>5</b>, each bead below it <b>1</b>.`,
+    question: `What number does the corded rod show?`,
+    hint: `One upper bead is pushed to the bar (5) and two lower beads are pushed up (2).`,
+    answer: 7,
+    done: `Seven. The bead clicks against the bar — 7.`,
+  },
+  kakemono: {
+    glyph: '五', title: 'Two scrolls', sub: '掛軸 · kakejiku',
+    body: `On the west wall: <b>四</b> (<i>shi</i>, four) and <b>五</b> (<i>go</i>, five), with a brush-drawn cross
+      hung between them — an addition.<br>The old numerals are written in kanji, the way a merchant of Edo
+      would set down a sum in his ledger.`,
+    question: `四 + 五 — what is the sum, as a Western digit?`,
+    hint: `四 = 4, 五 = 5. Add them.`,
+    answer: 9,
+    done: `Nine. The ink dries on the ledger — 9.`,
+  },
+  ema: {
+    glyph: '寅', title: 'The votive plaque', sub: '絵馬 · ema',
+    body: `A cedar plaque hangs by a cord, its characters pressed in gold: <b>寅</b> (<i>tora</i>), the tiger.<br>
+      Beside it hangs the chart of the <b>十二支</b>, the twelve animals of the cycle, each numbered in order.`,
+    question: `Which position does 寅 hold in the twelve-animal cycle?`,
+    hint: `Read the chart on the wall: 子 1, 丑 2, 寅 3 …`,
+    answer: 3,
+    done: `Third of the twelve. The cord swings — 3.`,
+  },
+  zodiac: {
+    glyph: '支', title: 'The twelve animals', sub: '十二支 · jūnishi',
+    body: `<div class="keyrow" style="grid-template-columns:repeat(2,auto);gap:.3em 1.6em;font-size:.85rem">
+      ${['子 一', '丑 二', '寅 三', '卯 四', '辰 五', '巳 六', '午 七', '未 八', '申 九', '酉 十', '戌 十一', '亥 十二']
+        .map(x => `<span style="text-align:left;color:#8a6a3d">${x}</span>`).join('')}
+      </div>
+      <p>Read right to left, the chart is a clock of years: the rat first, the boar last.</p>`,
+    question: null,
+    done: null,
+  },
+  door: {
+    glyph: '錠', title: 'The four-wheel lock', sub: '錠 · combination lock',
+    body: '', question: null, done: null,
+  },
+  scrollart: {
+    glyph: '雪', title: 'Ink and bamboo', sub: '掛軸 · tokonoma scroll',
+    body: `A hanging scroll in the alcove: bamboo in three shades of sumi, a red seal reading <b>雪</b> — "snow".
+      Nothing is written here. Whoever lived in this house liked silence.`,
+    question: null,
+    done: null,
+  },
+};
+
+/* ------------------------------------------------------------- hud wiring */
+const hud = document.getElementById('hud');
+const promptEl = document.getElementById('prompt');
+const promptText = document.getElementById('promptText');
+const crosshair = document.getElementById('crosshair');
+const lockList = document.getElementById('lockList');
+const timerEl = document.getElementById('timer');
+const objective = document.getElementById('objective');
+const panelEl = document.getElementById('panel');
+const panelCard = document.getElementById('panelCard');
+const panelGlyph = document.getElementById('panelGlyph');
+const panelKicker = document.getElementById('panelKicker');
+const panelTitle = document.getElementById('panelTitle');
+const panelBody = document.getElementById('panelBody');
+const panelActions = document.getElementById('panelActions');
+const toasts = document.getElementById('toasts');
+const unlockHint = document.getElementById('unlockHint');
+
+function buildLockList() {
+  lockList.innerHTML = CODE_ORDER.map(k => `
+    <li data-k="${k}"><span class="k">${KANJI[k]}</span><span class="n">${NAMES[k]}</span><b>?</b></li>`).join('');
+}
+buildLockList();
+
+function syncHud() {
+  let done = 0;
+  CODE_ORDER.forEach(k => {
+    const li = lockList.querySelector(`li[data-k="${k}"]`);
+    const d = state.digits[k];
+    if (d != null) { li.classList.add('done'); li.querySelector('b').textContent = d; done++; }
+    else { li.classList.remove('done'); li.querySelector('b').textContent = '?'; }
+  });
+  objective.textContent = done === 4
+    ? 'All four digits known. The lock on the north door is waiting.'
+    : `${done} of 4 digits known. Inspect what the crosshair touches (E).`;
+}
+
+function toast(msg, kind = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.textContent = msg;
+  toasts.appendChild(el);
+  setTimeout(() => { el.style.transition = 'opacity .4s'; el.style.opacity = '0'; }, 2400);
+  setTimeout(() => el.remove(), 2900);
+}
+
+/* ------------------------------------------------------------------ panel */
+let dialValue = 0;
+let doorDigits = [0, 0, 0, 0];
+
+function openPanel(kind) {
+  const def = PUZZLES[kind];
+  if (!def) return;
+  state.currentPanel = kind;
+  state.panelOpen = true;
+  if (document.pointerLockElement) document.exitPointerLock();
+  panelCard.classList.toggle('dark', kind === 'door');
+  panelGlyph.textContent = def.glyph || '';
+  panelKicker.textContent = def.sub || '';
+  panelTitle.innerHTML = def.title;
+  const solved = !!state.solved[kind];
+
+  if (kind === 'door') {
+    panelBody.innerHTML = `
+      <p>A brass plate beside the door. Four wheels, each stamped with the object that gave up its number.
+      Set them in the order of the room.</p>
+      <div class="wheels">
+        ${CODE_ORDER.map((k, i) => `
+          <div class="wheel" data-i="${i}">
+            <span class="k">${KANJI[k]}</span>
+            <button data-dir="1" aria-label="up">▲</button>
+            <b>${doorDigits[i]}</b>
+            <button data-dir="-1" aria-label="down">▼</button>
+          </div>`).join('')}
+      </div>
+      <p style="font-size:.8rem;color:#8d8069">Digits: 屏風 first, 絵馬 last.</p>`;
+    panelActions.innerHTML = `<button class="primary" data-act="try">Turn the lock</button>
+      <button data-act="close">Step back</button>`;
+  } else if (def.question) {
+    if (solved) {
+      panelBody.innerHTML = `<p>${def.body}</p>
+        <div class="solved"><span class="jp">✓</span><span>Recorded — ${def.done}</span></div>`;
+      panelActions.innerHTML = `<button data-act="close">Step back</button>`;
+    } else {
+      dialValue = 0;
+      panelBody.innerHTML = `<p>${def.body}</p>
+        <p style="margin-top:14px"><b>${def.question}</b></p>
+        <div class="dial">
+          <button data-dir="-1" aria-label="decrease">▼</button>
+          <span class="val" id="dialVal">0</span>
+          <button data-dir="1" aria-label="increase">▲</button>
+          <button class="primary" data-act="set" style="margin-left:8px">Set the number</button>
+        </div>
+        <details><summary>Hint</summary><p>${def.hint}</p></details>`;
+      panelActions.innerHTML = `<button data-act="close">Step back</button>`;
+    }
+  } else {
+    panelBody.innerHTML = `<p>${def.body}</p>`;
+    panelActions.innerHTML = `<button data-act="close">Step back</button>`;
+  }
+  panelEl.hidden = false;
+  panelCard.classList.remove('shake');
+}
+
+function closePanel() {
+  panelEl.hidden = true;
+  state.panelOpen = false;
+  if (state.running) canvas.requestPointerLock?.();
+}
+
+function setDial(v) {
+  dialValue = (v + 10) % 10;
+  const el = document.getElementById('dialVal');
+  if (el) el.textContent = dialValue;
+}
+
+function setWheel(i, delta) {
+  doorDigits[i] = (doorDigits[i] + delta + 10) % 10;
+  const b = panelBody.querySelector(`.wheel[data-i="${i}"] b`);
+  if (b) b.textContent = doorDigits[i];
+}
+
+function submitAnswer(kind) {
+  const def = PUZZLES[kind];
+  if (dialValue === def.answer) {
+    state.solved[kind] = true;
+    state.digits[kind] = def.answer;
+    syncHud();
+    toast(`${KANJI[kind]} = ${def.answer}  ·  recorded`, 'good');
+    openPanel(kind);
+  } else {
+    panelCard.classList.add('shake');
+    setTimeout(() => panelCard.classList.remove('shake'), 420);
+    toast('The ink does not agree. Look again.', 'bad');
+  }
+}
+
+function tryDoor() {
+  const win = CODE_ORDER.every((k, i) => doorDigits[i] === CODE[i]);
+  if (win) {
+    panelEl.hidden = true;
+    state.panelOpen = false;
+    openDoor();
+  } else {
+    panelCard.classList.add('shake');
+    setTimeout(() => panelCard.classList.remove('shake'), 420);
+    const right = CODE_ORDER.filter((k, i) => doorDigits[i] === CODE[i]).length;
+    toast(`The wheels bind. ${right} of 4 are in place.`, 'bad');
+  }
+}
+
+panelEl.addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  if (btn.dataset.dir) {
+    const wheel = btn.closest('.wheel');
+    if (wheel) { setWheel(+wheel.dataset.i, +btn.dataset.dir); return; }
+    setDial(dialValue + (+btn.dataset.dir));
+    return;
+  }
+  if (btn.dataset.act === 'set') { submitAnswer(state.currentPanel); return; }
+  if (btn.dataset.act === 'try') { tryDoor(); return; }
+  if (btn.dataset.act === 'close') { closePanel(); return; }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && state.panelOpen) { closePanel(); return; }
+  if (state.panelOpen && e.key === 'Enter') {
+    if (state.currentPanel === 'door') tryDoor();
+    else if (!state.solved[state.currentPanel]) submitAnswer(state.currentPanel);
+    return;
+  }
+  if (state.panelOpen && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    e.preventDefault();
+    const d = e.key === 'ArrowUp' ? 1 : -1;
+    if (state.currentPanel === 'door') setWheel(3, d);
+    else setDial(dialValue + d);
+  }
+});
+
+/* ------------------------------------------------------------ door motion */
+function openDoor() {
+  state.doorOpen = true;
+  state.running = false;
+  toast('出口 · the door gives way', 'good');
+  setTimeout(() => {
+    document.getElementById('win').hidden = false;
+    const t = state.elapsed;
+    document.getElementById('winStats').textContent =
+      `Escaped in ${String(Math.floor(t / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}.`;
+    document.exitPointerLock?.();
+  }, 2200);
+}
+
+/* --------------------------------------------------------------- controls */
+const keys = new Set();
+let yaw = 0, pitch = 0;
+
+document.addEventListener('keydown', e => {
+  if (state.panelOpen) return;
+  keys.add(e.code);
+  if (e.code === 'KeyE') interact();
+  if (e.code === 'KeyH') giveHint();
+});
+document.addEventListener('keyup', e => keys.delete(e.code));
+
+function giveHint() {
+  const left = CODE_ORDER.filter(k => !state.solved[k]);
+  if (!left.length) { toast('All four digits are in the panel. Go to the north door.', 'good'); return; }
+  const k = left[0];
+  toast(`Hint · ${KANJI[k]} — ${PUZZLES[k].hint}`, '');
+}
+
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  if (state.panelOpen) return;
+  if (!state.locked) { canvas.requestPointerLock?.(); return; }
+  interact();
+});
+
+document.addEventListener('pointerlockchange', () => {
+  state.locked = document.pointerLockElement === canvas;
+  unlockHint.hidden = state.locked || !state.running || state.panelOpen;
+  if (state.locked) canvas.focus?.();
+});
+
+document.addEventListener('mousemove', e => {
+  if (!state.locked) return;
+  yaw -= e.movementX * 0.0022;
+  pitch -= e.movementY * 0.0022;
+  pitch = clamp(pitch, -1.35, 1.35);
+});
+
+/* distance-based interaction */
+const raycaster = new THREE.Raycaster();
+raycaster.far = 3.2;
+function currentTarget() {
+  raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+  const hits = raycaster.intersectObjects(interactList, true);
+  for (const h of hits) {
+    let o = h.object, id = null;
+    while (o) { if (o.userData && o.userData.interact) { id = o.userData.interact; break; } o = o.parent; }
+    if (id) return { id, label: (h.object.userData.label || PUZZLES[id]?.sub || id) };
+  }
+  return null;
+}
+function interact() {
+  const t = state.hovered;
+  if (!t) return;
+  openPanel(t.id);
+}
+
+/* --------------------------------------------------------------- movement */
+const SOLIDS = [
+  { x: tablePos.x, z: tablePos.z, r: 1.02 },
+  { x: 3.55, z: -2.55, r: .72 },
+  { x: 3.9, z: 2.45, r: .62 },
+  { x: -3.65, z: -2.9, r: .55 },
+  { x: 1.9, z: HALF_D - .62, r: 1.25 },
+];
+
+function move(dt) {
+  const speed = (keys.has('ShiftLeft') || keys.has('ShiftRight')) ? 3.5 : 2.05;
+  let fx = 0, fz = 0;
+  if (keys.has('KeyW') || keys.has('ArrowUp')) fz -= 1;
+  if (keys.has('KeyS') || keys.has('ArrowDown')) fz += 1;
+  if (keys.has('KeyA') || keys.has('ArrowLeft')) fx -= 1;
+  if (keys.has('KeyD') || keys.has('ArrowRight')) fx += 1;
+  if (!fx && !fz) return;
+  const len = Math.hypot(fx, fz);
+  fx /= len; fz /= len;
+  const sin = Math.sin(yaw), cos = Math.cos(yaw);
+  // forward = (-sin, -cos), right = (cos, -sin)
+  const nx = camera.position.x + (-sin * -fz + cos * fx) * speed * dt;
+  const nz = camera.position.z + (-cos * -fz - sin * fx) * speed * dt;
+  const p = { x: nx, z: nz };
+  p.x = clamp(p.x, -HALF_W + .42, HALF_W - .42);
+  p.z = clamp(p.z, -HALF_D + .42, HALF_D - .42);
+  for (const s of SOLIDS) {
+    const ddx = p.x - s.x, ddz = p.z - s.z;
+    const d = Math.hypot(ddx, ddz);
+    if (d < s.r && d > .0001) { p.x = s.x + ddx / d * s.r; p.z = s.z + ddz / d * s.r; }
+  }
+  camera.position.x = p.x;
+  camera.position.z = p.z;
+}
+
+/* ------------------------------------------------------------------- loop */
+const clock = new THREE.Clock();
+let hoverCheck = 0;
+
+function tick() {
+  const dt = Math.min(clock.getDelta(), .05);
+  const t = clock.elapsedTime;
+
+  if (state.running && state.locked) move(dt);
+  camera.rotation.set(pitch, yaw, 0);
+
+  // hover
+  hoverCheck -= dt;
+  if (hoverCheck <= 0) {
+    hoverCheck = .08;
+    state.hovered = state.panelOpen ? null : currentTarget();
+    if (state.hovered) {
+      crosshair.classList.add('hot');
+      promptText.textContent = state.hovered.label;
+      promptEl.hidden = false;
+    } else {
+      crosshair.classList.remove('hot');
+      promptEl.hidden = true;
+    }
+  }
+
+  // lantern flicker
+  lanterns.forEach((l, i) => {
+    const f = .92 + Math.sin(t * 6.2 + l.phase) * .045 + Math.sin(t * 17.3 + i) * .02;
+    l.light.intensity = l.base * f;
+    l.g.position.y = l.y + Math.sin(t * .7 + l.phase) * .006;
+  });
+  dust.rotation.y = t * .006;
+  dust.position.y = Math.sin(t * .16) * .04;
+
+  // door
+  if (state.doorOpen && state.doorT < 1) {
+    state.doorT = Math.min(1, state.doorT + dt / 2.2);
+    const e = state.doorT < .5 ? 2 * state.doorT * state.doorT : 1 - Math.pow(-2 * state.doorT + 2, 2) / 2;
+    doorLeaf.position.x = e * (doorW + .1);
+    doorGlow.material.opacity = e * .9;
+    doorLight.intensity = e * 14;
+    doorPanelMat.emissiveIntensity = e * .5;
+  }
+
+  if (state.running) {
+    state.elapsed += dt;
+    const s = Math.floor(state.elapsed);
+    timerEl.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  renderer.render(scene, camera);
+}
+renderer.setAnimationLoop(tick);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ------------------------------------------------------------------ start */
+function startGame() {
+  document.getElementById('start').hidden = true;
+  document.getElementById('win').hidden = true;
+  hud.hidden = false;
+  state.running = true;
+  state.startTime = performance.now();
+  syncHud();
+  canvas.requestPointerLock?.();
+  toast('Click to look. W A S D to walk. E to inspect.', '');
+}
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('hintBtnTop').addEventListener('click', () => {
+  document.getElementById('start').hidden = true;
+  hud.hidden = false;
+  if (!state.running) { state.running = true; }
+  syncHud();
+  giveHint();
+  canvas.requestPointerLock?.();
+});
+
+/* --------------------------------------------------- test hook (?test|?debug) */
+const _q = new URLSearchParams(location.search);
+if (_q.has('test') || _q.has('debug')) {
+  window.__edo = { state, PUZZLES, CODE, CODE_ORDER, doorDigits,
+    openPanel, closePanel, submitAnswer, setDial, setWheel, tryDoor, currentTarget };
+}
+
+// keep the renderer visible behind the start card
+setTimeout(() => { renderer.render(scene, camera); }, 50);
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+services:
+  escaperoom:
+    build: .
+    image: escaperoom:latest
+    container_name: escaperoom
+    ports:
+      - "8080:80"
+    restart: unless-stopped
