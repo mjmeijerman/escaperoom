@@ -1,0 +1,88 @@
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: assemble the site
+        run: |
+          mkdir -p _site
+          cp pcdoc.html hogwarts.html edo.html classic.html vendor -r _site/
+          cp PLAY.md PC-DOCTOR.md README.md _site/
+          cp index.html _site/study.html
+          touch _site/.nojekyll
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>Escape rooms in a browser</title>
+          <style>
+            :root{--ink:#e7e9ea;--dim:#8b979e;--accent:#59d3ff}
+            *{box-sizing:border-box}
+            body{margin:0;min-height:100vh;background:radial-gradient(1200px 600px at 50% -10%,#12222b 0%,#07090a 60%);
+              color:var(--ink);font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+              display:grid;place-items:center;padding:6vh 5vw}
+            main{width:min(760px,100%)}
+            h1{margin:0 0 .2em;font-size:1.5rem;letter-spacing:.16em;text-transform:uppercase;
+              font-family:ui-monospace,Menlo,Consolas,monospace}
+            p.lede{margin:0 0 2.2em;color:var(--dim);font-size:.95rem}
+            ul{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+            a{display:block;padding:16px 18px;text-decoration:none;color:inherit;
+              border:1px solid rgba(89,211,255,.22);border-left:2px solid rgba(89,211,255,.6);
+              background:rgba(12,16,18,.72)}
+            a:hover{border-color:rgba(89,211,255,.6);background:rgba(18,26,30,.9)}
+            a b{display:block;font-size:1rem;letter-spacing:.02em}
+            a span{display:block;margin-top:.25em;color:var(--dim);font-size:.82rem;
+              font-family:ui-monospace,Menlo,Consolas,monospace}
+            footer{margin-top:2.4em;color:#5e6a71;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+              font-family:ui-monospace,Menlo,Consolas,monospace}
+          </style>
+          </head>
+          <body>
+          <main>
+            <h1>Escape rooms in a browser</h1>
+            <p class="lede">First person, three.js, one HTML file each. No build step, no CDN, no network calls.</p>
+            <ul>
+              <li><a href="pcdoc.html"><b>PC Doctor</b><span>a repair shop, a shrink ray, and a tower that will not post &middot; in progress</span></a></li>
+              <li><a href="hogwarts.html"><b>The Founders&rsquo; Chamber</b><span>four charms traced with the mouse, four brass wheels</span></a></li>
+              <li><a href="edo.html"><b>The Edo Room</b><span>a Japanese room, four puzzles, two of them in kanji</span></a></li>
+              <li><a href="study.html"><b>The Locked Study</b><span>the original room, three digits</span></a></li>
+              <li><a href="classic.html"><b>The Locked Study, 2D</b><span>the point-and-click version</span></a></li>
+            </ul>
+            <footer>Click the page to capture the mouse &middot; Esc releases it</footer>
+          </main>
+          </body>
+          </html>
+          HTML
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
