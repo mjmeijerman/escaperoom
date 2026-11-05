@@ -257,7 +257,8 @@ again to put it back on its pad.
       over the field and press `E` again to click — the field takes the click and starts taking letters. `Q` lets go.
       (The mouse's own left button does the same thing if you would rather look at it and press `E` there.)
     - **The mouse has to be plugged in and clean.** An unplugged mouse will not take hold, and a dirty sensor makes
-      the pointer jump: no cleaning, no login.
+      the pointer jump: no cleaning, no login. A mouse that cannot drive the cursor still tips over with `E`, so the
+      cleaning is never locked out.
     - Walk the keyboard. Every lettered key answers `E`: press **B R O K E N**. The pictograms are the order —
       SSD, monitor, fans, PSU, GPU, RAM — which is that word.
     - The screen says **PASSWORD RECOVERED** and puts one button on it. Cursor onto the button, left button to

@@ -816,6 +816,27 @@ const check = (name, ok, detail = '') => {
     return { noPlug, dirty, took, clicked };
   });
   check('the cursor will not move if the mouse is not plugged in', mouseGate.noPlug === false);
+  const tipAtLogin = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.grab = null;
+    const clean = d.state.usb.clean;
+    d.state.usb.clean = false;                     // still filthy, and the login is up
+    d.state.usb.tipped = false;
+    d.THINGS.mouse.act();
+    await new Promise(r => setTimeout(r, 80));
+    const tipped = d.state.usb.tipped;
+    const grabbing = !!(d.state.grab && d.state.grab.id === 'loginMouse');
+    d.state.usb.clean = clean;
+    d.state.usb.tipped = false;
+    d.THINGS.mouse.act();                          // clean again: now it takes hold
+    const took = !!(d.state.grab && d.state.grab.id === 'loginMouse');
+    d.state.grab = null;
+    return { tipped, grabbing, took };
+  });
+  check('a mouse that cannot drive the cursor can still be tipped over',
+    tipAtLogin.tipped === true && tipAtLogin.grabbing === false, JSON.stringify(tipAtLogin));
+  check('and once it is clean it takes hold again', tipAtLogin.took === true);
+
   check('nor if its sensor is filthy', mouseGate.dirty === false);
   check('plugged and clean, the mouse takes hold', mouseGate.took === true);
   check('E while you hold it clicks what the pointer is on', mouseGate.clicked === true, JSON.stringify(mouseGate));

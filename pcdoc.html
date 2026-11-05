@@ -4397,26 +4397,39 @@ Object.assign(THINGS, {
   },
   mouse: {
     kicker: 'desk', title: 'Mouse',
-    text: () => state.login.active
+    text: () => state.login.active && state.usb.mouse && state.usb.clean
       ? `<p>The cursor is on the screen. This is the thing that moves it: hold it and drag.</p>
-         <p class="sub">Left button to click, once the pointer is where you want it.</p>`
-      : state.usb.tipped
+         <p class="sub">E again to click, once the pointer is where you want it.</p>`
+      : state.login.active && !state.usb.mouse
+        ? '<p>Not plugged in — so the cursor on the screen is not going anywhere.</p>'
+        : state.login.active
+          ? '<p>Plugged in, and the pointer still jumps in squares: the sensor window has dust in it.</p>'
+          : state.usb.tipped
         ? '<p>Over on its side, feet in the air.</p>'
         : !state.usb.mouse
           ? '<p>On its pad, cable running off. Not plugged in.</p>'
           : '<p>On its pad, logo lit. The intake form was right about this one.</p>',
-    keys: () => state.login.active
-      ? (state.usb.mouse && state.usb.clean ? '<kbd>E</kbd>take hold · drag to move the cursor' : '')
-      : (state.phase === 'shrunk' ? (state.usb.tipped ? '<kbd>E</kbd>put it back on its pad' : '<kbd>E</kbd>tip it onto its side') : ''),
-    act() {
+    keys: () => {
       if (state.login.active) {
-        if (!state.usb.mouse) { sfx.buzz(); toast('The mouse is not plugged in. The ports are on the rear panel.', 'bad'); return; }
-        if (!state.usb.clean) { sfx.buzz(); toast('The sensor is filthy: the pointer jumps in squares. Clean that window first.', 'bad'); return; }
+        if (state.usb.mouse && state.usb.clean) return '<kbd>E</kbd>take hold · drag to move the cursor';
+        return state.usb.tipped ? '<kbd>E</kbd>put it back on its pad' : '<kbd>E</kbd>tip it onto its side';
+      }
+      if (state.phase !== 'shrunk') return '';
+      return state.usb.tipped ? '<kbd>E</kbd>put it back on its pad' : '<kbd>E</kbd>tip it onto its side';
+    },
+    act() {
+      // a mouse that cannot drive the cursor is still a mouse you can turn over
+      if (state.login.active && state.usb.mouse && state.usb.clean) {
         state.grab = { id: 'loginMouse', p: 0, need: 1, label: 'drag the mouse to move the cursor' };
         sfx.click();
         toast('The cursor is yours. Drag.');
         renderTray();
         return;
+      }
+      if (state.login.active) {
+        toast(state.usb.mouse
+          ? 'It goes over with a rattle. The window is under it: blow the dust out.'
+          : 'It is not plugged in — and the sensor is under it anyway.', '');
       }
       tipMouse(!state.usb.tipped);
     },
