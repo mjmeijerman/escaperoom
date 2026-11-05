@@ -3772,12 +3772,13 @@ box(doorW * .9, .008, CH_T, chTrim, (DOOR.x0 + DOOR.x1) / 2, DISK.y + CH_H + .03
 });
 const DOOR_OPEN_Y = DISK.y + CH_H + .035, DOOR_SHUT_Y = DISK.y + CH_H / 2;
 const doorMat = new THREE.MeshStandardMaterial({ color: 0x3a2028, emissive: 0x40151a, emissiveIntensity: .5, roughness: .55 });
-// the QUARANTINE plate is bolted to the door, so it comes down with it
-const chSign = plane(.086, .020, new THREE.MeshStandardMaterial({
-  map: stickerTex([['QUARANTINE', 24, true]], { bg: '#8c2f24', ink: '#f2e9d8', h: 100, top: 62, align: 'center' }),
-  emissive: 0x3a0f0a, emissiveIntensity: .5, roughness: .7,
-}), 0, 0, CH_T * .4 + .0012, chDoor);
-chSign.position.set(0, .012, CH_T * .4 + .0012);
+// the QUARANTINE plate is on the wall beside the door: it is a label, so it is
+// there before anyone pulls anything
+const chSign = plane(.070, .018, new THREE.MeshStandardMaterial({
+  map: stickerTex([['QUARANTINE', 20, true]], { bg: '#8c2f24', ink: '#f2e9d8', h: 100, top: 60, align: 'center' }),
+  emissive: 0x3a0f0a, emissiveIntensity: .6, roughness: .7,
+}), CH.x0 + .042, DISK.y + .086, CH.z1 + CH_T / 2 + .0016);
+diskG.add(chSign);
 // the hatch gets a door of its own: the room has to be shut, both ways
 const hatchDoor = box(HATCH.x1 - HATCH.x0, CH_H, CH_T * .8, doorMat,
   (HATCH.x0 + HATCH.x1) / 2, DOOR_OPEN_Y, CH.z0, diskG);
@@ -3817,18 +3818,73 @@ for (let i = 1; i <= 4; i++) [-1, 1].forEach(side => {
     side * (.018 - i * .0015), -.014, -i * .019, worm);
   wormLegs.push({ mesh: leg, i, side });
 });
-const eyeMat = new THREE.MeshStandardMaterial({ color: 0x120804, emissive: 0xffb347, emissiveIntensity: 1.6, roughness: .3 });
-[[-.007, .022], [.008, .022]].forEach(([x, z]) => sphere(.0036, eyeMat, x, .008, z, worm, 8));
-[[-.012, .030], [.013, .030]].forEach(([x, z]) => box(.004, .004, .012,
-  new THREE.MeshStandardMaterial({ color: 0x1a0b08, emissive: 0xffb347, emissiveIntensity: .8, roughness: .5 }), x, -.004, z, worm));
+// the face is part of the head, so it moves with the head's wobble
+const head = wormSegs[0].mesh;
+const socketMat = new THREE.MeshStandardMaterial({ color: 0x150908, roughness: .9 });
+const irisMat = new THREE.MeshStandardMaterial({ color: 0xff9a2e, emissive: 0xffb347, emissiveIntensity: 1.5, roughness: .25 });
+const pupilMat = new THREE.MeshStandardMaterial({ color: 0x080403, roughness: .4 });
+[[-.010, .014], [.010, .014]].forEach(([x, z]) => {
+  sphere(.0062, socketMat, x, .005, z, head, 10);                       // the socket sits in the shell
+  sphere(.0044, irisMat, x, .005, z + .0026, head, 10);
+  sphere(.0018, pupilMat, x, .005, z + .0058, head, 8);
+});
+[[-.013, .020], [.0135, .020]].forEach(([x, z]) => {
+  const m = box(.004, .0035, .014, new THREE.MeshStandardMaterial({ color: 0x150908, emissive: 0x8c2a16, emissiveIntensity: .5, roughness: .7 }),
+    x, -.006, z, head);
+  m.rotation.y = x < 0 ? .3 : -.3;
+  m.rotation.x = -.25;
+});
+
 const wormLight = new THREE.PointLight(0xff4a20, .22, .40, 1.8);
 wormLight.position.set(0, .03, 0);
 worm.add(wormLight);
+worm.path = null; worm.wi = 0; worm.repath = 0;
 function wormInChamber(x, z) { return x > CH.x0 && x < CH.x1 && z > CH.z0 && z < CH.z1; }
 function blockAt(x, z) {
   const c = Math.floor((x - DISK.x0) / DISK.cell), r = Math.floor((z - DISK.z0) / DISK.cell);
   if (c < 0 || r < 0 || c >= DISK.cols || r >= DISK.rows) return false;
   return !HOLES.has(c + ',' + r);
+}
+/* It knows the lattice: breadth-first over the cells, holes and walls and the
+   lever stand included, with the chamber reachable only through its two
+   openings. That is why it goes round things instead of leaning on them. */
+const cellOf = (x, z) => ({ c: Math.floor((x - DISK.x0) / DISK.cell), r: Math.floor((z - DISK.z0) / DISK.cell) });
+const cellCentre = (c, r) => ({ x: DISK.x0 + (c + .5) * DISK.cell, z: DISK.z0 + (r + .5) * DISK.cell });
+const inGrid = (c, r) => c >= 0 && r >= 0 && c < DISK.cols && r < DISK.rows;
+const inChCell = (c, r) => c >= 3 && c <= 5 && r >= 3 && r <= 5;
+const WORM_BLOCKED = new Set(['6,6']);                       // the lever and its stand
+function wormWalkable(c, r) {
+  return inGrid(c, r) && !HOLES.has(c + ',' + r) && !WORM_BLOCKED.has(c + ',' + r);
+}
+function wormCanStep(c, r, nc, nr) {
+  if (!wormWalkable(nc, nr)) return false;
+  if (inChCell(c, r) === inChCell(nc, nr)) return true;
+  return (c === 5 && r === 5 && nc === 5 && nr === 6) || (c === 5 && r === 6 && nc === 5 && nr === 5)
+    || (c === 3 && r === 3 && nc === 3 && nr === 2) || (c === 3 && r === 2 && nc === 3 && nr === 3);
+}
+function wormFindPath(from, to) {
+  const key = (c, r) => c + ',' + r;
+  const start = cellOf(from.x, from.z), goal = cellOf(to.x, to.z);
+  if (!wormWalkable(start.c, start.r) || !wormWalkable(goal.c, goal.r)) return null;
+  const prev = new Map(), seen = new Set([key(start.c, start.r)]);
+  const q = [[start.c, start.r]];
+  while (q.length) {
+    const [c, r] = q.shift();
+    if (c === goal.c && r === goal.r) {
+      const path = [];
+      let k = key(c, r);
+      while (k) { const [pc, pr] = k.split(',').map(Number); path.push(cellCentre(pc, pr)); k = prev.get(k); }
+      return path.reverse();
+    }
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nc = c + dc, nr = r + dr;
+      if (!wormCanStep(c, r, nc, nr)) continue;
+      const k = key(nc, nr);
+      if (seen.has(k)) continue;
+      seen.add(k); prev.set(k, key(c, r)); q.push([nc, nr]);
+    }
+  }
+  return null;
 }
 // the port mouth inside, where you came in and where you leave
 const mouth = new THREE.Group();
@@ -4044,18 +4100,22 @@ function diskTick(dt) {
   }
   if (!state.disk.inside || state.disk.sealed) return;
   const p = camera.position;
-  // it goes for you — and if the two of you are on opposite sides of a wall, it
-  // goes for the door or the hatch first, because it knows its own way round
-  let tx = p.x, tz = p.z;
-  const wIn = wormInChamber(worm.position.x, worm.position.z);
-  const pIn = wormInChamber(p.x, p.z);
-  if (!wIn && pIn) { tx = (DOOR.x0 + DOOR.x1) / 2; tz = CH.z1 - .07; }        // through the door, not to it
-  else if (wIn && !pIn) { tx = (HATCH.x0 + HATCH.x1) / 2; tz = CH.z0 + .07; }
-  const dx = tx - worm.position.x, dz = tz - worm.position.z;
-  const d = Math.hypot(dx, dz) || 1e-6;
   const chase = Math.hypot(p.x - worm.position.x, p.z - worm.position.z);
+  // it plans a route over the lattice every half second, so a hole or a wall
+  // makes it turn a corner instead of stopping and leaning on it
+  worm.repath -= dt;
+  if (worm.repath <= 0 || !worm.path || worm.wi >= worm.path.length) {
+    worm.repath = .45;
+    const path = wormFindPath(worm.position, { x: p.x, z: p.z });
+    worm.path = !path || path.length < 2 ? [{ x: p.x, z: p.z }] : path.slice(1);
+    worm.wi = 0;
+  }
+  const wp = worm.path[Math.min(worm.wi, worm.path.length - 1)] || { x: p.x, z: p.z };
+  const dx = wp.x - worm.position.x, dz = wp.z - worm.position.z;
+  const d = Math.hypot(dx, dz) || 1e-6;
   worm.rotation.y = Math.atan2(dx, dz);          // nose-first
   const step = Math.min(.075 * dt, d);
+  if (d < .025 && worm.wi < worm.path.length - 1) worm.wi++;
   const nx = worm.position.x + dx / d * step, nz = worm.position.z + dz / d * step;
   const next = { x: worm.position.x, z: worm.position.z };
   // it crawls the lattice: no sector, no step. If the way ahead is a hole it

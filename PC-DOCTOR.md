@@ -497,10 +497,11 @@ Known rough edge for slice 5: the keyboard is not yet solid, and its backlight i
   down the back and sides, a rim on every wall. Both openings have a panelled slab sitting up in guides, the
   `QUARANTINE` plate is bolted to the front door, and a rod runs from the door to the lever — pull it and the arm
   swings while both panels travel down. The room ends up shut front and back. Get the worm inside, leave by the hatch, pull. `b7` clears and the drive gives up **B**.
-- **the worm** is ten tapering segments, alternating bright and dark, with legs that paddle, two eyes, two mandibles
-  and a red light that travels with it. It collides with the chamber walls instead of ghosting through them, it will
-  not step over a missing sector (it slides along the hole's edge instead), and when the two of you are on opposite
-  sides of a wall it heads for the door or the hatch first — it knows its own way round, including into the chamber.
+- **the worm** is ten tapering segments, alternating bright and dark, with legs that paddle, a face of dark sockets,
+  amber irises and pupils that rides on the head's own wobble, and a red light that travels with it. It plans a route:
+  a breadth-first search over the cell lattice every half second, with holes, chamber walls and the lever stand as
+  obstacles, so it walks *round* a missing sector, a wall or the lever instead of leaning on it, and it comes into the
+  chamber through whichever opening is on its side.
 - **the twist**: `README.txt` appears taped to the *outside* of the chamber wall, beside the door, at a height that is
   a paper and not a floor covering — the free "diagnostic tool" from the design's §8, in English, in her own words.
   The drive's label, with the `B`, is on the side wall next to it.
