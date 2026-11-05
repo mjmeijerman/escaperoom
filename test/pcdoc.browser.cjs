@@ -503,6 +503,10 @@ const check = (name, ok, detail = '') => {
   check('so is the mouse', intoMouse.z < -0.60, JSON.stringify(intoMouse));
 
   /* --- the keyboard connector: pick it up here, plug it in there ---------- */
+  // the mains goes off first: a connector should still go into a dead port
+  await page.evaluate(() => window.__doctor.THINGS.psuRocker.act());
+  await sleep(200);
+  check('the board is unpowered for this trip', await page.evaluate(() => window.__doctor.state.psu.rocker === false));
   check('the keyboard connector is on the desk', (await deskAt('usbKbd')) === 'usbKbd');
   await press();
   check('the connector is in your arms', (await st()).held === 'usbKbd');
@@ -521,7 +525,13 @@ const check = (name, ok, detail = '') => {
   check('a rear USB port is within reach', (await at('usbPortA')) === 'usbPortA');
   await press();
   const kbdIn = await st();
-  check('the keyboard is plugged in', kbdIn.usb.kbd === true);
+  check('the keyboard is plugged in, with the mains off', kbdIn.usb.kbd === true);
+  check('and it stays dark, because nothing has 12 V', await page.evaluate(() =>
+    window.__doctor.kbKeyMat.emissiveIntensity === 0));
+  await page.evaluate(() => window.__doctor.THINGS.psuRocker.act());
+  await sleep(500);
+  check('switching the mains on wakes the keyboard up', await page.evaluate(() =>
+    window.__doctor.kbKeyMat.emissiveIntensity > 0 && window.__doctor.state.usb.kbdLit === true));
   check('and the cable is laid along the route you carried it', await page.evaluate(() =>
     window.__doctor.usbWire.usbKbd.visible === false && window.__doctor.USB.usbKbd.routed === true));
 

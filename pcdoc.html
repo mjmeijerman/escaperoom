@@ -1378,6 +1378,7 @@ function powerCaseOff() {
   drawLed(null);
   ledMat.emissiveIntensity = 0;
   ledLight.intensity = 0;
+  darkUsb();
   sfx.click();
 }
 function powerCase() {
@@ -1389,6 +1390,7 @@ function powerCase() {
   ledMat.emissiveIntensity = 1.9;
   drawLed(state.codes[0]);
   sfx.relay();
+  setTimeout(checkUsbPower, 160);
 }
 
 function inRing() {
@@ -3257,7 +3259,7 @@ Object.assign(THINGS, {
    in them, and the actual fault the customer described: "and the mouse is
    being weird" — a hair across an optical window.                              */
 
-state.usb = { kbd: false, mouse: false, tipped: false, clean: false };
+state.usb = { kbd: false, mouse: false, tipped: false, clean: false, kbdLit: false, mouseLit: false };
 
 Object.assign(sfx, {
   air() {
@@ -3405,13 +3407,50 @@ function cleanLens() {
   state.invPending = null;
   state.usb.clean = true;
   mHair.visible = false;
-  mSensor.material.emissive = new THREE.Color(0x63d68b);
-  mSensor.material.emissiveIntensity = 1.5;
-  mSensor.material.needsUpdate = true;
+  if (railLive()) lightMouse();          // clean glass, and a steady green read
   sfx.air();
   sfx.pop();
   toast('The hair lifts off and the dust goes with it. The sensor reads clean — put it back on its pad.', 'good');
   renderTray();
+}
+
+/* --- the lights, and what wakes them up -------------------------------- */
+function lightKeyboard() {
+  kbKeyMat.emissive = new THREE.Color(0x59d3ff);
+  kbKeyMat.emissiveIntensity = .55;
+  kbKeyMat.needsUpdate = true;
+  kbGlow.material.emissive = new THREE.Color(0x59d3ff);
+  kbGlow.material.emissiveIntensity = 1.6;
+}
+function lightMouse() {
+  mLed.material.emissive = new THREE.Color(0x63d68b);
+  mLed.material.emissiveIntensity = 1.7;
+  mLed.material.needsUpdate = true;
+  mSensor.material.emissive = new THREE.Color(state.usb.clean ? 0x63d68b : 0xff3a2a);
+  mSensor.material.emissiveIntensity = state.usb.clean ? 1.5 : 1.3;
+  mSensor.material.needsUpdate = true;
+}
+/* 12 V is what makes them do anything; the connector can go in without it. */
+function checkUsbPower() {
+  if (!railLive()) return;
+  if (state.usb.kbd && !state.usb.kbdLit) {
+    state.usb.kbdLit = true;
+    lightKeyboard();
+    setTimeout(() => toast("The keyboard's backlight comes up. Every key is a step.", 'good'), 140);
+  }
+  if (state.usb.mouse && !state.usb.mouseLit) {
+    state.usb.mouseLit = true;
+    lightMouse();
+    setTimeout(() => toast('The mouse lights up — and its sensor glows red. "The mouse is being weird." Now you can see why.', 'good'), 140);
+  }
+}
+function darkUsb() {
+  kbKeyMat.emissiveIntensity = 0;
+  kbGlow.material.emissiveIntensity = 0;
+  mLed.material.emissiveIntensity = 0;
+  mSensor.material.emissiveIntensity = 0;
+  state.usb.kbdLit = false;
+  state.usb.mouseLit = false;
 }
 
 /* --- carrying and plugging the two devices ----------------------------- */
@@ -3432,10 +3471,6 @@ function plugUsb() {
     sfx.nope(); toast('Your hands are empty. Both connectors are on the desk by the monitor.');
     return;
   }
-  if (!railLive()) {
-    sfx.buzz(); toast('The port is dead. The board has no 12 V: mains, 24-pin, then the CPU 8-pin.', 'bad');
-    return;
-  }
   const kbd = held === 'usbKbd';
   state.usb[kbd ? 'kbd' : 'mouse'] = true;
   state.held = null;
@@ -3444,19 +3479,10 @@ function plugUsb() {
   box(.014, .008, .010, usbMat(), socket.position.x, socket.position.y, IO.z - .020);   // the plug, seated
   routeUsb(kbd ? 'usbKbd' : 'usbMouse');
   sfx.snap();
-  if (kbd) {
-    kbKeyMat.emissive = new THREE.Color(0x59d3ff);
-    kbKeyMat.emissiveIntensity = .55;
-    kbKeyMat.needsUpdate = true;
-    kbGlow.material.emissive = new THREE.Color(0x59d3ff);
-    kbGlow.material.emissiveIntensity = 1.6;
-    setTimeout(() => toast("The keyboard's backlight comes up. Every key is a step.", 'good'), 140);
+  if (!railLive()) {
+    setTimeout(() => toast('In. The port has no 12 V yet, so the device stays dark.', ''), 140);
   } else {
-    mLed.material.emissive = new THREE.Color(0x63d68b);
-    mLed.material.emissiveIntensity = 1.7;
-    mSensor.material.emissive = new THREE.Color(0xff3a2a);
-    mSensor.material.emissiveIntensity = 1.3;
-    setTimeout(() => toast('The mouse lights up — and its sensor glows red. "The mouse is being weird." Now you can see why.', 'good'), 140);
+    checkUsbPower();
   }
   renderTray();
 }
@@ -3487,7 +3513,8 @@ Object.assign(THINGS, {
   },
   usbPortA: {
     kicker: 'the back of the case', title: 'USB port',
-    text: () => '<p>One of two blue USB-A ports on the rear panel. Either device will take either port — they are not fussy.</p>',
+    text: () => `<p>One of two blue USB-A ports on the rear panel. Either connector fits either port — they are not fussy.
+         A connector will go in whether or not the board has 12 V; the device only wakes up once it does.</p>`,
     keys: () => state.held === 'usbKbd' || state.held === 'usbMouse' ? '<kbd>E</kbd>plug it in' : '',
     act() { plugUsb(); },
   },
@@ -3714,7 +3741,7 @@ if (new URLSearchParams(location.search).has('debug') || new URLSearchParams(loc
     interact, camera, scene, THREE, raycaster, ledCanvas, ledCtx, ledTexture, ledMat, led, A, audioInit,
     setFeet(f) { feet = f; camera.position.y = f + P.eye; },
     zip: ZIP, startRide, tipMouse, cleanLens, plugUsb, takeUsb, takeAir, usbWire, dropHeld,
-    a2Solid, b2Solid, SEATED_Z0, SEATED_Z1, USB,
+    a2Solid, b2Solid, SEATED_Z0, SEATED_Z1, USB, kbKeyMat, kbGlow, mLed, mSensor, checkUsbPower, darkUsb,
     look(y, pi) { yaw = y; pitch = pi; camera.rotation.set(pitch, yaw, 0); },
     aimAt(id, dist = 1.1, fy = null, at = null) {
       const cands = interact.filter(o => o.userData.interact === id);

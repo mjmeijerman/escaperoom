@@ -209,7 +209,8 @@ Rear I/O, two USB-A connectors taller than you are. **Built:** each connector si
 end of its own device cable, because that is where Gerrit left them when he moved the monitor — the cable is drawn
 from the device to the connector every frame, so it follows the connector into your hands. The ports are on the other
 side of the gap, so the trip is the point: ride the zipline down, pick a connector up, ride back with it, plug it in.
-Either blue port takes either connector, and both ports are dead until the board has 12 V.
+Either blue port takes either connector, with the mains on or off — a connector is passive. The *device* needs the
+board's 12 V to light up, and lights itself the moment the rail comes live.
 
 - **Keyboard**: plug in → the backlight comes up as one flat glow (the per-key finale lighting is slice 5). Its keys
   are the finale.
@@ -457,7 +458,8 @@ I/O trek is slice 3. Move it back out when that zone exists.
   `E` either end, ~3.4 s of hand-over-hand, no steering and nothing droppable. The desk is a real playfield now: the
   monitor and its stand are solid, the desk top is walkable, and a step off any edge is caught by a lip instead of
   ending the run (no fall state, per §9);
-- **the rear I/O**: HDMI plus two USB-A ports, all of them dead until the board has 12 V;
+- **the rear I/O**: HDMI plus two USB-A ports. A connector goes in whether or not the board has 12 V; the device
+  lights itself the moment the rail comes live;
 - **the keyboard and the mouse**: connectors on the desk at the ends of their own cables, carried back over to the
   rear panel on the zipline — one hand, one connector, two trips. Once plugged the cable is laid along the route you
   carried it (down the span, round the back of the case) instead of cutting through the bench. The keyboard is a

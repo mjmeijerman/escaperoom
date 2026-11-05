@@ -161,8 +161,8 @@ ride it down. Ride the far grip to come back. If you step off an edge instead, t
 on top — nothing is lost.
 
 **The USB ports do nothing.**
-They are 12 V ports like everything else in there: the mains switch, the 24-pin and the CPU 8-pin have to be in first.
-Both connectors are on the **desk**, by the monitor, at the end of their own cables — pale tops, blue collars, with a
+A connector goes in with the power on or off — but the device only wakes up once the board has 12 V: mains switch,
+24-pin, CPU 8-pin. If the keyboard stayed dark, that is why. Both connectors are on the **desk**, by the monitor, at the end of their own cables — pale tops, blue collars, with a
 note beside them. Click the connector, or the cable near it, then ride the zipline back over with it in your hands.
 The cable follows you; that is the only way it is getting across.
 
