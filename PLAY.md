@@ -236,8 +236,8 @@ again to put it back on its pad.
      blocks you leave behind. It is slower than you are — but the grid is not the answer, the chamber is.
    - Walk into the quarantaine chamber in the middle. Let it follow you in, then leave through the hatch in the far
      wall and `E` the lever beside the door. The door comes down on it.
-   - `b7` clears, the lattice goes green, and the drive gives up **B**. The chamber now holds **LEESMIJ.txt**, which
-     is the whole story: the customer's "repair", in her own words.
+   - `b7` clears, the lattice goes green, and the drive gives up **B**. The paper taped beside the door —
+     **README.txt** — is the whole story: the customer's "repair", in her own words.
    - `E` the port mouth inside to step back out. A missing sector spits you out at the port, no harm done.
 
 The six characters, in the order you find them: **N** (memory), **K** (power), **O** (fans), **E** (card),

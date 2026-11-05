@@ -200,7 +200,8 @@ glitches, you are ejected back out of the port, and you climb back in. No other 
 Goal: lure it into the **quarantaine** chamber in the middle of the grid, leave through the small hatch, then pull the
 big lever outside. Door slams. The lattice turns green.
 
-Inside the chamber, once sealed: a `LEESMIJ.txt` tablet — the twist (see 8) — and the SSD's label. Character `9`.
+Taped to the outside of the chamber, beside the door, once it is sealed: `README.txt` — the twist (see 8) — and
+beside it the drive's own label. Character `B`.
 Second reason the block grid exists: it teaches platforming on a *safe* surface before the keyboard finale.
 
 ### 5.9 Input devices (both required, both must actually work)
@@ -289,7 +290,7 @@ convention), and it points at the code the LED is showing, not at a fixed order 
 
 ## 8. The twist (pure story, no mechanic)
 
-In the SSD's quarantine chamber, `LEESMIJ.txt`:
+In the drive, taped beside the quarantine door, `README.txt`:
 
 > **FIXMASTER PRO 2019 — GRATIS VERSIE**
 > "Bedankt voor het gebruiken van onze *volledig legale* diagnosetool.
@@ -491,11 +492,16 @@ Known rough edge for slice 5: the keyboard is not yet solid, and its backlight i
   the drive spits you out at the port; nothing is lost.
 - **the worm**: follows you at 0.075 m/s (you walk at 0.105) and eats the block it crawls over — the lattice goes dark
   behind it and grows back when you are ejected. Touch it and you are out.
-- **the quarantaine chamber**: three cells square, a door on one wall and a hatch on the other. Get the worm inside,
-  leave by the hatch, pull the lever outside. The door slams, the worm is quarantined, `b7` clears and the drive
-  gives up **B**.
-- **the twist**: `LEESMIJ.txt` appears on the chamber wall — the free "diagnostic tool" from the design's §8, in her
-  own words. The drive's label is beside it.
+- **the quarantaine chamber**: three cells square, a door on one wall and a hatch on the other, its own floor, ribs
+  down the outside, a rim on every wall and a `QUARANTINE` sign over the door. The door is a panelled slab sitting up
+  in two guides with a rod running to the lever, and pulling the lever drops it in front of you — the lever arm
+  swings, the panel travels. Get the worm inside, leave by the hatch, pull. `b7` clears and the drive gives up **B**.
+- **the worm** is a chain of nine tapering segments with rings on the even ones, two eyes and a red light that travels
+  with it. It collides with the chamber walls instead of ghosting through them, and when the two of you are on
+  opposite sides of a wall it heads for the door or the hatch first — it knows its own way round.
+- **the twist**: `README.txt` appears taped to the *outside* of the chamber wall, beside the door, at a height that is
+  a paper and not a floor covering — the free "diagnostic tool" from the design's §8, in English, in her own words.
+  The drive's label, with the `B`, is on the side wall next to it.
 - **one deviation, deliberate**: the inside of the drive is bigger than the outside. The design's one-world rule
   cannot survive a lattice you can walk on inside a 7 mm-thick drive, so the grid is built in its own volume under
   the shop and the port is a doorway. The shrink ray already asked you to accept one impossible thing; this is the
