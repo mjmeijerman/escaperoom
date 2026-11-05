@@ -218,7 +218,8 @@ const st = page => page.evaluate(() => ({
       banner: document.getElementById('banner').textContent.replace(/\s+/g, ' ') };
   });
   check('the murderer is holding a knife', revealed.knife === true);
-  check('and the camera has moved to them', revealed.dist > 1 && revealed.dist < 2.6, JSON.stringify(revealed));
+  check('and the camera has moved onto the square in front of them',
+    revealed.dist > .8 && revealed.dist < 2.6, JSON.stringify(revealed));
   check('the banner names the murderer and why it is them',
     /ALEXANDER/.test(revealed.banner) && /logeerkamer/i.test(revealed.banner) && !/car/i.test(revealed.banner),
     revealed.banner);
@@ -250,7 +251,13 @@ const st = page => page.evaluate(() => ({
 
   const signRead = await page.evaluate(() => {
     const d = window.__murdoku;
-    const sign = d.interact.find(o => o.userData.interact === 'sign_logeerkamer');
+    // the plaque on the west wall, with nothing standing in front of it
+    const signs = d.interact.filter(o => o.userData.interact === 'sign_logeerkamer');
+    const p0 = new d.THREE.Vector3();
+    const sign = signs.reduce((best, o) => {
+      o.getWorldPosition(p0);
+      return (!best || p0.x < best.x) ? { o, x: p0.x } : best;
+    }, null).o;
     const p = new d.THREE.Vector3();
     sign.getWorldPosition(p);
     d.state.locked = false;

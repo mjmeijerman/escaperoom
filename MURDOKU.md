@@ -102,7 +102,7 @@ Everyone in the house is a person, not a marker: a body, a head, eyes, a mouth, 
 | **Clarissa** | woman | long, brown | — |
 | **Diana** | tinted woman | half-long, black | — |
 | **Elsa** | black woman | grey, swept back with a bun | — |
-| **Vladimir** | man (the body) | short, dark blond | eyes shut, lying on the floor |
+| **Vladimir** | man (the body) | short, dark blond | eyes shut, curled on his side in his own blood, inside one square |
 
 The colours are in the data (`PEOPLE` carries `skin`, `hair`, `style`, `glasses`, `beard`), so a new cast is a new
 table.
@@ -124,8 +124,9 @@ Clarissa beside the table in C4R3 from C3R3, Diana beside the television from C4
 wall between it), Elsa at the window in C6R4. That leaves row 5 and column 2 for the body: **C2R5**.
 
 **The murderer is Alexander.** The logeerkamer holds exactly two people — Alexander in C1R1 and Vladimir in C2R5 — so
-nobody else was in there with the body. When the grid is full the camera turns to him, a knife appears in his hand
-with the blade still wet, and the banner says so. The deduction is kept out of the placement puzzle on purpose: the
+nobody else was in there with the body. When the grid is full the camera steps onto the square in front of him (C1R2,
+the neighbour toward the body) and turns to face him: a knife appears in his hand — steel with a bright edge, a brass
+guard and a dark handle, the blade still wet — and the banner says so. The deduction is kept out of the placement puzzle on purpose: the
 grid tells you where everyone was, and the murderer is the *reading* of that answer, not another square to fill.
 
 ---
