@@ -299,7 +299,6 @@ const M = {
   metal: new THREE.MeshStandardMaterial({ color: 0x6a6a70, roughness: .45, metalness: .6 }),
   fabric: new THREE.MeshStandardMaterial({ color: 0x3c2c33, roughness: .95 }),
   linen: new THREE.MeshStandardMaterial({ color: 0xb8ac9c, roughness: .95 }),
-  chalk: new THREE.MeshBasicMaterial({ color: 0xdfe6e2, transparent: true, opacity: .8 }),
   tvScreen: new THREE.MeshStandardMaterial({ color: 0x0b1014, emissive: 0x2a6f8c, emissiveIntensity: .35, roughness: .35 }),
   gold: new THREE.MeshStandardMaterial({ color: 0xb99545, roughness: .35, metalness: .8 }),
   leaf: new THREE.MeshStandardMaterial({ color: 0x2f5a3a, roughness: .8 }),
@@ -756,11 +755,6 @@ function makePerson(p) {
   }
 
   if (p.victim) {
-    const outline = new THREE.Mesh(new THREE.RingGeometry(.4, .48, 26), M.chalk);
-    outline.rotation.x = -Math.PI / 2;
-    outline.position.set(-.05, .03, .02);
-    outline.scale.set(1.25, 1.02, 1);              // drawn round him where he fell, inside the square
-    g.add(outline);
     const bloodMat = new THREE.MeshStandardMaterial({ color: 0x3f0606, roughness: .28, metalness: .05 });
     const pool = new THREE.Mesh(new THREE.CircleGeometry(.42, 24), bloodMat);
     pool.rotation.x = -Math.PI / 2;
