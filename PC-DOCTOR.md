@@ -205,9 +205,11 @@ Second reason the block grid exists: it teaches platforming on a *safe* surface 
 
 ### 5.9 Input devices (both required, both must actually work)
 
-Rear I/O, two USB-A plugs taller than you are. **Built:** the plugs are lying on the bench behind the case, beside the
-panel, with their cables trailing off it toward the desk — Gerrit unplugged both at the case end. Either blue port
-takes either plug, and both ports are dead until the board has 12 V (the same gate as everything else).
+Rear I/O, two USB-A connectors taller than you are. **Built:** each connector sits on the desk by the monitor at the
+end of its own device cable, because that is where Gerrit left them when he moved the monitor — the cable is drawn
+from the device to the connector every frame, so it follows the connector into your hands. The ports are on the other
+side of the gap, so the trip is the point: ride the zipline down, pick a connector up, ride back with it, plug it in.
+Either blue port takes either connector, and both ports are dead until the board has 12 V.
 
 - **Keyboard**: plug in → the backlight comes up as one flat glow (the per-key finale lighting is slice 5). Its keys
   are the finale.
@@ -456,11 +458,13 @@ I/O trek is slice 3. Move it back out when that zone exists.
   monitor and its stand are solid, the desk top is walkable, and a step off any edge is caught by a lip instead of
   ending the run (no fall state, per §9);
 - **the rear I/O**: HDMI plus two USB-A ports, all of them dead until the board has 12 V;
-- **the keyboard and the mouse**: plugs on the bench behind the case. The keyboard is a tilted deck of individual
-  keycaps with a backlight strip that lights when it is plugged in; the mouse has a shell, a band, two buttons and a
-  wheel, and its sensor glows red with a hair across the window. Tip it onto its side, blow the window clean with the
-  compressed-air can (the can goes into the notepad; the window opens the notepad and you click it there), right it
-  again;
+- **the keyboard and the mouse**: connectors on the desk at the ends of their own cables, carried back over to the
+  rear panel on the zipline — one hand, one connector, two trips. Once plugged the cable is laid along the route you
+  carried it (down the span, round the back of the case) instead of cutting through the bench. The keyboard is a
+  tilted deck of individual keycaps with a backlight strip; the mouse has a shell, a band, two buttons and a wheel,
+  and its sensor glows red with a hair across the window. It tips over whether or not it has power. Tip it, blow the
+  window clean with the compressed-air can (the can goes into the notepad; the window opens the notepad and you
+  click it there), right it again;
 - **solidity, and the cables**: the keyboard, the (upright and tipped) mouse and the air can are obstacles, not air.
   The monitor cable runs round the outside of the case instead of through its right-hand panel, the unplugged cable is
   one draped run rather than a straight line across the room, and the device cables leave the desk over its back edge

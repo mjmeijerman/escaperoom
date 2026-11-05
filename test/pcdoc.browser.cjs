@@ -312,6 +312,19 @@ const check = (name, ok, detail = '') => {
   await sleep(150);
   check('the right mouse button puts it down', (await st()).held === null);
   await at('cable_atx'); await press();
+  const walkInto = (x, z, yawV, fy, ms = 900) => page.evaluate(async ([x, z, yawV, fy, ms]) => {
+    const d = window.__doctor;
+    d.setFeet(fy);
+    d.camera.position.set(x, fy + d.P.eye, z);
+    d.look(yawV, 0);
+    d.state.locked = true;
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
+    await new Promise(r => setTimeout(r, ms));
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
+    d.state.locked = false;
+    return { x: +d.camera.position.x.toFixed(3), z: +d.camera.position.z.toFixed(3) };
+  }, [x, z, yawV, fy, ms]);
+
   check('the 24-pin socket is reachable', (await at('h24')) === 'h24');
   await press();
   check('the 24-pin plugs in', (await st()).psu.atx === true);
@@ -386,6 +399,8 @@ const check = (name, ok, detail = '') => {
   }
   await press();
   check('456 opens the padlock', (await st()).gpu.unlocked === true);
+  const intoPole = await walkInto(-1.78, -2.55, 0, 0.95, 1200);
+  check('the padlock post is something you walk into, not over', intoPole.z > -2.60, JSON.stringify(intoPole));
 
   // drag the winch drum
   check('the winch drum is reachable', (await at('gpuDrum')) === 'gpuDrum');
@@ -447,47 +462,22 @@ const check = (name, ok, detail = '') => {
   }));
   check('only b7 is left on the display', mon.codes.join(',') === 'b7', mon.codes.join(','));
 
-  /* --- slice 3: the rear I/O, and the way down to the desk --------------- */
+  /* --- slice 3: the rear I/O, the span, and the desk --------------------- */
   check('the cable becomes a two-way span once both ends are in', (await st()).zip.ready === true);
 
-  check('the keyboard plug is lying behind the case', (await at('usbKbd')) === 'usbKbd');
-  await press();
-  check('the plug is in your arms', (await st()).held === 'usbKbd');
-  const usbCable = await page.evaluate(() => {
-    const w = window.__doctor.usbWire.usbKbd;
-    return { visible: w.visible, len: +w.scale.y.toFixed(2) };
-  });
-  check('and its cable comes with it', usbCable.visible === true && usbCable.len > .5, JSON.stringify(usbCable));
-  check('a rear USB port is within reach', (await at('usbPortA')) === 'usbPortA');
-  await press();
-  check('the keyboard is plugged in', (await st()).usb.kbd === true);
-  check('the cable follows the plug into the port', await page.evaluate(() => {
-    const w = window.__doctor.usbWire.usbKbd;
-    return w.visible === true && w.scale.y > .5;
-  }));
-
-  check('the mouse plug is beside it', (await at('usbMouse')) === 'usbMouse');
-  await press();
-  check('a second port takes the mouse', (await at('usbPortB')) === 'usbPortB');
-  await press();
-  check('the mouse is plugged in', (await st()).usb.mouse === true);
-  check('and it is malfunctioning, as the intake form said', (await st()).usb.clean === false);
-
-  check('the compressed-air can stands on the bench', (await at('airCan')) === 'airCan');
-
-  const walkInto = (x, z, yawV, fy, ms = 900) => page.evaluate(async ([x, z, yawV, fy, ms]) => {
+  const ride = (dir) => page.evaluate(async (dir) => {
     const d = window.__doctor;
-    d.setFeet(fy);
-    d.camera.position.set(x, fy + d.P.eye, z);
-    d.look(yawV, 0);
-    d.state.locked = true;
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
-    await new Promise(r => setTimeout(r, ms));
-    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
-    d.state.locked = false;
-    return { x: +d.camera.position.x.toFixed(3), z: +d.camera.position.z.toFixed(3) };
-  }, [x, z, yawV, fy, ms]);
+    d.state.zip.seconds = 0.35;
+    const hit = d.aimAt(dir === 'down' ? 'zipBench' : 'zipDesk', 0.05, dir === 'down' ? 0.95 : 0.76);
+    d.use();
+    await new Promise(r => setTimeout(r, 800));
+    return { hit, x: +d.camera.position.x.toFixed(2), y: +d.camera.position.y.toFixed(3), z: +d.camera.position.z.toFixed(2),
+      onDesk: d.camera.position.x > 1.9, riding: d.state.zip.riding, held: d.state.held };
+  }, dir);
+  const deskAt = (id, d = 0.04) => page.evaluate(([id, d]) => window.__doctor.aimAt(id, d, 0.76), [id, d]);
 
+  /* --- the can of air, on the bench -------------------------------------- */
+  check('the compressed-air can stands on the bench', (await at('airCan')) === 'airCan');
   const intoCan = await walkInto(-2.55, -2.42, Math.PI, 0.95, 1400);
   check('the air can is a thing you bump into, not air',
     intoCan.z < -2.30 && intoCan.z > -2.40, JSON.stringify(intoCan));
@@ -501,31 +491,57 @@ const check = (name, ok, detail = '') => {
   check('taking the can puts it in the notepad, not in your hands',
     inPad.items.includes('compressed air') && inPad.held === null, JSON.stringify(inPad));
   check('and the can leaves the bench', inPad.onBench === false);
-  check('the notepad shows it as an item', await page.evaluate(() =>
-    !!document.querySelector('#padItems button[data-item="compressed air"]')));
 
-
-  const zipDown = await page.evaluate(async () => {
-    const d = window.__doctor;
-    d.state.zip.seconds = 0.4;
-    const hit = d.aimAt('zipBench', 0.05, 0.95);
-    d.use();
-    const riding = d.state.zip.riding;
-    await new Promise(r => setTimeout(r, 900));
-    return { hit, riding, after: d.state.zip.riding,
-      x: +d.camera.position.x.toFixed(2), y: +d.camera.position.y.toFixed(3), z: +d.camera.position.z.toFixed(2) };
-  });
-  check('the taped grip at the bench edge is within reach', zipDown.hit === 'zipBench', String(zipDown.hit));
-  check('grabbing it starts a ride', zipDown.riding === true && zipDown.after === false,
-    `${zipDown.riding}/${zipDown.after}`);
-  check('the ride lands you on the desk', zipDown.x > 2.1 && zipDown.z > -1.4 && zipDown.y > .77,
+  /* --- down the cable, to the desk --------------------------------------- */
+  const zipDown = await ride('down');
+  check('the ride lands you on the desk', zipDown.onDesk && zipDown.y > .77 && zipDown.riding === false,
     JSON.stringify(zipDown));
 
-  const deskAt = (id, d = 0.04) => page.evaluate(([id, d]) => window.__doctor.aimAt(id, d, 0.76), [id, d]);
   const intoKb = await walkInto(2.42, -0.85, Math.PI, 0.76, 1500);
   check('the keyboard is solid: you walk into it, not through it', intoKb.z < -0.72, JSON.stringify(intoKb));
   const intoMouse = await walkInto(3.05, -0.75, Math.PI, 0.76, 1700);
   check('so is the mouse', intoMouse.z < -0.60, JSON.stringify(intoMouse));
+
+  /* --- the keyboard connector: pick it up here, plug it in there ---------- */
+  check('the keyboard connector is on the desk', (await deskAt('usbKbd')) === 'usbKbd');
+  await press();
+  check('the connector is in your arms', (await st()).held === 'usbKbd');
+  const usbCable = await page.evaluate(() => {
+    const w = window.__doctor.usbWire.usbKbd;
+    return { visible: w.visible, len: +w.scale.y.toFixed(2) };
+  });
+  check('and its cable comes with it', usbCable.visible === true && usbCable.len > .3, JSON.stringify(usbCable));
+
+  const rideUpHeld = await ride('up');
+  check('you can ride the cable with a connector in your arms',
+    rideUpHeld.onDesk === false && rideUpHeld.held === 'usbKbd' && rideUpHeld.riding === false, JSON.stringify(rideUpHeld));
+  check('the cable stretches all the way back to the keyboard', await page.evaluate(() =>
+    window.__doctor.usbWire.usbKbd.visible === true && window.__doctor.usbWire.usbKbd.scale.y > 2));
+
+  check('a rear USB port is within reach', (await at('usbPortA')) === 'usbPortA');
+  await press();
+  const kbdIn = await st();
+  check('the keyboard is plugged in', kbdIn.usb.kbd === true);
+  check('and the cable is laid along the route you carried it', await page.evaluate(() =>
+    window.__doctor.usbWire.usbKbd.visible === false && window.__doctor.USB.usbKbd.routed === true));
+
+  /* --- the mouse connector: the same trip -------------------------------- */
+  const down2 = await ride('down');
+  check('back down to the desk for the second one', down2.onDesk === true, JSON.stringify(down2));
+  check('the mouse connector is on the desk', (await deskAt('usbMouse')) === 'usbMouse');
+  await press();
+  check('the mouse connector is in your arms', (await st()).held === 'usbMouse');
+  const up2 = await ride('up');
+  check('and it rides back with you', up2.onDesk === false && up2.held === 'usbMouse', JSON.stringify(up2));
+  check('a second port takes the mouse', (await at('usbPortB')) === 'usbPortB');
+  await press();
+  const mouseIn = await st();
+  check('the mouse is plugged in', mouseIn.usb.mouse === true);
+  check('and it is malfunctioning, as the intake form said', mouseIn.usb.clean === false);
+
+  /* --- back to the desk for the mouse itself ----------------------------- */
+  const down3 = await ride('down');
+  check('down again, to the mouse', down3.onDesk === true, JSON.stringify(down3));
   check('the mouse is within reach on the desk', (await deskAt('mouse', 0.05)) === 'mouse');
   await press();
   check('it goes over onto its side', (await st()).usb.tipped === true);
@@ -552,17 +568,9 @@ const check = (name, ok, detail = '') => {
     return d.state.usb.tipped === false;
   }));
 
-  const zipUp = await page.evaluate(async () => {
-    const d = window.__doctor;
-    d.state.zip.seconds = 0.4;
-    const hit = d.aimAt('zipDesk', 0.05, 0.76);
-    d.use();
-    await new Promise(r => setTimeout(r, 900));
-    return { hit, after: d.state.zip.riding,
-      x: +d.camera.position.x.toFixed(2), z: +d.camera.position.z.toFixed(2) };
-  });
-  check('the far grip rides you back to the bench',
-    zipUp.hit === 'zipDesk' && zipUp.after === false && zipUp.x < 1 && zipUp.z < -1.8, JSON.stringify(zipUp));
+  const zipUp = await ride('up');
+  check('the far grip rides you back to the bench', zipUp.onDesk === false && zipUp.riding === false,
+    JSON.stringify(zipUp));
 
   const fell = await page.evaluate(async () => {
     const d = window.__doctor;

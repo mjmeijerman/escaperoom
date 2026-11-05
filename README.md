@@ -177,11 +177,12 @@ shipped as files), played through the game's audio bus so `N` mutes it and `M` d
     the desk, with a taped grip at each end. At 17 mm you can hang from it: `E` the grip and go hand over hand, both
     ways. It is the only way across — the desk is a country with no stairs, and the shop floor is eight storeys down.
     A lip catches you if you step off an edge.
-12. **The two USB devices** (slice 3): both plugs are lying on the bench behind the case, next to the rear panel's two
-    blue USB-A ports. Plugging the keyboard in lights its backlight. Plugging the mouse in proves the intake form
-    right — its sensor glows red and reads nothing, because there is a hair across the optical window. Tip the mouse
-    onto its side, take the can of air from the bench into the notepad, and click it there to blow the window clean.
-    That is the cheapest fix in the trade.
+12. **The two USB devices** (slice 3): the connectors sit on the desk by the monitor, at the end of the keyboard's
+    and the mouse's own cables. Their ports are on the rear panel, across the gap — so each connector rides the
+    zipline back to the bench in your hands, its cable following it. Plugging the keyboard in lights its backlight.
+    Plugging the mouse in proves the intake form right: its sensor glows red and reads nothing, because there is a
+    hair across the optical window. Tip the mouse onto its side, put the can of air from the bench into the notepad,
+    and click it there to blow the window clean. That is the cheapest fix in the trade.
 
 Still a stub: the SSD virus (`b7`, slice 4), and the login/finale after it (slice 5).
 

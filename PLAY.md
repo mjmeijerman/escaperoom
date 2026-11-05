@@ -102,11 +102,15 @@ monitor cable) is one cable away, and `b7` (the thing living in the SSD) is the 
 With the monitor cable plugged in at both ends it is a taut span from the bench lip to the desk, and Gerrit has
 taped a grip at each end. At 17 mm that is a rope: `E` the grip and ride it, hand over hand, both ways.
 
-On the bench behind the case, next to the rear panel, lie the keyboard's and the mouse's USB plugs — Gerrit pulled
-both out at the case end. Either blue port takes either plug. The keyboard's backlight comes up. The mouse lights
-up too, and then proves the intake form right: its sensor glows red and reads nothing, because there is a hair
-across the optical window. Tip it onto its side, take the can of air from the bench (left of the case) into the
-notepad, then `E` the window — the notepad opens and you click the can. Then put it back on its pad.
+On the desk, at the end of their own cables, lie the keyboard's and the mouse's USB connectors — Gerrit pulled both
+out of the case and left them by the monitor. The ports are on the rear panel, across the gap, so each connector
+has to go over on the cable: pick it up, ride the zipline back to the bench with it in your hands (the cable follows
+you), and plug it into either blue port. One hand, one connector, two trips.
+
+The keyboard's backlight comes up. The mouse lights up too, and then proves the intake form right: its sensor glows
+red and reads nothing, because there is a hair across the optical window. Tip it onto its side, take the can of air
+from the bench (left of the case) into the notepad, then `E` the window — the notepad opens and you click the can.
+Then put it back on its pad.
 
 ---
 
@@ -158,8 +162,9 @@ on top — nothing is lost.
 
 **The USB ports do nothing.**
 They are 12 V ports like everything else in there: the mains switch, the 24-pin and the CPU 8-pin have to be in first.
-Both plugs are lying on the bench **behind the case**, next to a note that says so — pale tops, blue collars, at the end
-of the two cables. Click the plug, or the cable anywhere near it; either picks it up.
+Both connectors are on the **desk**, by the monitor, at the end of their own cables — pale tops, blue collars, with a
+note beside them. Click the connector, or the cable near it, then ride the zipline back over with it in your hands.
+The cable follows you; that is the only way it is getting across.
 
 **The mouse lights up but does not work — "the mouse is doing weird things".**
 The sensor reads the pad through a glass window in the base, and there is a hair across it. `E` the mouse to tip it
@@ -200,16 +205,18 @@ again to put it back on its pad.
    - Walk out of the case, around the side, behind it. The rear panel has HDMI and two USB-A ports.
    - `E` the HDMI port. `A2` clears, the monitor on the desk lights up, and the panel gives up **R**. Now the cable
      is a span: the taped grip sits where it leaves the bench lip.
-9. **The keyboard and the mouse** (both are on the bench behind the case, beside the rear panel):
-   - `E` the keyboard's plug, then `E` either blue USB port. The keyboard's backlight comes up.
-   - `E` the mouse's plug, then `E` the other blue port. Its sensor glows red and the cursor is still a mess.
-   - `E` the mouse to tip it onto its side. Underneath: a hair across the optical window.
-   - `E` the can of air standing on the bench, left of the case — it goes into the notepad.
+9. **The way down** — `E` the taped grip on the cable at the bench lip and ride it, hand over hand, to the desk.
+   `E` the grip at the desk end to ride back. No other route exists, in either direction. The desk is walkable;
+   a step off its edge drops you to the bench lip rather than the shop floor.
+10. **The keyboard and the mouse** (the connectors are on the desk by the monitor):
+   - Before you go down, `E` the can of air standing on the bench, left of the case — it goes into the notepad.
+   - Ride down. `E` the keyboard's connector, then `E` the desk grip to ride back up with it in your arms.
+     `E` either blue USB port. The keyboard's backlight comes up.
+   - Ride down again for the mouse's connector, ride back, `E` the other port. Its sensor glows red and the cursor
+     is still a mess.
+   - Ride down once more, to the mouse. `E` it to tip it onto its side. Underneath: a hair across the optical window.
    - `E` the window: the notepad opens. Click **compressed air**. The hair goes.
    - `E` the mouse again to put it back on its pad.
-10. **The way down** — `E` the taped grip on the cable at the bench lip and ride it, hand over hand, to the desk.
-    `E` the grip at the desk end to ride back. No other route exists, in either direction. The desk is walkable;
-    a step off its edge drops you to the bench lip rather than the shop floor.
 11. **`d4` — the card**
    - Padlock: dial **4 5 6** (`↑↓` digit, `←→` next wheel, `E` try). The shop number ends in 123456.
    - Grab the winch drum (`E`, then drag the mouse back) until the card is at the rail.
