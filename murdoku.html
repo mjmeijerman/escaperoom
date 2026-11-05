@@ -130,6 +130,7 @@
   <span><b>E</b> pick up / put down</span>
   <span><b>F</b> mark a cell</span>
   <span><b>Q</b> put it back</span>
+  <span><b>H</b> hint</span>
   <span><b>I</b> notes</span>
   <span><b>R</b> reset</span>
   <span><b>Esc</b> free cursor</span>
@@ -239,17 +240,23 @@ const nextToSameRoom = (c, r, set) => {
 
 const PEOPLE = [
   { id: 'A', name: 'Alexander', colour: 0x9a7346, skin: 0xd8b49a, hair: 0x9c9c9c, style: 'short', glasses: true,
-    clue: 'Sat on a bed', test: (c, r) => BEDS.has(key(c, r)) },
+    clue: 'Sat on a bed', hint: 'hij zat op een bed',
+    test: (c, r) => BEDS.has(key(c, r)) },
   { id: 'B', name: 'Bas', colour: 0x4c7f68, skin: 0xdfc0a2, hair: 0xd8c07a, style: 'long', beard: true,
-    clue: 'Was in the kitchen', test: (c, r) => roomAt(c, r) === 'keuken' },
+    clue: 'Was in the kitchen', hint: 'hij was in de keuken',
+    test: (c, r) => roomAt(c, r) === 'keuken' },
   { id: 'C', name: 'Clarissa', colour: 0x86557a, skin: 0xd9b193, hair: 0x4a2c1a, style: 'long',
-    clue: 'Stood next to a table', test: (c, r) => nextToSameRoom(c, r, TABLES) },
+    clue: 'Stood next to a table', hint: 'zij stond naast een tafel',
+    test: (c, r) => nextToSameRoom(c, r, TABLES) },
   { id: 'D', name: 'Diana', colour: 0x5f6a90, skin: 0xb07a52, hair: 0x15151a, style: 'halflong',
-    clue: 'Was next to the television', test: (c, r) => nextToSameRoom(c, r, TVS) },
+    clue: 'Was next to the television', hint: 'zij stond naast de televisie',
+    test: (c, r) => nextToSameRoom(c, r, TVS) },
   { id: 'E', name: 'Elsa', colour: 0x8a8750, skin: 0x6e4a34, hair: 0xcfcfcf, style: 'updo',
-    clue: 'Stood in front of the window', test: (c, r) => c === WINDOW[0] && r === WINDOW[1] },
+    clue: 'Stood in front of the window', hint: 'zij stond voor het raam',
+    test: (c, r) => c === WINDOW[0] && r === WINDOW[1] },
   { id: 'V', name: 'Vladimir', colour: 0x8c3a34, skin: 0xc9a27f, hair: 0xa88a4a, style: 'short', victim: true,
-    clue: 'Lay in the last cell left over, with one other person in that room', test: null },
+    clue: 'Lay in the last cell left over, with one other person in that room', hint: 'hij lag in het laatst overgebleven vak',
+    test: null },
 ];
 
 const state = {
@@ -669,25 +676,20 @@ function makePerson(p) {
   cyl(.07, .07, .78, 8, dark, -.15, .3, 0, body);
   cyl(.07, .07, .78, 8, dark, .15, .3, 0, body);
   cyl(.22, .3, .92, 14, coat, 0, .9, 0, body);
-  cyl(.06, .06, .62, 8, coat, -.28, .95, 0, body).rotation.z = .12;
-  cyl(.06, .06, .62, 8, coat, .28, .95, 0, body).rotation.z = -.12;
+  // from the shoulder, down and a little away from the body
+  cyl(.06, .055, .64, 8, coat, -.25, .99, 0, body).rotation.z = -.15;
+  cyl(.06, .055, .64, 8, coat, .25, .99, 0, body).rotation.z = .15;
 
   // head
   const head = new THREE.Group();
-  head.position.set(0, 1.58, 0);
-  body.add(head);
   sphere(.185, skinMat, 0, 0, 0, head, 18);
-  cyl(.06, .07, .1, 8, skinMat, 0, -.19, 0, head);           // neck
-
-  // face
   const faceZ = -.168;
   if (p.victim) {
-    // eyes shut
-    [-.062, .062].forEach(x => box(.052, .008, .012, pupil, x, .028, faceZ + .004, head));
+    [-.062, .062].forEach(x => box(.052, .008, .012, pupil, x, .028, faceZ - .012, head));   // eyes shut
   } else {
     [-.062, .062].forEach(x => {
       sphere(.034, eyeWhite, x, .024, faceZ + .004, head, 10);
-      sphere(.016, pupil, x, .024, faceZ - .012, head, 8);
+      sphere(.017, pupil, x, .024, faceZ - .026, head, 8);     // in front of the white, not behind it
     });
   }
   sphere(.022, skinMat, 0, -.028, faceZ - .026, head, 8);     // nose
@@ -695,17 +697,20 @@ function makePerson(p) {
   if (p.glasses) {
     const frame = new THREE.MeshStandardMaterial({ color: 0x2a2320, roughness: .5, metalness: .3 });
     [-.062, .062].forEach(x => {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(.042, .0055, 5, 14), frame);
-      ring.position.set(x, .024, faceZ - .002);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(.044, .004, 5, 16), frame);
+      ring.position.set(x, .024, faceZ - .03);              // in front of the eye, so it reads as a lens
       head.add(ring);
     });
-    box(.03, .006, .006, frame, 0, .028, faceZ - .004, head);
-    [-.104, .104].forEach(x => box(.006, .006, .06, frame, x, .03, faceZ + .03, head));
+    box(.028, .005, .005, frame, 0, .028, faceZ - .032, head);
+    [-.106, .106].forEach(x => box(.005, .005, .07, frame, x, .03, faceZ + .02, head));
   }
 
-  // hair
-  const cap = sphere(.197, hairMat, 0, .012, .012, head, 18);
-  cap.scale.set(1.0, .95, 1.03);                       // over the crown, no bald patch showing through
+  // hair: a cap over the crown only, so the eyes and nose stay clear
+  const capGeo = new THREE.SphereGeometry(.197, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.4);
+  const cap = new THREE.Mesh(capGeo, hairMat);
+  cap.position.set(0, .008, 0);
+  cap.scale.set(1.02, 1.02, 1.06);
+  head.add(cap);
   if (p.style === 'long') {
     [-.155, .155].forEach(x => {
       const side = cyl(.055, .04, .5, 8, hairMat, x, -.16, .02, head);
@@ -731,6 +736,23 @@ function makePerson(p) {
     const beard = sphere(.11, hairMat, 0, -.1, -.08, head, 12);
     beard.scale.set(1, .85, .7);
     box(.08, .018, .02, hairMat, 0, -.062, faceZ + .006, head);   // moustache
+  }
+
+  if (p.victim) {
+    // no head on the shoulders: a stump, and the head lying where it came to rest
+    const neck = cyl(.06, .07, .1, 8, skinMat, 0, 1.49, 0, body);
+    const bloodMat0 = new THREE.MeshStandardMaterial({ color: 0x4c0808, roughness: .3 });
+    const stump = cyl(.062, .062, .02, 10, bloodMat0, 0, 1.545, 0, body);
+    head.position.set(.62, .17, .5);
+    head.rotation.set(-.3, .5, 1.35);                  // lying on its side, facing the room
+    g.add(head);
+    const neckBlood = new THREE.Mesh(new THREE.CircleGeometry(.09, 12), bloodMat0);
+    neckBlood.rotation.x = -Math.PI / 2;
+    neckBlood.position.set(.62, .022, .5);
+    g.add(neckBlood);
+  } else {
+    head.position.set(0, 1.58, 0);
+    body.add(head);
   }
 
   if (p.victim) {
@@ -769,7 +791,8 @@ function makePerson(p) {
   plate.position.set(0, p.victim ? 1.0 : 2.05, 0);
   plate.userData.billboard = true;
   g.add(plate);
-  g.userData.look = { skin: p.skin, hair: p.hair, style: p.style, glasses: !!p.glasses, beard: !!p.beard };
+  g.userData.look = { skin: p.skin, hair: p.hair, style: p.style, glasses: !!p.glasses, beard: !!p.beard,
+    beheaded: !!p.victim };
   register(g, 'p_' + p.id, p.name);
   return { g, plate };
 }
@@ -1194,6 +1217,17 @@ function use() {
       '<kbd>F</kbd>mark this square', 'the grid', `C${c}R${r}`);
   }
 }
+function giveHint() {
+  if (state.won) return toast('Hint · de zaak is gesloten. Druk op R om opnieuw te beginnen.');
+  if (!placedList().length) return toast('Hint · pak een gast op met E en zet hem op het vak waar zijn of haar verklaring past.');
+  if (!columnsOK()) return toast('Hint · er staan twee mensen in dezelfde kolom. Dat mag niet.');
+  if (!rowsOK()) return toast('Hint · er staan twee mensen in dezelfde rij. Dat mag niet.');
+  const wrong = PEOPLE.filter(p => p.test && state.placed[p.id] && !p.test(...state.placed[p.id]));
+  if (wrong.length) return toast(`Hint · ${wrong[0].name} klopt niet: ${wrong[0].hint}.`);
+  const loose = PEOPLE.find(p => !state.placed[p.id]);
+  if (loose) return toast(`Hint · ${loose.name} staat nog in de hal — ${loose.hint}.`);
+  return toast('Hint · Vladimir moet met precies één ander in een kamer liggen. Wie was dat?', 'good');
+}
 function readCase() {
   tray(`<p><b>CASE 004 — VLADIMIR.</b> Murder, and the house is a grid.</p>
     <table>
@@ -1236,6 +1270,7 @@ addEventListener('keydown', e => {
     if (state.carry) putBack(state.carry);
     return;
   }
+  if (e.code === 'KeyH') { giveHint(); return; }
   if (e.code === 'KeyF') { toggleMark(); return; }
   if (e.code === 'KeyE') { use(); return; }
   if (e.code === 'Space') {
@@ -1365,7 +1400,7 @@ if (new URLSearchParams(location.search).has('test') || new URLSearchParams(loca
     BEDS, TABLES, CHAIRS, TVS, RUGS, PLANTS, NO_STAND, WINDOW, WINDOW_AT, FURN, use, readCase, renderPad, trayEl,
     SOLIDS, WALLS, buildWalls, wallSign, groundAt, cameraOrder: () => camera.rotation.order,
     HOUSE: { X0, X1, Z0, Z1, WALL_H, CELL }, plaqueCount: () => interact.filter(o => String(o.userData.interact).startsWith('sign_')).length,
-    rowsOK, linesOK, murdererOf, giveKnife, revealMurderer, checkWinNow: checkWin, beside, nextToSameRoom,
+    rowsOK, linesOK, murdererOf, giveKnife, revealMurderer, checkWinNow: checkWin, beside, nextToSameRoom, giveHint,
     setFeet(y) { feet = y; camera.position.y = y + P.eye; },
     feet: () => feet,
     setCell(id, c, r) { lift(id); return place(id, c, r); },

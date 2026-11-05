@@ -418,6 +418,19 @@ const st = page => page.evaluate(() => ({
   check('and the jump is high enough for the tallest thing in the house (the television)',
     apex > 1.35, String(apex));
 
+  /* --- hints, in Dutch ---------------------------------------------------- */
+  const hint = await page.evaluate(async () => {
+    const d = window.__murdoku;
+    const keep = { ...d.state.placed };
+    d.state.placed = {}; d.state.carry = null; d.state.won = false;
+    d.giveHint();
+    const first = [...document.querySelectorAll('#toasts .toast')].pop().textContent;
+    d.state.placed = keep;
+    d.renderPad();
+    return first;
+  });
+  check('H gives a Dutch hint', /^Hint · /.test(hint) && /pak een gast op/i.test(hint), hint);
+
   /* --- the cast looks like the cast --------------------------------------- */
   const looks = await page.evaluate(() => {
     const d = window.__murdoku;
@@ -439,6 +452,11 @@ const st = page => page.evaluate(() => ({
     looks.E.style === 'updo' && looks.E.hair === '#cfcfcf' && looks.E.skin === '#6e4a34', JSON.stringify(looks.E));
   check('Vladimir: a man with short dark-blond hair',
     looks.V.style === 'short' && looks.V.hair === '#a88a4a', JSON.stringify(looks.V));
+  check('and his head is not on his shoulders', await page.evaluate(() => {
+    const d = window.__murdoku;
+    return d.visuals.V.g.userData.look.beheaded === true
+      && d.visuals.A.g.userData.look.beheaded === false;
+  }));
 
   check('no console errors', logs.length === 0, logs.join(' | '));
 
