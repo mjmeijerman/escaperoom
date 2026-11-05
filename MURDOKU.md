@@ -128,8 +128,8 @@ Carrying a guest: `E` on them, walk to the square, look at the floor and `E` aga
 statement as soon as that person stands somewhere that fits it, so the puzzle is legible while you work — a tick is
 true, a cross is a lie, a dot is nobody placed yet.
 
-The house is always honest: it tells you which room and which square you are standing in (top right), and the case
-file on the west wall is the same text as the notes.
+The house is always honest: it tells you which room and which square you are standing in (top right), the crosshair
+names whatever it is resting on, and the case file on the west wall is the same text as the notes.
 
 ---
 
@@ -143,7 +143,7 @@ file on the west wall is the same text as the notes.
   square out, the solution that closes it, a plaque read off the wall, a walk straight through a part-wall to prove
   it is scenery, the furniture nobody may stand on, the closed wall count, the window's place in the east wall, a
   plaque on every wall face, the outer shell standing on the grid's edge, and that every piece of furniture is
-  something you can stand on — plus a jump that clears the television and a head that stops at the ceiling
-  (44 checks).
+  something you can stand on — plus a jump that clears the television, a head that stops at the ceiling, and a
+  crosshair that names what it is on even when the thing is made of several parts (45 checks).
 - Known gap, deliberate for a first case: the checker accepts the layout above but not a *unique* one — see the note
   on the row rule. A second case should either turn the row rule on or drop the "leftover square" statement.
