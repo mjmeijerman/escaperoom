@@ -481,9 +481,12 @@ Known rough edge for slice 5: the keyboard is not yet solid, and its backlight i
 
 ### Slice 4 — built
 
-- **the drive**: a 240 GB SSD on the bench beside the case, a status LED that lights on 12 V, and a SATA port that is
-  a doorway. It sits outside the case rather than in it — the case floor is full, and the drive is a place you want
-  to walk up to.
+- **the drive**: a 240 GB SSD on the bench in front of the case, **unplugged**, its tail (a SATA plug on a short
+  cable) lying beside it. The only SATA socket is on the rear panel, so the tail has to be carried round the back of
+  the case first — the cable is drawn from the drive to the plug every frame, and becomes a fixed route once it is
+  in. The status LED is dark while it is unplugged, **red** once it is connected and the board has 12 V, and green
+  after `b7` is quarantined. The drive's SATA port is the doorway, and it refuses you while the drive is
+  disconnected.
 - **the sector grid**: 68 blocks in an 8 × 9 lattice with four sectors missing, over a void. Fall through one and
   the drive spits you out at the port; nothing is lost.
 - **the worm**: follows you at 0.075 m/s (you walk at 0.105) and eats the block it crawls over — the lattice goes dark

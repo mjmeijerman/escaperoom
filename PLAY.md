@@ -160,9 +160,10 @@ Look along the cable from the bench lip. Gerrit taped a grip on it, right where 
 ride it down. Ride the far grip to come back. If you step off an edge instead, the lip catches you and puts you back
 on top — nothing is lost.
 
-**The tail end of the case: b7.**
-The SSD on the bench beside the case is the fault, not the drive's health. `E` its port and go in. The worm is not a
-boss fight — it eats the block you leave, so keep moving, get it into the chamber, and pull the lever from outside.
+**The drive on the bench has a red light on it.**
+Then it is connected and alive, and the port is a doorway. If the light is dark: the tail is not in the rear panel, or
+the board has no 12 V. The worm inside is not a boss fight — it eats the block you leave, so keep moving, get it into
+the chamber, and pull the lever from outside.
 
 **The USB ports do nothing.**
 A connector goes in with the power on or off — but the device only wakes up once the board has 12 V: mains switch,
@@ -228,7 +229,9 @@ again to put it back on its pad.
    - Pick up the **PCIe** 8-pin, plug it into the socket hanging near the bottom of the card.
    - `d4` clears and the serial plate gives up **E**.
 12. **`b7` — the SSD**
-   - The drive lies on the bench beside the case. `E` its SATA port and step in.
+   - The drive lies on the bench in front of the case, unplugged, its tail beside it. `E` the tail, walk it round the
+     back of the case, and `E` the SATA socket on the rear panel. Its LED turns **red** if the board has 12 V.
+   - `E` the drive's SATA port and step in.
    - Inside: a lattice of sector blocks over a void, some sectors missing entirely. A worm follows you and eats the
      blocks you leave behind. It is slower than you are — but the grid is not the answer, the chamber is.
    - Walk into the quarantaine chamber in the middle. Let it follow you in, then leave through the hatch in the far

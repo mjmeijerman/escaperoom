@@ -1873,7 +1873,7 @@ const SMALL_ONLY = new Set(['led', 'bag', 'slotA2', 'slotB2', 'psuLabel', 'psuRo
   'h24', 'hcpu', 'hfan', 'plugRear', 'chaFan1', 'sysFan3', 'cpuFanHdr', 'screwdriver', 'gpuDrum',
   'cable_atx', 'cable_eps', 'cable_pcie', 'cable_sata', 'cable_hdmi', 'ioHdmi',
   'zipBench', 'zipDesk', 'usbKbd', 'usbMouse', 'usbPortA', 'usbPortB', 'airCan', 'mouseLens', 'usbNote',
-  'ssdPort', 'ssdBody', 'diskExit', 'wormLever', 'readme']);
+  'ssdPort', 'ssdBody', 'ssdPlug', 'ssdSocket', 'diskExit', 'wormLever', 'readme']);
 
 function transcriptHTML() {
   if (!voice.lines.length) return '<p class="sub">a message is playing</p>';
@@ -2264,7 +2264,8 @@ function giveHint() {
   if (!state.usb.clean) return toast(!state.usb.tipped
     ? 'Hint · the mouse is on the desk, and so is the only way down there: the taped grip on the HDMI cable at the bench edge.'
     : 'Hint · the window under the mouse is filthy. The can of air is standing on the bench, left of the case.', '');
-  if (state.codes.includes('b7')) return toast('Hint · the SSD on the bench beside the case. Its port is a doorway.', '');
+  if (!state.ssd.plugged) return toast("Hint · the drive on the bench in front of the case has a loose cable end. The rear panel has the only SATA socket.", '');
+  if (state.codes.includes('b7')) return toast('Hint · the drive is lit red. Its port is a doorway.', '');
   return toast('Hint · every fault is clear. The monitor wants a password.', 'good');
 }
 
@@ -2912,6 +2913,10 @@ function releaseHeld() {
     wireHdmi.visible = false;
     return;
   }
+  if (h === 'ssdTail') {
+    state.held = null; hideHeld(); ssdPlugG.visible = true;
+    return;
+  }
   if (h === 'usbKbd' || h === 'usbMouse' || h === 'air') {
     if (h === 'usbKbd') kbdPlug.visible = true;
     if (h === 'usbMouse') mousePlug.visible = true;
@@ -2942,6 +2947,7 @@ const DROP_SAYS = {
   usbKbd: "You put the keyboard's plug down.",
   usbMouse: "You put the mouse's plug down.",
   hdmi: 'You put the monitor cable down on the bench.',
+  ssdTail: 'You put the drive\'s cable end down.',
   fanRear: 'You let go of the fan plug.',
   fanCpu: 'You let go of the fan plug.',
 };
@@ -3530,20 +3536,40 @@ function plugUsb() {
 Object.assign(THINGS, {
   ssdBody: {
     kicker: 'the bench', title: 'The customer\'s SSD',
-    text: () => state.codes.includes('b7')
-      ? '<p>A 240 GB drive, warm, with a SATA port on the edge and a label: <i>the customer\'s photos</i>.</p>'
-      : '<p>The drive, quiet at last. The label says <b>SATA SSD · 240 GB</b>.</p>',
+    text: () => !state.ssd.plugged
+      ? '<p>A 240 GB drive with a label: <i>the customer\'s photos</i>. Its tail is lying loose beside it.</p>'
+      : state.codes.includes('b7')
+        ? '<p>The drive, plugged in, with a red LED blinking at the end of it.</p>'
+        : '<p>The drive, quiet at last, and a green LED to say so.</p>',
     keys: () => '', act() { },
   },
   ssdPort: {
     kicker: 'the bench', title: 'SATA port',
-    text: () => !railLive()
-      ? '<p>A port, a slot, a dead status LED. It wants 12 V.</p>'
-      : state.codes.includes('b7')
-        ? '<p>A slot in the drive\'s edge, wider than it has any right to be from where you are standing.</p>'
-        : '<p>The port. Nothing in there now.</p>',
-    keys: () => railLive() ? '<kbd>E</kbd>step in' : '',
+    text: () => !state.ssd.plugged
+      ? '<p>An empty slot in the drive\'s edge. The drive is not connected to anything.</p>'
+      : !railLive()
+        ? '<p>The slot, and a drive that is plugged in but dark.</p>'
+        : state.codes.includes('b7')
+          ? '<p>A slot in the drive\'s edge, wider than it has any right to be from where you stand.</p>'
+          : '<p>The slot. Nothing in there now.</p>',
+    keys: () => state.ssd.plugged && railLive() ? '<kbd>E</kbd>step in' : '',
     act() { enterDisk(); },
+  },
+  ssdPlug: {
+    kicker: 'the bench', title: 'The drive\'s cable end',
+    text: () => state.ssd.plugged
+      ? '<p>In. The drive is part of the machine now.</p>'
+      : '<p>A SATA plug on a short tail, lying beside the drive. Not much slack on it.</p>',
+    keys: () => state.ssd.plugged ? '' : '<kbd>E</kbd>take the cable end',
+    act() { takeSsdTail(); },
+  },
+  ssdSocket: {
+    kicker: 'the back of the case', title: 'SATA socket',
+    text: () => state.ssd.plugged
+      ? '<p>The drive is in. The little LED on it is doing the talking now.</p>'
+      : '<p>The one SATA socket in the room, on the rear panel. Something wants to be in it.</p>',
+    keys: () => state.held === 'ssdTail' ? '<kbd>E</kbd>plug the drive in' : '',
+    act() { plugSsd(); },
   },
   diskExit: {
     kicker: 'the sector grid', title: 'The port mouth',
@@ -3765,13 +3791,16 @@ const ssdLabel = decal(.10, .05, ssdLabelTex, (CH.x0 + CH.x1) / 2, DISK.y + .07,
 ssdLabel.visible = false;
 diskG.add(ssdLabel);
 
-/* the drive itself, on the bench beside the case */
-const SSD = { x: -1.35, z: -2.30 };
+/* the drive itself: on the bench in front of the case, unplugged, its tail
+   lying beside it. It wants a SATA socket, and the only one is on the back of
+   the case — so the tail goes round there before anything can happen. */
+state.ssd = { plugged: false };
+const SSD = { x: -1.15, z: -2.05 };
 const ssdBody = box(.10, .008, .07, new THREE.MeshStandardMaterial({ color: 0x2b3236, roughness: .6, metalness: .2 }),
   SSD.x, BENCH.top + .004, SSD.z);
 box(.098, .002, .066, new THREE.MeshStandardMaterial({ color: 0x3d444a, roughness: .7 }), SSD.x, BENCH.top + .009, SSD.z);
-const ssdLed = sphere(.0035, new THREE.MeshStandardMaterial({ color: 0x102018, emissive: 0x000000, roughness: .3 }),
-  SSD.x + .03, BENCH.top + .011, SSD.z + .026, scene, 8);
+const ssdLed = sphere(.0022, new THREE.MeshStandardMaterial({ color: 0x10161a, emissive: 0x000000, roughness: .3 }),
+  SSD.x + .036, BENCH.top + .011, SSD.z + .020, scene, 8);
 const ssdPort = box(.026, .008, .012, new THREE.MeshStandardMaterial({ color: 0x14181b, roughness: .8 }),
   SSD.x, BENCH.top + .004, SSD.z + .037);
 register(ssdPort, 'ssdPort', 'the SATA port on the drive');
@@ -3782,6 +3811,23 @@ const ssdTop = decal(.08, .03, stickerTex([['SATA SSD · 240 GB', 26, true], ['b
 ssdTop.rotation.x = -Math.PI / 2;
 SOLID_S.push(S(SSD.x - .05, SSD.x + .05, BENCH.top, BENCH.top + .01, SSD.z - .035, SSD.z + .035));   // the drive is a step, not air
 
+// its tail: a plug on a short cable, lying beside the drive
+const SSD_PORT_P = V3(SSD.x, BENCH.top + .006, SSD.z + .030);
+const ssdPlugG = new THREE.Group();
+ssdPlugG.position.set(SSD.x + .080, BENCH.top + .006, SSD.z + .055);
+scene.add(ssdPlugG);
+box(.028, .009, .014, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }), 0, .005, 0, ssdPlugG);
+box(.020, .002, .011, new THREE.MeshStandardMaterial({ color: 0xdfe6e8, roughness: .85 }), 0, .011, 0, ssdPlugG);
+box(.020, .004, .004, M.metal, 0, .005, -.010, ssdPlugG);
+register(ssdPlugG, 'ssdPlug', "the drive's cable end");
+const ssdWire = cyl(.0022, .0022, 1, 6, M.black, SSD.x, BENCH.top + .01, SSD.z - .05);
+ssdWire.visible = true;
+// the one SATA socket in the room: on the rear panel
+const ssdSocket = box(.030, .010, .014, new THREE.MeshStandardMaterial({ color: 0x1b1f22, roughness: .8 }),
+  IO.x + .075, IO.y - .014, IO.z - .012);
+box(.026, .004, .008, M.gold, IO.x + .075, IO.y - .018, IO.z - .018);
+register(ssdSocket, 'ssdSocket', 'the SATA socket on the rear panel');
+
 /* --- going in and coming out ------------------------------------------- */
 state.disk = { inside: false, sealed: false, ate: null };
 function flash(ms = 200) {
@@ -3790,6 +3836,7 @@ function flash(ms = 200) {
 }
 function enterDisk() {
   if (state.disk.inside) return;
+  if (!state.ssd.plugged) { sfx.buzz(); toast('The drive is not connected to anything.'); return; }
   if (!railLive()) { sfx.buzz(); toast('The drive is dark. No 12 V.'); return; }
   if (state.disk.sealed && state.codes.includes('b7')) return;
   state.disk.inside = true;
@@ -3848,9 +3895,62 @@ function pullWormLever() {
   toast('Quarantined. Whatever is left of b7 is inside that box now.', 'good');
   renderTray();
 }
+function routeSsd() {
+  const cabMat = new THREE.MeshStandardMaterial({ color: 0x1b2024, roughness: .85 });
+  const path = [
+    SSD_PORT_P,
+    V3(SSD.x + .06, BENCH.top + .008, SSD.z + .07),
+    V3(-1.58, BENCH.top + .016, -2.10),
+    V3(-1.63, BENCH.top + .020, -2.46),
+    V3(-1.70, BENCH.top + .034, -2.90),
+    V3(IO.x + .075, IO.y - .014, IO.z - .020),
+  ];
+  for (let i = 1; i < path.length; i++) tube(path[i - 1], path[i], .0022, cabMat);
+}
+function takeSsdTail() {
+  if (state.ssd.plugged || state.held === 'ssdTail') return;
+  releaseHeld();
+  state.held = 'ssdTail';
+  ssdPlugG.visible = false;
+  showHeld('ssdTail');
+  sfx.pickup();
+  toast("The drive's cable end, and not much slack.");
+  renderTray();
+}
+function plugSsd() {
+  if (state.ssd.plugged) { toast('Already in.'); return; }
+  if (state.held !== 'ssdTail') {
+    sfx.nope(); toast('Your hands are empty. The drive\'s tail is on the bench with it.');
+    return;
+  }
+  state.ssd.plugged = true;
+  state.held = null;
+  hideHeld();
+  ssdWire.visible = false;
+  routeSsd();
+  box(.034, .012, .016, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }),
+    IO.x + .075, IO.y - .014, IO.z - .022);
+  sfx.snap();
+  renderTray();
+  setTimeout(() => toast(railLive()
+    ? 'In. The drive wakes up: a red LED and something moving inside it.'
+    : 'In. No 12 V yet, so the LED stays dark.', ''), 160);
+}
 function diskTick(dt) {
-  ssdLed.material.emissive.setHex(railLive() ? 0x46ff7a : 0x000000);
-  ssdLed.material.emissiveIntensity = railLive() ? 1.8 : 0;
+  // red while b7 is in there, green once it is quarantined, dark without 12 V
+  const live = state.ssd.plugged && railLive();
+  ssdLed.material.emissive.setHex(!live ? 0x000000 : state.codes.includes('b7') ? 0xff3a2a : 0x36d08a);
+  ssdLed.material.emissiveIntensity = live ? (state.codes.includes('b7') ? 1.5 : 1.2) : 0;
+  {
+    const hand = new THREE.Vector3();
+    heldPlug.getWorldPosition(hand);
+    hand.lerp(camera.position, .32);
+    if (state.ssd.plugged) ssdWire.visible = false;
+    else {
+      ssdWire.visible = true;
+      stretchCyl(ssdWire, SSD_PORT_P, state.held === 'ssdTail' ? hand : ssdPlugG.position);
+    }
+  }
   if (!state.disk.inside || state.disk.sealed) return;
   const p = camera.position;
   const dx = p.x - worm.position.x, dz = p.z - worm.position.z;
@@ -4040,6 +4140,7 @@ if (new URLSearchParams(location.search).has('debug') || new URLSearchParams(loc
     zip: ZIP, startRide, tipMouse, cleanLens, plugUsb, takeUsb, takeAir, usbWire, dropHeld,
     a2Solid, b2Solid, SEATED_Z0, SEATED_Z1, USB, kbKeyMat, kbLegendMat, kbDeckG, kbGlow, mLed, mSensor, checkUsbPower, darkUsb,
     enterDisk, leaveDisk, ejectFromDisk, pullWormLever, DISK, worm, CH, SSD, SOLID_D, sectorBlocks, readmePanel,
+    ssdLed, ssdSocket, ssdPlugG, takeSsdTail, plugSsd,
     look(y, pi) { yaw = y; pitch = pi; camera.rotation.set(pitch, yaw, 0); },
     aimAt(id, dist = 1.1, fy = null, at = null) {
       const cands = interact.filter(o => o.userData.interact === id);

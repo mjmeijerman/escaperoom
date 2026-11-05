@@ -296,7 +296,7 @@ const check = (name, ok, detail = '') => {
   const st = () => page.evaluate(() => {
     const d = window.__doctor;
     return { psu: { ...d.state.psu }, fans: { ...d.state.fans }, gpu: { ...d.state.gpu },
-      mon: { ...d.state.mon }, usb: { ...d.state.usb },
+      mon: { ...d.state.mon }, usb: { ...d.state.usb }, ssd: { ...d.state.ssd },
       zip: { ready: !!d.state.zip.ready, riding: !!d.state.zip.riding },
       held: d.state.held, notes: { ...d.state.notes }, codes: d.state.codes.slice() };
   });
@@ -589,8 +589,29 @@ const check = (name, ok, detail = '') => {
   check('the far grip rides you back to the bench', zipUp.onDesk === false && zipUp.riding === false,
     JSON.stringify(zipUp));
 
-  /* --- slice 4: the inside of the drive --------------------------------- */
+  /* --- slice 4: the drive, its tail, and the inside of it ---------------- */
   check('the customer\'s SSD is on the bench, port and all', (await at('ssdPort')) === 'ssdPort');
+  const unplugged = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.aimAt('ssdPort', 0.05, 0.95); d.use();
+    await new Promise(r => setTimeout(r, 200));
+    return { inside: d.state.disk.inside, led: d.ssdLed.material.emissiveIntensity };
+  });
+  check('an unplugged drive is not a doorway', unplugged.inside === false, JSON.stringify(unplugged));
+  check('and its LED is dark', unplugged.led === 0, String(unplugged.led));
+
+  check('the tail is lying beside it', (await at('ssdPlug')) === 'ssdPlug');
+  await press();
+  check('the cable end is in your arms', (await st()).held === 'ssdTail');
+  check('the SATA socket is on the rear panel', (await at('ssdSocket')) === 'ssdSocket');
+  await press();
+  const plugged = await st();
+  check('plugging it in connects the drive', plugged.ssd.plugged === true);
+  check('the drive lights red while b7 is in it', await page.evaluate(async () => {
+    await new Promise(r => setTimeout(r, 200));
+    const m = window.__doctor.ssdLed.material;
+    return m.emissive.getHex() === 0xff3a2a && m.emissiveIntensity > 0;
+  }));
   const entered = await page.evaluate(async () => {
     const d = window.__doctor;
     d.aimAt('ssdPort', 0.05, 0.95);
@@ -623,6 +644,10 @@ const check = (name, ok, detail = '') => {
   check('b7 clears', !sealed.codes.includes('b7'), sealed.codes.join(','));
   check('and the drive gives up a B', sealed.note === 'B', String(sealed.note));
   check('the README is there to read', sealed.readme === true);
+  check('and the LED on the drive goes green', await page.evaluate(async () => {
+    await new Promise(r => setTimeout(r, 220));
+    return window.__doctor.ssdLed.material.emissive.getHex() === 0x36d08a;
+  }));
   check('the lever with an empty chamber does nothing', await page.evaluate(async () => {
     const d = window.__doctor;
     return d.state.disk.sealed === true;      // sealed stays sealed; the guard is the flag
