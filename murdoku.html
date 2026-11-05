@@ -890,7 +890,8 @@ function renderPad() {
     const at = state.placed[p.id];
     const ok = at && p.test ? p.test(at[0], at[1]) : null;
     const tag = !at ? '<b class="none">·</b>' : ok === null ? '<b class="none">?</b>' : ok ? '<b>✓</b>' : '<b class="no">✗</b>';
-    return `<li><span>${p.name}<i>${p.clue}</i>${at ? `C${at[0]}R${at[1]} · ${roomAt(at[0], at[1])}` : 'in the hall'}</span>${tag}</li>`;
+    const where = at ? `C${at[0]}R${at[1]} · ${roomAt(at[0], at[1])}` : 'in the hall';
+    return `<li><span>${p.name}<i>${p.clue}</i>Current location: ${where}</span>${tag}</li>`;
   }).join('');
   $('#padClues').innerHTML = `
     <li><span>placed</span><b class="${placedList().length === 6 ? '' : 'none'}">${placedList().length}/6</b></li>

@@ -208,6 +208,10 @@ const st = page => page.evaluate(() => ({
 
   check('every statement is ticked in the notes', await page.evaluate(() =>
     (document.getElementById('padPeople').textContent.match(/✓/g) || []).length === 5));
+  check('the notes label where each of them is standing', await page.evaluate(() => {
+    const t = document.getElementById('padPeople').textContent.replace(/\s+/g, ' ');
+    return (t.match(/Current location:/g) || []).length >= 5 && /Current location: C1R1/.test(t);
+  }));
   const revealed = await page.evaluate(async () => {
     const d = window.__murdoku;
     await new Promise(r => setTimeout(r, 1700));           // the reveal runs after 1.4 s
