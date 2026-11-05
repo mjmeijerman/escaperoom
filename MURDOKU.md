@@ -30,9 +30,14 @@ Coordinates are **C**olumn then **R**ow. C1 is the west edge, R1 the north.
 - **woonkamer** — the other ten
 
 No doors. Every room is closed in by a knee-high part-wall (1.3 m, the height of the television) that runs unbroken
-along its boundary, and carries a painted plaque with the room's name. The walls are scenery: they have no colliders,
-so you walk straight through them. The grid is the puzzle, not the masonry, and nothing in the house is allowed to
-make a square unreachable.
+along its boundary, and **every wall carries the name of the room behind it** — so the living room alone has a
+`WOONKAMER` plaque on each of its seven partitions plus one facing the hall, and each of the other rooms is likewise
+named wherever you stand. A wall that has furniture against it gets no plaque; the label is only hung where it fits.
+The walls are scenery: they have no colliders, so you walk straight through them. The grid is the puzzle, not the
+masonry, and nothing in the house is allowed to make a square unreachable.
+
+Everything in the house can be jumped onto: the floor query takes whatever is under you, and the jump clears the
+tallest thing in the room (the television at 1.35 m).
 
 ### Furniture
 
@@ -101,6 +106,7 @@ above; if the row rule is turned on later, the victim moves to C2R6 and nothing 
 | Input | Action |
 | --- | --- |
 | `W A S D` / arrows | walk (`Shift` to hurry) |
+| `Space` | jump — high enough to land on anything in the house, the television included |
 | mouse | look (click to capture, `Esc` to release) — yaw first, so turning never rolls the room |
 | `E` | pick a guest up, put them down on the square you are looking at, read the case file |
 | `F` | cross a square out (or clear it again) |
@@ -128,7 +134,8 @@ file on the west wall is the same text as the notes.
 - `?test` exposes `window.__murdoku` (place, lift, checkWin, the sets of furniture squares) for
   `test/murdoku.browser.cjs`, which walks the whole case: the rooms, the furniture, carrying a guest, crossing a
   square out, the solution that closes it, a plaque read off the wall, a walk straight through a part-wall to prove
-  it is scenery, the furniture nobody may stand on, the closed wall count, and the window's place in the east wall
-  (38 checks).
+  it is scenery, the furniture nobody may stand on, the closed wall count, the window's place in the east wall, a
+  plaque on every wall face, and that every piece of furniture is something you can stand on — plus a jump that clears
+  the television (42 checks).
 - Known gap, deliberate for a first case: the checker accepts the layout above but not a *unique* one — see the note
   on the row rule. A second case should either turn the row rule on or drop the "leftover square" statement.

@@ -197,11 +197,19 @@ const st = page => page.evaluate(() => ({
       return d.cameraOrder() === 'YXZ' && Math.abs(up.dot(right)) < .01;
     }));
 
-  check('there is a painted plaque for every room and one for the hall', await page.evaluate(() => {
+  const plaques = await page.evaluate(() => {
     const d = window.__murdoku;
     const ids = d.interact.map(o => o.userData.interact).filter(id => id && id.startsWith('sign_'));
-    return ids.length >= 6 && ids.includes('sign_logeerkamer') && ids.includes('sign_the hall');
-  }));
+    const count = name => ids.filter(id => id === 'sign_' + name).length;
+    return {
+      total: ids.length, woon: count('woonkamer'), hall: count('the hall'),
+      rooms: ['logeerkamer', 'badkamer', 'grote slaapkamer', 'keuken', 'woonkamer'].map(count),
+    };
+  });
+  check('every room has its name on the walls behind it, more than once',
+    plaques.total >= 15 && plaques.rooms.every(n => n >= 2), JSON.stringify(plaques));
+  check('the living room has a plaque on each of its walls',
+    plaques.woon >= 6 && plaques.hall >= 1, JSON.stringify(plaques));
 
   const signRead = await page.evaluate(() => {
     const d = window.__murdoku;
@@ -261,22 +269,57 @@ const st = page => page.evaluate(() => ({
 
   const walls = await page.evaluate(() => {
     const d = window.__murdoku;
-    let expected = 1;                                   // the hall wall
-    for (let c = 1; c < 6; c++) for (let r = 1; r <= 6; r++) if (d.roomAt(c, r) !== d.roomAt(c + 1, r)) expected++;
-    for (let c = 1; c <= 6; c++) for (let r = 1; r < 6; r++) if (d.roomAt(c, r) !== d.roomAt(c, r + 1)) expected++;
-    return { runs: d.WALLS.length, expected,
-      lengths: [...new Set(d.WALLS.map(w => +w.len.toFixed(2)))].sort() };
+    let internal = 0;
+    for (let c = 1; c < 6; c++) for (let r = 1; r <= 6; r++) if (d.roomAt(c, r) !== d.roomAt(c + 1, r)) internal++;
+    for (let c = 1; c <= 6; c++) for (let r = 1; r < 6; r++) if (d.roomAt(c, r) !== d.roomAt(c, r + 1)) internal++;
+    return { runs: d.WALLS.length, internal,
+      lengths: [...new Set(d.WALLS.map(w => +w.len.toFixed(2)))].sort((a, b) => a - b) };
   });
-  check('every room is closed in: one unbroken wall per boundary',
-    walls.runs === walls.expected, JSON.stringify(walls));
-  check('and every run is a full cell, with no doorway cut in it',
-    walls.lengths.length === 2 && walls.lengths.includes(2) && walls.lengths.includes(12),
-    JSON.stringify(walls.lengths));
+  check('every room is closed in: one unbroken wall per boundary, and the hall wall in six',
+    walls.runs === walls.internal + 6, JSON.stringify(walls));
+  check('and every run is one full cell, with no doorway cut in it',
+    walls.lengths.length === 1 && walls.lengths[0] === 2, JSON.stringify(walls.lengths));
 
   check('the window is in the east wall, on C6R4', await page.evaluate(() => {
     const d = window.__murdoku;
     return d.WINDOW_AT.x > 6.8 && d.WINDOW_AT.x < 7 && Math.abs(d.WINDOW_AT.z - d.cellZ(4)) < .01;
   }), await page.evaluate(() => JSON.stringify(window.__murdoku.WINDOW_AT)));
+
+  /* --- jumping: everything in the house can be stood on ------------------ */
+  const standOn = await page.evaluate(() => {
+    const d = window.__murdoku;
+    const at = (c, r, y) => +d.groundAt(d.cellX(c), d.cellZ(r), y).toFixed(2);
+    return {
+      floor: at(4, 5, 0),                 // empty living room
+      bed: at(1, 1, 1.0),                 // a bed is 0.52 high
+      chair: at(4, 2, 1.0),
+      table: at(4, 3, 1.0),               // the table is 0.78
+      plant: at(5, 3, 1.4),               // the plant pot stands 1.0
+      tv: at(3, 6, 2.0),                  // the television is 1.35
+    };
+  });
+  check('everything in the house is something you can stand on',
+    standOn.bed > .4 && standOn.chair > .4 && standOn.table > .7 && standOn.plant > .9 && standOn.tv > 1.3,
+    JSON.stringify(standOn));
+  check('and the floor is still the floor', standOn.floor === 0, String(standOn.floor));
+
+  const apex = await page.evaluate(async () => {
+    const d = window.__murdoku;
+    d.state.locked = false;
+    d.teleport(0, 8.5, 0, 0);                         // the hall, clear floor
+    await new Promise(r => setTimeout(r, 250));
+    const y0 = d.camera.position.y;
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    let top = y0;
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 25));
+      top = Math.max(top, d.camera.position.y);
+    }
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space' }));
+    return +(top - y0).toFixed(2);
+  });
+  check('and the jump is high enough for the tallest thing in the house (the television)',
+    apex > 1.35, String(apex));
 
   check('no console errors', logs.length === 0, logs.join(' | '));
 

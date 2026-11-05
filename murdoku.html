@@ -473,10 +473,10 @@ const wallMat = new THREE.MeshStandardMaterial({ color: 0x4a4148, roughness: .92
 const wallCap = new THREE.MeshStandardMaterial({ color: 0x2a2226, roughness: .8 });
 
 const WALLS = [];
-function wallRun(x, z, axis, len) {
+function wallRun(x, z, axis, len, rooms = []) {
   // one unbroken run: every room is closed in. Still scenery — no colliders.
   if (len <= .05) return;
-  WALLS.push({ x, z, axis, len });
+  WALLS.push({ x, z, axis, len, rooms });
   if (axis === 'x') {
     box(len, PART_H, WALL_T, wallMat, x, PART_H / 2, z);
     box(len + .04, .06, WALL_T + .04, wallCap, x, PART_H + .03, z);
@@ -487,18 +487,25 @@ function wallRun(x, z, axis, len) {
 }
 function buildWalls() {
   for (let c = 1; c < N; c++) for (let r = 1; r <= N; r++) {
-    if (roomAt(c, r) !== roomAt(c + 1, r)) wallRun(cellX(c) + CELL / 2, cellZ(r), 'z', CELL);
+    if (roomAt(c, r) !== roomAt(c + 1, r)) {
+      wallRun(cellX(c) + CELL / 2, cellZ(r), 'z', CELL, [roomAt(c, r), roomAt(c + 1, r)]);
+    }
   }
   for (let c = 1; c <= N; c++) for (let r = 1; r < N; r++) {
-    if (roomAt(c, r) !== roomAt(c, r + 1)) wallRun(cellX(c), cellZ(r) + CELL / 2, 'x', CELL);
+    if (roomAt(c, r) !== roomAt(c, r + 1)) {
+      wallRun(cellX(c), cellZ(r) + CELL / 2, 'x', CELL, [roomAt(c, r), roomAt(c, r + 1)]);
+    }
   }
-  // and one between the grid and the hall, closed like the rest
-  wallRun(0, cellZ(N) + CELL / 2, 'x', N * CELL);
+  // and one between the grid and the hall, in six pieces so each square gets its
+  // room's name on it; the hall's own plaque goes in the middle of the run
+  for (let c = 1; c <= N; c++) {
+    wallRun(cellX(c), cellZ(N) + CELL / 2, 'x', CELL, [roomAt(c, N), null]);
+  }
 }
 
-function wallSign(name, x, z, ry, y, sized = 1.2) {
+function wallSign(name, x, z, ry, y, sized = .95) {
   const t = tex(512, 128, (g, w, h) => {
-    g.fillStyle = '#efe6d8'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#ddd3c4'; g.fillRect(0, 0, w, h);
     g.strokeStyle = '#2a2226'; g.lineWidth = 8; g.strokeRect(6, 6, w - 12, h - 12);
     g.fillStyle = '#221b1e';
     g.font = '700 52px ui-monospace,monospace';
@@ -512,37 +519,25 @@ function wallSign(name, x, z, ry, y, sized = 1.2) {
   return m;
 }
 
+/* A plaque on every wall, on every face that has a room behind it: the woonkamer
+   alone ends up with one on each of its seven partitions and one facing the hall. */
+function furnitureInTheWay(x, z) {
+  return SOLIDS.some(s => s.y1 > .3 && x > s.x0 - .1 && x < s.x1 + .1 && z > s.z0 - .1 && z < s.z1 + .1);
+}
 function buildSigns() {
-  // one plaque per room, on the wall nearest its middle, hung where you can read it
-  ROOM_DEF.forEach(([name]) => {
-    const cells = [];
-    for (let c = 1; c <= N; c++) for (let r = 1; r <= N; r++) if (roomAt(c, r) === name) cells.push([c, r]);
-    const cx = cells.reduce((s, [c]) => s + cellX(c), 0) / cells.length;
-    const cz = cells.reduce((s, [, r]) => s + cellZ(r), 0) / cells.length;
-    let best = null;
-    for (const [c, r] of cells) {
-      const sides = [
-        { c2: c - 1, r2: r, x: cellX(c) - CELL / 2, z: cellZ(r), axis: 'z', ry: Math.PI / 2 },
-        { c2: c + 1, r2: r, x: cellX(c) + CELL / 2, z: cellZ(r), axis: 'z', ry: -Math.PI / 2 },
-        { c2: c, r2: r - 1, x: cellX(c), z: cellZ(r) - CELL / 2, axis: 'x', ry: 0 },
-        { c2: c, r2: r + 1, x: cellX(c), z: cellZ(r) + CELL / 2, axis: 'x', ry: Math.PI },
-      ];
-      for (const sd of sides) {
-        if (sd.c2 >= 1 && sd.c2 <= N && sd.r2 >= 1 && sd.r2 <= N && roomAt(sd.c2, sd.r2) === name) continue;
-        const outer = !(sd.c2 >= 1 && sd.c2 <= N && sd.r2 >= 1 && sd.r2 <= N);
-        const d = Math.hypot(sd.x - cx, sd.z - cz);
-        if (!best || d < best.d) best = { ...sd, d, outer };
-      }
+  const off = WALL_T / 2 + .012;
+  for (const w of WALLS) {
+    const [neg, pos] = w.rooms;
+    if (w.axis === 'z') {
+      if (neg && !furnitureInTheWay(w.x - .4, w.z)) wallSign(neg, w.x - off, w.z, -Math.PI / 2, .95);
+      if (pos && !furnitureInTheWay(w.x + .4, w.z)) wallSign(pos, w.x + off, w.z, Math.PI / 2, .95);
+    } else {
+      if (neg && !furnitureInTheWay(w.x, w.z - .4)) wallSign(neg, w.x, w.z - off, Math.PI, .95);
+      if (pos && !furnitureInTheWay(w.x, w.z + .4)) wallSign(pos, w.x, w.z + off, 0, .95);
     }
-    if (!best) return;
-    const y = best.outer ? 1.85 : 1.0;
-    const inset = (best.outer ? .2 : .1) + .01;
-    const px = best.x + (best.ry === Math.PI / 2 ? inset : best.ry === -Math.PI / 2 ? -inset : 0);
-    const pz = best.z + (best.ry === 0 ? inset : best.ry === Math.PI ? -inset : 0);
-    wallSign(name, px, pz, best.ry, y);
-  });
-  // and the hall, on the south wall
-  wallSign('the hall', 0, Z1 - .2, Math.PI, 1.85, 1.6);
+  }
+  // the hall, once, in the middle of its wall
+  wallSign('the hall', 0, cellZ(N) + CELL / 2 + off, 0, .95, 1.3);
 }
 
 function buildFurniture() {
@@ -887,6 +882,17 @@ function resolve(pos) {
     }
   }
 }
+/* Whatever is under you: the floor, or the top of anything low enough to stand
+   on from where you are. Everything in the house can be jumped onto. */
+function groundAt(x, z, feet) {
+  let g = 0;
+  for (const s of SOLIDS) {
+    if (s.y1 > feet + P.stepUp) continue;                  // out of reach from here
+    if (x < s.x0 - P.r || x > s.x1 + P.r || z < s.z0 - P.r || z > s.z1 + P.r) continue;
+    if (s.y1 > g) g = s.y1;
+  }
+  return g;
+}
 function move(dt) {
   const fast = keys.has('ShiftLeft') || keys.has('ShiftRight');
   const speed = P.speed * (fast ? 1.5 : 1);
@@ -910,7 +916,8 @@ function move(dt) {
   camera.position.z = pos.z;
   vy -= 9.8 * dt;
   feet += vy * dt;
-  if (feet <= 0) { feet = 0; vy = 0; grounded = true; }
+  const ground = groundAt(pos.x, pos.z, feet);
+  if (feet <= ground) { feet = ground; vy = 0; grounded = true; }
   else grounded = false;
   camera.position.y = feet + P.eye;
   if (state.carry) {
@@ -996,7 +1003,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyE') { use(); return; }
   if (e.code === 'Space') {
     e.preventDefault();
-    if (grounded) { vy = 3.4; grounded = false; }
+    if (grounded) { vy = 6.6; grounded = false; }          // enough to reach the top of the television, even on a slow frame
     return;
   }
   if (e.code === 'Escape') return;
@@ -1025,7 +1032,7 @@ function roomUnderPlayer() {
   return inGrid ? { room: roomAt(c, r), c, r } : { room: 'the hall', c, r };
 }
 function tick() {
-  const dt = Math.min(clock.getDelta(), .1);
+  const dt = Math.min(clock.getDelta(), .05);   // slow machines should not under-integrate the jump
   if (state.started) move(dt);
   camera.rotation.set(pitch, yaw, 0);
 
@@ -1119,7 +1126,9 @@ if (new URLSearchParams(location.search).has('test') || new URLSearchParams(loca
     state, PEOPLE, ROOM_AT, roomAt, cellX, cellZ, key, place, lift, putBack, checkWin, toggleMark,
     columnsOK, cellOfPoint, visuals, camera, scene, THREE, interact, target, raycaster,
     BEDS, TABLES, CHAIRS, TVS, RUGS, PLANTS, NO_STAND, WINDOW, WINDOW_AT, FURN, use, readCase, renderPad, trayEl,
-    SOLIDS, WALLS, buildWalls, wallSign, cameraOrder: () => camera.rotation.order,
+    SOLIDS, WALLS, buildWalls, wallSign, groundAt, cameraOrder: () => camera.rotation.order,
+    setFeet(y) { feet = y; camera.position.y = y + P.eye; },
+    feet: () => feet,
     setCell(id, c, r) { lift(id); return place(id, c, r); },
     where() { return { x: camera.position.x, z: camera.position.z, yaw, pitch }; },
     teleport(x, z, y2 = 0, p2 = 0) {
