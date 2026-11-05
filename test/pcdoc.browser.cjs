@@ -773,6 +773,66 @@ const check = (name, ok, detail = '') => {
     return { y: +d.camera.position.y.toFixed(2), x: +d.camera.position.x.toFixed(2) };
   });
   check('step into the gap and the bench lip catches you', fell.y > .9 && fell.x < 1, JSON.stringify(fell));
+
+  /* --- slice 5: the login, the mouse and the keyboard -------------------- */
+  const loginUp = await page.evaluate(async () => {
+    const d = window.__doctor;
+    await new Promise(r => setTimeout(r, 1000));     // the login opens 700 ms after the last code clears
+    const before = { ...d.state.login.cursor };
+    d.loginMove(300, 600);
+    d.loginMove(60, 80);
+    const after = { ...d.state.login.cursor };
+    d.loginClick();
+    return { active: d.state.login.active, before, after, focus: d.state.login.focus,
+      screen: d.screenLive.image.width > 0 };
+  });
+  check('the last fault brings up the customer login', loginUp.active === true && loginUp.screen === true);
+  check('dragging the plastic mouse moves the cursor on the screen',
+    loginUp.after.x > loginUp.before.x + .1 && loginUp.after.y > loginUp.before.y + .1, JSON.stringify(loginUp));
+  check('clicking the field gives it focus', loginUp.focus === true);
+
+  await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.zip.seconds = 0.35;
+    d.aimAt('zipBench', 0.05, 0.95);
+    d.use();
+    await new Promise(r => setTimeout(r, 700));
+  });
+  const typedIn = await page.evaluate(async () => {
+    const d = window.__doctor;
+    const hits = [];
+    for (const ch of ['B', 'R', 'O', 'K', 'E', 'N']) {
+      const k = d.kbKeyMap.find(k => k.ch === ch);
+      d.state.locked = false;
+      d.setFeet(0.76);
+      d.camera.position.set(k.wx, 0.76 + d.P.eye + 0.02, k.wz + 0.006);
+      d.look(0, -1.45);
+      d.camera.updateMatrixWorld(true);
+      const h = d.currentTarget();
+      d.state.hovered = h;
+      hits.push(h ? h.id : null);
+      d.use();
+      await new Promise(r => setTimeout(r, 70));
+    }
+    await new Promise(r => setTimeout(r, 400));
+    return { hits, ok: d.state.login.ok, typed: d.state.login.typed };
+  });
+  check('the keys of the keyboard type the six characters',
+    typedIn.hits.every((h, i) => h === 'key_' + 'BROKEN'[i]), JSON.stringify(typedIn.hits));
+  check('B R O K E N logs in', typedIn.ok === true, String(typedIn.typed));
+
+  const won = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.login.cursor = { x: .5, y: .68 };        // over the un-shrink button
+    const before = d.P.eye;
+    d.loginClick();
+    await new Promise(r => setTimeout(r, 1600));
+    return { before, eye: d.P.eye, phase: d.state.phase, won: d.state.won,
+      banner: !document.getElementById('banner').hidden };
+  });
+  check('the button on the screen puts you back on the floor',
+    won.won === true && Math.abs(won.eye - 1.62) < .01 && won.phase === 'human', JSON.stringify(won));
+  check('and the shop sign comes on', won.banner === true);
   const padAfter = await page.evaluate(() => document.getElementById('pad').textContent.replace(/\s+/g, ' '));
   check('the letters never spell the password in the notepad',
     !/BROKEN/i.test(padAfter) && !/NK?O?E?R?B?/.test('') , padAfter.match(/[NK OER]{4,}/) ? padAfter : 'clean');

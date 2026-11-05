@@ -946,6 +946,11 @@ const screenTex = tex(512, 320, (g, w, h) => {
   g.fillStyle = 'rgba(90,220,255,.12)';
   for (let y = 0; y < h; y += 4) g.fillRect(0, y, w, 1);
 });
+const screenCanvas = document.createElement('canvas');
+screenCanvas.width = 640; screenCanvas.height = 400;
+const screenCtx = screenCanvas.getContext('2d');
+const screenLive = new THREE.CanvasTexture(screenCanvas);
+screenLive.colorSpace = THREE.SRGBColorSpace;
 const monitorScreen = plane(.60, .34, new THREE.MeshStandardMaterial({ map: screenTex, emissive: 0x2a3d4a, emissiveMap: screenTex, emissiveIntensity: .35, roughness: .5 }),
   2.7, DESK.top + .50, -1.416);
 register(monitor, 'monitor', 'the monitor');
@@ -984,9 +989,10 @@ const kbLegendMat = new THREE.MeshStandardMaterial({
   map: keyAtlas.tex, transparent: true, roughness: .55, emissive: 0x000000, emissiveMap: keyAtlas.tex,
 });
 const KEY_GEO = new THREE.PlaneGeometry(.017, .014);
+const kbKeyMap = [];
 KEY_ROWS.forEach((row, r) => row.split('').forEach((ch, c) => {
   const x = -.180 + c * .030, z = -.052 + r * .026;
-  box(.027, .009, .023, kbKeyMat, x, .0125, z, kbDeckG);
+  const cap = box(.027, .009, .023, kbKeyMat, x, .0125, z, kbDeckG);
   if (ch === ' ') return;
   const g2 = KEY_GEO.clone();
   const i = keyAtlas.index[ch];
@@ -998,6 +1004,7 @@ KEY_ROWS.forEach((row, r) => row.split('').forEach((ch, c) => {
   m.rotation.x = -Math.PI / 2;
   m.position.set(x, .0172, z);          // just clear of the keycap top
   kbDeckG.add(m);
+  kbKeyMap.push({ ch, x, z, cap, mesh: m, wx: 0, wz: 0, wy: 0 });
 }));
 // the bottom row: three modifiers, a spacebar, three more
 [-.180, -.150, -.120, .120, .150, .180].forEach(x => box(.027, .009, .023, kbKeyMat, x, .0125, .050, kbDeckG));
@@ -1023,8 +1030,8 @@ mBand.scale.set(1, 1.5, 1);
 mBand.position.y = -.002;
 mouse.add(mBand);
 // its front faces the desk edge: two buttons either side of a scroll wheel
-[-.011, .011].forEach(x => box(.0195, .006, .026, new THREE.MeshStandardMaterial({ color: 0x2b3236, roughness: .4 }),
-  x, .0128, .021, mouse));
+const mBtnL = box(.0195, .006, .026, new THREE.MeshStandardMaterial({ color: 0x2b3236, roughness: .4 }), -.011, .0128, .021, mouse);
+box(.0195, .006, .026, new THREE.MeshStandardMaterial({ color: 0x2b3236, roughness: .4 }), .011, .0128, .021, mouse);
 const mWheel = cyl(.0068, .0068, .007, 10, new THREE.MeshStandardMaterial({ color: 0x14181b, roughness: .8 }), 0, .0158, .0295, mouse);
 mWheel.rotation.z = Math.PI / 2;
 // the seam down the middle of the buttons, and a shade over the hump
@@ -2115,6 +2122,7 @@ document.addEventListener('pointerlockchange', () => {
 document.addEventListener('mousemove', e => {
   if (!state.locked) return;
   if (state.grab) {
+    if (state.grab.id === 'loginMouse') { loginMove(e.movementX, e.movementY); return; }
     state.grab.p = clamp(state.grab.p + Math.max(0, e.movementY) + Math.max(0, e.movementX) * .4, 0, state.grab.need);
     if (state.grab.id === 'gpuDrum') {
       state.gpu.drop = clamp(state.grab.p / state.grab.need, 0, 1);
@@ -2168,6 +2176,7 @@ addEventListener('keydown', e => {
     return;
   }
   if (e.code === 'KeyH') { giveHint(); return; }
+  if (e.code === 'KeyR' && state.won) { location.reload(); return; }
   if (e.code === 'KeyQ') {
     if (dropHeld()) return;
     if (state.grab) { state.grab = null; renderTray(); }
@@ -2270,6 +2279,10 @@ function giveHint() {
     : 'Hint · the window under the mouse is filthy. The can of air is standing on the bench, left of the case.', '');
   if (!state.ssd.plugged) return toast("Hint · the drive on the bench in front of the case has a loose cable end. The rear panel has the only SATA socket.", '');
   if (state.codes.includes('b7')) return toast('Hint · the drive is lit red. Its port is a doorway.', '');
+  if (state.login.active && !state.login.ok) return !state.login.focus
+    ? toast('Hint · push the cursor onto the password field with the mouse, then press its left button.', '')
+    : toast('Hint · the pictograms are the order: SSD, monitor, fans, PSU, GPU, RAM. Six letters.', '');
+  if (state.login.ok) return toast('Hint · the button on the screen. Push the cursor onto it and click.', '');
   return toast('Hint · every fault is clear. The monitor wants a password.', 'good');
 }
 
@@ -2623,6 +2636,7 @@ function clearCode(c, note, key, msg) {
   if (note) state.notes[key] = note;
   renderPad();
   toast(msg, 'good');
+  if (!state.codes.length) setTimeout(openLogin, 700);   // the last fault: the screen asks for a password
 }
 function seatRam() {
   if (state.ram.seated || !state.ram.spare) return;
@@ -4137,6 +4151,249 @@ function diskTick(dt) {
   if (chase < .050) ejectFromDisk();
 }
 
+/* ==================================================================== slice 5
+   The finale. With every code clear the monitor comes up on a customer login: a
+   row of six pictograms (the order) and a password field. The cursor is on the
+   screen but the mouse is on the desk — drag the plastic mouse to move it, press
+   its left button to click, then walk the keyboard and press the characters. */
+
+const FIELD = { x0: .05, y0: .74, x1: .95, y1: .91 };
+const UNSHRINK_BTN = { x0: .22, y0: .57, x1: .78, y1: .80 };
+const LOGIN_ICONS = ['ssd', 'mon', 'fan', 'psu', 'gpu', 'ram'];    // B R O K E N
+state.login = { active: false, ok: false, started: false, focus: false, typed: '', cursor: { x: .12, y: .06 } };
+
+function iconPaths(g, kind, x, y, s) {
+  g.save();
+  g.translate(x, y);
+  g.strokeStyle = '#8ff0ff';
+  g.fillStyle = 'rgba(140,230,255,.18)';
+  g.lineWidth = 3;
+  const box = (w, h, dy = 0) => { g.beginPath(); g.rect(0, dy, w, h); g.fill(); g.stroke(); };
+  if (kind === 'ssd') {
+    box(s, s * .66, s * .17);
+    g.beginPath(); g.moveTo(s * .12, s * .44); g.lineTo(s * .8, s * .44); g.stroke();
+    g.beginPath(); g.moveTo(s * .55, s * .66); g.lineTo(s * .72, s * .66); g.stroke();
+  } else if (kind === 'mon') {
+    box(s, s * .62, s * .1);
+    g.beginPath(); g.moveTo(s * .45, s * .72); g.lineTo(s * .55, s * .72); g.lineTo(s * .58, s * .9); g.lineTo(s * .42, s * .9); g.closePath(); g.fill(); g.stroke();
+  } else if (kind === 'fan') {
+    g.beginPath(); g.arc(s * .5, s * .5, s * .46, 0, Math.PI * 2); g.fill(); g.stroke();
+    for (let i = 0; i < 3; i++) {
+      g.beginPath(); g.arc(s * .5, s * .5, s * .3, i * 2.1, i * 2.1 + 1.2); g.stroke();
+    }
+    g.beginPath(); g.arc(s * .5, s * .5, s * .1, 0, Math.PI * 2); g.fill(); g.stroke();
+  } else if (kind === 'psu') {
+    box(s, s * .7, s * .15);
+    g.beginPath(); g.rect(s * .12, s * .3, s * .16, s * .24); g.fill(); g.stroke();
+    g.beginPath(); g.arc(s * .72, s * .42, s * .09, 0, Math.PI * 2); g.stroke();
+  } else if (kind === 'gpu') {
+    box(s, s * .5, s * .25);
+    g.beginPath(); g.arc(s * .32, s * .5, s * .16, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.arc(s * .66, s * .5, s * .12, 0, Math.PI * 2); g.stroke();
+  } else {
+    box(s, s * .34, s * .33);
+    for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(s * (.1 + i * .16), s * .67); g.lineTo(s * (.1 + i * .16), s * .78); g.stroke(); }
+    g.beginPath(); g.moveTo(s * .46, s * .33); g.lineTo(s * .5, s * .42); g.lineTo(s * .54, s * .33); g.stroke();
+  }
+  g.restore();
+}
+
+function drawLogin() {
+  const g = screenCtx, w = screenCanvas.width, h = screenCanvas.height;
+  const L = state.login;
+  g.fillStyle = '#04121a'; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(120,220,255,.045)';
+  for (let y = 0; y < h; y += 4) g.fillRect(0, y, w, 1);
+  if (!L.active) return;
+  if (!L.ok) {
+    g.fillStyle = '#8ff0ff';
+    g.font = '700 26px ui-monospace,monospace';
+    g.fillText('PC DOKTER — CUSTOMER LOGIN', 28, 44);
+    LOGIN_ICONS.forEach((k, i) => iconPaths(g, k, 40 + i * 96, 74, 56));
+    g.fillStyle = 'rgba(140,230,255,.55)';
+    g.font = '400 17px ui-monospace,monospace';
+    g.fillText('the order is the row above · six characters', 28, 186);
+    g.strokeStyle = L.focus ? '#c8f4ff' : 'rgba(140,230,255,.45)';
+    g.lineWidth = L.focus ? 4 : 2;
+    g.strokeRect(28, 296, 584, 62);
+    g.fillStyle = '#eafcff';
+    g.font = '700 38px ui-monospace,monospace';
+    g.fillText(L.typed.split('').join(' ') + (L.focus ? '▏' : ''), 46, 340);
+  } else {
+    g.fillStyle = '#8ff0ff';
+    g.font = '700 26px ui-monospace,monospace';
+    g.fillText('PC DOKTER — CUSTOMER LOGIN', 28, 44);
+    g.fillStyle = '#7fffc0';
+    g.font = '700 30px ui-monospace,monospace';
+    g.fillText('PASSWORD RECOVERED', 28, 118);
+    g.font = '400 20px ui-monospace,monospace';
+    g.fillStyle = 'rgba(140,255,200,.75)';
+    g.fillText('customer boots normally', 28, 156);
+    g.fillStyle = 'rgba(90,240,180,.16)';
+    g.fillRect(140, 228, 360, 92);
+    g.strokeStyle = '#7fffc0'; g.lineWidth = 4;
+    g.strokeRect(140, 228, 360, 92);
+    g.fillStyle = '#eafff5'; g.font = '700 24px ui-monospace,monospace';
+    g.fillText('UN-SHRINK THE OPERATOR', 160, 282);
+  }
+  const cx = L.cursor.x * w, cy = L.cursor.y * h;
+  g.save();
+  g.fillStyle = '#ffffff'; g.strokeStyle = '#04202a'; g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(cx, cy); g.lineTo(cx + 3, cy + 26); g.lineTo(cx + 10, cy + 19);
+  g.lineTo(cx + 18, cy + 30); g.lineTo(cx + 24, cy + 25); g.lineTo(cx + 15, cy + 15);
+  g.lineTo(cx + 22, cy + 12); g.closePath();
+  g.fill(); g.stroke();
+  g.restore();
+  screenLive.needsUpdate = true;
+}
+
+function openLogin() {
+  if (state.login.active) return;
+  state.login.active = true;
+  state.login.cursor = { x: .12, y: .06 };
+  kbDeckG.updateMatrixWorld(true);
+  const v = new THREE.Vector3();
+  for (const k of kbKeyMap) { v.set(k.x, .0125, k.z); kbDeckG.localToWorld(v); k.wx = v.x; k.wy = v.y; k.wz = v.z; }
+  monitorScreen.material.map = screenLive;
+  monitorScreen.material.emissiveMap = screenLive;
+  monitorScreen.material.emissiveIntensity = 1.05;
+  monitorScreen.material.needsUpdate = true;
+  drawLogin();
+  setTimeout(() => toast('Every fault is clear. The screen is asking for a password.', 'good'), 400);
+  setTimeout(() => toast('The pictograms are the order.', ''), 2600);
+}
+
+function loginMove(dx, dy) {
+  const c = state.login;
+  c.cursor.x = clamp(c.cursor.x + dx * .0011, .01, .99);
+  c.cursor.y = clamp(c.cursor.y + dy * .0011, .02, .98);
+  drawLogin();
+}
+function loginClick() {
+  const c = state.login;
+  if (!c.active) return;
+  const { x, y } = c.cursor;
+  if (!c.ok) {
+    if (x > FIELD.x0 && x < FIELD.x1 && y > FIELD.y0 && y < FIELD.y1) {
+      c.focus = true; sfx.click();
+      toast('The field takes the click. Now the keyboard.');
+    } else { sfx.click(); toast('The click lands on the desktop.'); }
+  } else if (x > UNSHRINK_BTN.x0 && x < UNSHRINK_BTN.x1 && y > UNSHRINK_BTN.y0 && y < UNSHRINK_BTN.y1) {
+    unshrink();
+  } else { sfx.click(); toast('Nothing there.'); }
+  drawLogin();
+}
+function typeKey(k) {
+  const c = state.login;
+  if (!c.active || c.ok || !c.focus) { sfx.nope(); toast('The field is not focused. Click it first.'); return; }
+  if (c.typed.length >= 6) return;
+  c.typed += k.ch.toUpperCase();
+  k.cap.position.y -= .0018;
+  setTimeout(() => { k.cap.position.y += .0018; }, 130);
+  sfx.clack();
+  drawLogin();
+  if (c.typed.length === 6) setTimeout(checkPassword, 220);
+}
+function checkPassword() {
+  const c = state.login;
+  if (c.typed === 'BROKEN') {
+    c.ok = true; sfx.chime();
+    toast('The login takes it. Password recovered.', 'good');
+    setTimeout(() => toast('There is one thing left on the screen.', ''), 1800);
+  } else {
+    c.typed = ''; sfx.buzz();
+    toast('Wrong. The field clears.', 'bad');
+  }
+  drawLogin();
+}
+function unshrink() {
+  if (state.login.started) return;
+  state.login.started = true;
+  sfx.charge(1.1);
+  bloom.style.opacity = '.96';
+  setTimeout(() => {
+    bloom.style.opacity = '0';
+    P = HUMAN;
+    camera.near = P.near;
+    camera.fov = 72;
+    camera.updateProjectionMatrix();
+    camera.position.set(2.55, 1.62, -0.10);
+    feet = 0; vy = 0;
+    yaw = Math.PI - .35; pitch = -.06;
+    scene.fog.density = .026;
+    renderer.toneMappingExposure = 1;
+    shopLight.intensity = 46; shopLight2.intensity = 34; benchLamp.intensity = 9;
+    torchLight.intensity = 0;
+    caseGlow.distance = 0;
+    state.phase = 'human';
+    state.won = true;
+    banner('PC DOKTER — we make it whole again<small>neat work. the coffee is in the kitchen.</small>');
+    sfx.chime();
+    toast('You are standing in the shop. The tower is on, the desk is a desk again.', 'good');
+    setTimeout(() => toast('Press R to walk it again.', ''), 2600);
+  }, 1100);
+}
+
+/* lettered keys are things you press, not things you climb */
+kbKeyMap.forEach(k => {
+  register(k.cap, 'key_' + k.ch, 'the ' + k.ch + ' key');
+  THINGS['key_' + k.ch] = {
+    kicker: 'the keyboard', title: 'The ' + k.ch + ' key',
+    text: () => state.login.focus && !state.login.ok
+      ? '<p>Lit, and waiting for a press.</p>'
+      : '<p>A keycap, with a letter on it.</p>',
+    keys: () => state.login.focus && !state.login.ok ? '<kbd>E</kbd>press it' : '',
+    act() { typeKey(k); },
+  };
+});
+
+Object.assign(THINGS, {
+  monitor: {
+    kicker: 'desk', title: 'Monitor',
+    text: () => state.login.ok
+      ? '<p><b>PASSWORD RECOVERED</b>. One button on the screen: un-shrink the operator.</p>'
+      : state.login.active
+        ? `<p><b>CUSTOMER LOGIN</b> — six characters, and the pictograms above the field are the order.</p>
+           <p class="sub">Cursor at ${Math.round(state.login.cursor.x * 100)}%, ${Math.round(state.login.cursor.y * 100)}%.</p>`
+        : '<p>NO SIGNAL, in patient blue letters.</p>',
+    keys: () => '', act() { },
+  },
+  mouse: {
+    kicker: 'desk', title: 'Mouse',
+    text: () => state.login.active
+      ? `<p>The cursor is on the screen. This is the thing that moves it: hold it and drag.</p>
+         <p class="sub">Left button to click, once the pointer is where you want it.</p>`
+      : state.usb.tipped
+        ? '<p>Over on its side, feet in the air.</p>'
+        : !state.usb.mouse
+          ? '<p>On its pad, cable running off. Not plugged in.</p>'
+          : '<p>On its pad, logo lit. The intake form was right about this one.</p>',
+    keys: () => state.login.active
+      ? '<kbd>E</kbd>take hold · drag to move the cursor'
+      : (state.phase === 'shrunk' ? (state.usb.tipped ? '<kbd>E</kbd>put it back on its pad' : '<kbd>E</kbd>tip it onto its side') : ''),
+    act() {
+      if (state.login.active) {
+        state.grab = { id: 'loginMouse', p: 0, need: 1, label: 'drag the mouse to move the cursor' };
+        sfx.click();
+        toast('The cursor is yours. Drag.');
+        renderTray();
+        return;
+      }
+      tipMouse(!state.usb.tipped);
+    },
+  },
+  mouseBtnL: {
+    kicker: 'desk', title: 'The left button',
+    text: () => state.login.active
+      ? '<p>A big plastic button with a hinge under it.</p>'
+      : '<p>The left button. Nothing to click yet.</p>',
+    keys: () => state.login.active ? '<kbd>E</kbd>click' : '',
+    act() { loginClick(); },
+  },
+});
+register(mBtnL, 'mouseBtnL', 'the left mouse button');
+
 /* --- per-frame animation ----------------------------------------------- */
 let fanPhase = 0;
 function slice2Tick(dt, t) {
@@ -4271,7 +4528,7 @@ function tick() {
   }
   if (state.grab) crosshair.classList.add('grab'); else crosshair.classList.remove('grab');
 
-  if (state.started && state.running && state.phase !== 'shrinking') {
+  if (state.started && state.running && !state.won && state.phase !== 'shrinking') {
     state.elapsed += dt;
     const s = Math.floor(state.elapsed);
     timerEl.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -4307,6 +4564,7 @@ if (new URLSearchParams(location.search).has('debug') || new URLSearchParams(loc
     zip: ZIP, startRide, tipMouse, cleanLens, plugUsb, takeUsb, takeAir, usbWire, dropHeld,
     a2Solid, b2Solid, SEATED_Z0, SEATED_Z1, USB, kbKeyMat, kbLegendMat, kbDeckG, kbGlow, mLed, mSensor, checkUsbPower, darkUsb,
     toast, enterDisk, leaveDisk, ejectFromDisk, pullWormLever, DISK, worm, CH, SSD, SOLID_D, sectorBlocks, readmePanel,
+    openLogin, loginMove, loginClick, typeKey, checkPassword, unshrink, kbKeyMap, FIELD, UNSHRINK_BTN, screenLive,
     ssdLed, ssdSocket, ssdPlugG, takeSsdTail, plugSsd, chDoor, hatchDoor, DOOR_SHUT_Y, DOOR_OPEN_Y, wormInChamber, blockAt, DOOR, HATCH,
     look(y, pi) { yaw = y; pitch = pi; camera.rotation.set(pitch, yaw, 0); },
     aimAt(id, dist = 1.1, fy = null, at = null) {

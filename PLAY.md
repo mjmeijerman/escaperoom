@@ -174,6 +174,12 @@ A connector goes in with the power on or off — but the device only wakes up on
 note beside them. Click the connector, or the cable near it, then ride the zipline back over with it in your hands.
 The cable follows you; that is the only way it is getting across.
 
+**The login cursor will not move.**
+Grab the mouse first: `E` it, then drag. Dragging only works while you are holding it, and `Q` lets go.
+
+**A key press does not type anything.**
+The field has to be focused first — click it with the left button. The key is pressed with `E` while you look at it.
+
 **The mouse lights up but does not work — "the mouse is doing weird things".**
 The sensor reads the pad through a glass window in the base, and there is a hair across it. `E` the mouse to tip it
 onto its side, `E` the window (the notepad opens), then click the **compressed air** in the notepad. `E` the mouse
@@ -243,9 +249,14 @@ again to put it back on its pad.
      **README.txt** — is the whole story: the customer's "repair", in her own words.
    - `E` the port mouth inside to step back out. A missing sector spits you out at the port, no harm done.
 
-The six characters, in the order you find them: **N** (memory), **K** (power), **O** (fans), **E** (card),
-**R** (monitor), **B** (SSD). The password is not in that order — the login screen on the monitor shows six
-pictograms and that is the order. Read right, they spell **BROKEN**.
+13. **The login** — with every code clear the monitor comes up on a customer login: six pictograms in a row, and a
+    field.
+    - The cursor is on the screen; the mouse is on the desk. `E` the mouse, drag it, and the cursor moves. Push it
+      into the field, then `E` the mouse's left button to click. (`Q` lets go of the mouse.)
+    - Walk the keyboard. Every lettered key answers `E`: press **B R O K E N**. The pictograms are the order —
+      SSD, monitor, fans, PSU, GPU, RAM — which is that word.
+    - The screen says **PASSWORD RECOVERED** and puts one button on it. Cursor onto the button, left button to
+      click: you are standing on the floor again and the sign is lit. `R` walks the room again.
 
 </details>
 

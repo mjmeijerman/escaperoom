@@ -188,8 +188,13 @@ shipped as files), played through the game's audio bus so `N` mutes it and `M` d
     leave behind. Lure it into the quarantaine chamber, slip out through the hatch, and pull the lever. `b7` clears,
     the lattice goes green, and the README inside says where the whole repair came from. That is the last fault.
 
-Still a stub: the login screen and the finale (slice 5). The six characters now spell **BROKEN** when they are read
-in the login order the pictograms will give: SSD · monitor · fans · PSU · GPU · RAM.
+14. **The login and the way out** (slice 5): with every code clear the monitor shows a customer login — six
+    pictograms (SSD · monitor · fans · PSU · GPU · RAM) and a field. The cursor is on the screen and the mouse is on
+    the desk: grab the plastic mouse, drag the cursor into the field, click with its left button, then walk the
+    keyboard and press **B R O K E N** with `E` on each key. The screen gives one button back: un-shrink, and you are
+    standing on the shop floor with the sign lit. `R` walks it again.
+
+That is the room, end to end: five faults, the drive, the login, and BROKEN.
 
 ## Files
 
@@ -197,9 +202,9 @@ in the login order the pictograms will give: SSD · monitor · fans · PSU · GP
 - `edo.html` — the Edo Room (served at `/edo.html`)
 - `index.html` — the Locked Study, 3D (HTML, CSS, ES module inline)
 - `classic.html` — the original 2D point-and-click room
-- `pcdoc.html` — PC Doctor, slices 1–4 (dark shop, generator, shrink ray, the case interior, the memory chain, power
-  routing, the fans, the card, the monitor cable and its span to the desk, the keyboard and the mouse, and the inside
-  of the SSD)
+- `pcdoc.html` — PC Doctor, complete (dark shop, generator, shrink ray, the case interior, the memory chain, power
+  routing, the fans, the card, the monitor cable and its span to the desk, the keyboard and the mouse, the inside of
+  the SSD, and the login)
 - `PC-DOCTOR.md` — the design bible: story, every fault chain, the finale, the sound design, the decisions
 - `test/rooms.mjs` — shell + collision checks for the study, no browser needed (`node test/rooms.mjs`)
 - `test/spells.browser.cjs` — headless browser test of the Founders' Chamber: no overlays in the DOM, every charm
@@ -215,7 +220,7 @@ in the login order the pictograms will give: SSD · monitor · fans · PSU · GP
   ```
 
   Swap the last argument for `test/edo.browser.cjs` to test the Edo Room, or `test/pcdoc.browser.cjs` for PC Doctor
-  (178 checks: torch, generator order, the flood, the shrink, the display cycling, the memory chain, power routing,
+  (185 checks: torch, generator order, the flood, the shrink, the display cycling, the memory chain, power routing,
   the twin 8-pins refusing each other, the three fans, the padlock, the winch, the card, the notepad, hardware
   ignoring a full-sized person, the HDMI run to the rear panel, the two-way cable span down to the desk, the fall off
   an edge, the keyboard and the mouse's dirty lens, the inside of the SSD with its worm and its missing sectors, and

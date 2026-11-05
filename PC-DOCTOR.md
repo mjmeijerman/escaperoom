@@ -510,7 +510,17 @@ Known rough edge for slice 5: the keyboard is not yet solid, and its backlight i
   the shop and the port is a doorway. The shrink ray already asked you to accept one impossible thing; this is the
   same one, spent once.
 
-### Next slice
+### Slice 5 — built
 
-5. the finale: login window (**BROKEN**, order SSD · monitor · fans · PSU · GPU · RAM), the physical mouse drag, the
-   jump-to-type keyboard, un-shrink, the end banner.
+- **the login window**: a live canvas on the monitor with six drawn pictograms (SSD, monitor, fan, PSU, GPU, RAM) and a
+  password field, plus the cursor. It comes up on its own the moment the last code clears.
+- **the cursor**: the physical mouse drags it — `E` the mouse, drag, and the on-screen arrow follows; `E` the left
+  button clicks it. The field takes focus with a click, and the desktop says so when you click nothing.
+- **the keyboard**: every lettered key is its own target and presses with `E`, with the keycap dipping and a clack.
+  Six presses: **B R O K E N**. A wrong six clears the field.
+- **the way out**: `PASSWORD RECOVERED`, one button on the screen, and a white bloom that leaves you at 1.62 m in a
+  lit shop with the sign on. `R` walks it again; the timer stops the moment you are out.
+
+Deviations from §6, both deliberate: the cursor is dragged with the plastic mouse rather than pushed with the body,
+and the keys are **pressed** with `E` rather than jumped on — the keyboard is 3.3 cm of solid plastic at 17 mm and the
+jump apex is 3.6 cm, which is not a puzzle, just a coin toss.
