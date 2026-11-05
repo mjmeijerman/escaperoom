@@ -118,16 +118,19 @@ const st = page => page.evaluate(() => ({
   const plaque = await page.evaluate(() => {
     const d = window.__murdoku;
     d.state.locked = false;
-    d.teleport(-6.2, 1.6, Math.PI / 2, 0.05);
+    d.teleport(-5.2, 1.6, Math.PI / 2, 0.05);
     d.camera.position.y = 1.6;
     d.camera.updateMatrixWorld(true);
     const hit = d.target();
     d.state.hovered = hit;
     d.use();
-    return { id: hit && hit.id, text: document.getElementById('body').textContent.replace(/\s+/g, ' ') };
+    return { id: hit && hit.id, label: hit && hit.label,
+      text: document.getElementById('body').textContent.replace(/\s+/g, ' ') };
   });
   check('the case file can be read', plaque.id === 'casefile'
     && /alexander/i.test(plaque.text) && /vladimir/i.test(plaque.text), plaque.id + ' · ' + plaque.text.slice(0, 60));
+  check('and the crosshair names it, even though it is a board with paper on it',
+    plaque.label === 'the case file', String(plaque.label));
 
   // pick a guest up, put them on a square by looking at it
   check('a guest can be picked up', (await aimPerson(page, 'A')) === 'p_A');
@@ -282,8 +285,40 @@ const st = page => page.evaluate(() => ({
 
   check('the window is in the east wall, on C6R4', await page.evaluate(() => {
     const d = window.__murdoku;
-    return d.WINDOW_AT.x > 6.8 && d.WINDOW_AT.x < 7 && Math.abs(d.WINDOW_AT.z - d.cellZ(4)) < .01;
+    return d.WINDOW_AT.x > 5.8 && d.WINDOW_AT.x < 6.01 && Math.abs(d.WINDOW_AT.z - d.cellZ(4)) < .01;
   }), await page.evaluate(() => JSON.stringify(window.__murdoku.WINDOW_AT)));
+
+  const shell = await page.evaluate(() => {
+    const d = window.__murdoku, h = d.HOUSE;
+    const wall = (pred) => d.SOLIDS.some(pred);
+    return {
+      west: wall(s => Math.abs(s.x1 - h.X0) < .02 && s.y1 > 3),
+      east: wall(s => Math.abs(s.x0 - h.X1) < .02 && s.y1 > 3),
+      north: wall(s => Math.abs(s.z1 - h.Z0) < .02 && s.y1 > 3),
+      south: wall(s => Math.abs(s.z0 - h.Z1) < .02 && s.y1 > 3),
+      h,
+    };
+  });
+  check('the grid is surrounded by full-height walls on all four sides',
+    shell.west && shell.east && shell.north && shell.south, JSON.stringify(shell));
+
+  const roof = await page.evaluate(async () => {
+    const d = window.__murdoku;
+    d.state.locked = false;
+    d.teleport(d.cellX(3), d.cellZ(6), 0, 0);        // standing on the television
+    d.setFeet(1.35);
+    await new Promise(r => setTimeout(r, 250));
+    let top = d.feet();
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    for (let i = 0; i < 28; i++) {
+      await new Promise(r => setTimeout(r, 25));
+      top = Math.max(top, d.feet());
+    }
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space' }));
+    return { top: +top.toFixed(2), head: +(top + 1.7).toFixed(2), wall: d.HOUSE.WALL_H };
+  });
+  check('and the roof stops you: your head stays under the ceiling', roof.head <= roof.wall + .01,
+    JSON.stringify(roof));
 
   /* --- jumping: everything in the house can be stood on ------------------ */
   const standOn = await page.evaluate(() => {
