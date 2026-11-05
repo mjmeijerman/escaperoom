@@ -74,7 +74,6 @@
     box-shadow:0 0 0 1px rgba(0,0,0,.55)}
   #pad li.person span{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.5}
   #pad li.person .name{color:#f4ece2;font-weight:600;font-size:.76rem}
-  #pad li.person .look{color:#b3a69b;font-size:.64rem;margin-top:1px}
   #pad li.person .clue{color:#cfc2b6;font-size:.68rem;font-style:italic;margin-top:2px}
   #pad li.person .where{color:#8f8378;font-size:.64rem;margin-top:1px}
   #pad .rule{color:#b9aca1;font-size:.68rem;line-height:1.5}
@@ -298,27 +297,21 @@ const nextToSameRoom = (c, r, set) => {
 const PEOPLE = [
   { id: 'A', name: 'Alexander', colour: 0x9a7346, skin: 0xd8b49a, hair: 0x9c9c9c, style: 'short', glasses: true,
     clue: 'Sat on a bed', hint: 'hij zat op een bed',
-    look: 'grey hair · glasses',
     test: (c, r) => BEDS.has(key(c, r)) },
   { id: 'B', name: 'Bas', colour: 0x4c7f68, skin: 0xdfc0a2, hair: 0xd8c07a, style: 'long', beard: true,
     clue: 'Was in the kitchen', hint: 'hij was in de keuken',
-    look: 'long blond hair · beard',
     test: (c, r) => roomAt(c, r) === 'keuken' },
   { id: 'C', name: 'Clarissa', colour: 0x86557a, skin: 0xd9b193, hair: 0x4a2c1a, style: 'long',
     clue: 'Stood next to a table', hint: 'zij stond naast een tafel',
-    look: 'long brown hair',
     test: (c, r) => nextToSameRoom(c, r, TABLES) },
   { id: 'D', name: 'Diana', colour: 0x5f6a90, skin: 0xb07a52, hair: 0x15151a, style: 'halflong',
     clue: 'Was next to the television', hint: 'zij stond naast de televisie',
-    look: 'black half-long hair · tinted',
     test: (c, r) => nextToSameRoom(c, r, TVS) },
   { id: 'E', name: 'Elsa', colour: 0x8a8750, skin: 0x6e4a34, hair: 0xcfcfcf, style: 'updo',
     clue: 'Stood in front of the window', hint: 'zij stond voor het raam',
-    look: 'grey hair in a bun · dark skin',
     test: (c, r) => c === WINDOW[0] && r === WINDOW[1] },
   { id: 'V', name: 'Vladimir', colour: 0x8c3a34, skin: 0xc9a27f, hair: 0xa88a4a, style: 'short', victim: true,
     clue: 'Lay in the last cell left over, with one other person in that room', hint: 'hij lag in het laatst overgebleven vak',
-    look: 'short dark-blond hair · the body',
     test: null },
 ];
 
@@ -965,7 +958,6 @@ function renderPad() {
     return `<li class="person" style="border-left-color:${colour}">
       <i class="chip" style="background:${colour}"></i>
       <span><b class="name">${p.name}</b>
-        <i class="look">${p.look}</i>
         <i class="clue">${p.clue}</i>
         <i class="where">Current location: ${where}</i></span>
       ${tag}</li>`;

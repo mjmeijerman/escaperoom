@@ -208,11 +208,24 @@ const st = page => page.evaluate(() => ({
 
   check('every statement is ticked in the notes', await page.evaluate(() =>
     (document.getElementById('padPeople').textContent.match(/✓/g) || []).length === 5));
-  check('each of them is told apart in the notes: a colour, their looks, and their statement', await page.evaluate(() => {
+  check('each of them is told apart in the notes by a colour of their own', await page.evaluate(() => {
     const people = [...document.querySelectorAll('#padPeople li.person')];
     return people.length === 6
-      && people.every(li => li.querySelector('.chip') && li.querySelector('.look').textContent.trim().length > 5)
-      && new Set(people.map(li => li.querySelector('.chip').style.background)).size === 6;
+      && people.every(li => li.querySelector('.chip') && li.querySelector('.clue').textContent.trim())
+      && new Set(people.map(li => li.querySelector('.chip').style.background)).size === 6
+      && !document.querySelector('#padPeople .look');       // you can see them, no need to describe them
+  }));
+  check('I hides and shows the notes, and Tab does the same', await page.evaluate(() => {
+    const pad = document.querySelector('#pad');
+    const before = pad.hidden;
+    dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyI', bubbles: true }));
+    const afterI = pad.hidden;
+    dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyI', bubbles: true }));
+    const back = pad.hidden;
+    dispatchEvent(new KeyboardEvent('keydown', { code: 'Tab', bubbles: true }));
+    const afterTab = pad.hidden;
+    dispatchEvent(new KeyboardEvent('keydown', { code: 'Tab', bubbles: true }));
+    return before === back && afterI === !before && afterTab === !before;
   }));
   check('the notes label where each of them is standing', await page.evaluate(() => {
     const t = document.getElementById('padPeople').textContent.replace(/\s+/g, ' ');

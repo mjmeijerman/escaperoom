@@ -141,7 +141,7 @@ grid tells you where everyone was, and the murderer is the *reading* of that ans
 | `E` | pick a guest up, put them down on the square you are looking at, read the case file |
 | `F` | cross a square out (or clear it again) |
 | `Q` | put the guest in your arms back in the hall |
-| `I` | the notes: every statement, ticked or crossed as you place people, and whether rows and columns are still clean. Each guest gets a colour of their own (their coat), a line for how they look and where they are now, so the six are told apart at a glance |
+| `I` | the notes: every statement, ticked or crossed as you place people, and whether rows and columns are still clean. Each guest gets a colour of their own (the colour of their coat) and a line for where they are now, so the six are told apart at a glance — no description of how they look, you are standing in the same room as them |
 | `H` | een hint in het Nederlands: wie er nog staat, welke verklaring niet klopt, of dat Vladimir met precies één ander in een kamer moet |
 | `R` | everyone back to the hall, every mark gone (after the case closes: play again) |
 
