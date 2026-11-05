@@ -141,7 +141,7 @@ grid tells you where everyone was, and the murderer is the *reading* of that ans
 | `E` | pick a guest up, put them down on the square you are looking at, read the case file |
 | `F` | cross a square out (or clear it again) |
 | `Q` | put the guest in your arms back in the hall |
-| `I` | the notes: every statement, ticked or crossed as you place people, and whether rows and columns are still clean |
+| `I` | the notes: every statement, ticked or crossed as you place people, and whether rows and columns are still clean. Each guest gets a colour of their own (their coat), a line for how they look and where they are now, so the six are told apart at a glance |
 | `H` | een hint in het Nederlands: wie er nog staat, welke verklaring niet klopt, of dat Vladimir met precies één ander in een kamer moet |
 | `R` | everyone back to the hall, every mark gone (after the case closes: play again) |
 
@@ -173,7 +173,7 @@ one other person — and it never names a square outright.
   crosshair that names what it is on even when the thing is made of several parts, the row rule, "next to" being the
   square beside you in the same room, the murderer's deduction, the knife in their hand, the camera stepping onto the
   square in front of them, every one of the six looking the way the cast list says, the victim's head off his
-  shoulders, and a Dutch hint from `H` (61 checks).
+  shoulders, a Dutch hint from `H`, and six guests in the notes each with their own colour (62 checks).
 - The case is now unique, not just solvable: with rows, columns and strict adjacency exactly one layout survives, and
   the victim's square falls out of it. That is checked by brute force over the thirty-six squares, and the statements
   are tight enough that no second layout sneaks through.

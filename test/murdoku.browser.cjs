@@ -208,6 +208,12 @@ const st = page => page.evaluate(() => ({
 
   check('every statement is ticked in the notes', await page.evaluate(() =>
     (document.getElementById('padPeople').textContent.match(/✓/g) || []).length === 5));
+  check('each of them is told apart in the notes: a colour, their looks, and their statement', await page.evaluate(() => {
+    const people = [...document.querySelectorAll('#padPeople li.person')];
+    return people.length === 6
+      && people.every(li => li.querySelector('.chip') && li.querySelector('.look').textContent.trim().length > 5)
+      && new Set(people.map(li => li.querySelector('.chip').style.background)).size === 6;
+  }));
   check('the notes label where each of them is standing', await page.evaluate(() => {
     const t = document.getElementById('padPeople').textContent.replace(/\s+/g, ' ');
     return (t.match(/Current location:/g) || []).length >= 5 && /Current location: C1R1/.test(t);
