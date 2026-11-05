@@ -2140,7 +2140,6 @@ document.addEventListener('mousemove', e => {
   const s = state.phase === 'shrunk' ? .0026 : .0021;
   yaw -= e.movementX * s;
   pitch = clamp(pitch - e.movementY * s, -1.35, 1.35);
-  if (Math.abs(e.movementX) + Math.abs(e.movementY) > 6 && state.phase === 'shrunk') sfx.scratch();
 });
 addEventListener('keydown', e => {
   audioInit();
