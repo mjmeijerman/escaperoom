@@ -8,6 +8,11 @@ Run it at **http://localhost:8080/pcdoc.html**.
 
 ---
 
+## Starting
+
+Click **Start the shift**. The timer starts, the shop wakes up, and Gerrit's answering machine plays — he left the
+message before he drove off, and the transcript appears in the bottom-left tray while he talks.
+
 ## Controls
 
 | Key | What it does |
@@ -17,8 +22,8 @@ Run it at **http://localhost:8080/pcdoc.html**.
 | `Space` | jump |
 | mouse (click to capture) | look |
 | `E` | use / read / pick up — only offered when it does something |
-| `Q` | let go: drop a cable, stop turning a winch, back out of the padlock |
-| `I` | the workshop notepad: items, fault codes, characters found |
+| `Q` or **right mouse button** | let go: drop a cable, stop turning a winch, back out of the padlock |
+| `I` | inventory and notepad: what you are carrying (click an item to use it), the fault codes, the characters |
 | `H` | a hint for the next thing that is actually unsolved |
 | `M` | music off / on — effects keep playing |
 | `N` | all sound off / on |
@@ -38,8 +43,10 @@ Read it — the room runs on stickers, notes and manuals.
 2. **Order matters.** Power, then the board, then the parts. The room will tell you so, out loud or in writing.
 3. **Two scales.** At 1.6 m tall the tower is a box on a bench. At 17 mm it is a building and you are inside it.
    Nothing inside the case can be touched while you are full size.
-4. **Nothing is fatal.** Not one thing in this room can be ruined, lost, or done in an unrecoverable order.
-5. **The screen is a display, not a menu.** The only overlays are the tray, the notepad, the timer and the key
+4. **You carry things in your hands.** A cable end you pick up sits in front of you; the inventory on `I` shows
+   everything else, and clicking an item there uses it.
+5. **Nothing is fatal.** Not one thing in this room can be ruined, lost, or done in an unrecoverable order.
+6. **The screen is a display, not a menu.** The only overlays are the tray, the notepad, the timer and the key
    legend. If you see text, it belongs to an object.
 
 ---
@@ -107,7 +114,8 @@ ring.
 
 **I am inside the case and the display says C1.**
 Two memory modules. One is leaning out of its slot; one has a burnt chip and the word RMA on it. The good one that
-Gerrit left for exactly this job is in a bag on the board, labelled with the slot it belongs in.
+Gerrit left for exactly this job is in a sealed bag on the bench **in front of the case**, labelled with the slot it
+belongs in. Pull the burnt one out — it leaves the machine — then take the spare and seat it in the empty slot.
 
 **The display still says C1 after I pushed the loose module home.**
 Then the loose module was not the fault. Read the label on the spare bag again — it names a slot, and it is not the
@@ -117,9 +125,15 @@ one you just fixed.
 Three separate mistakes: a plug lying loose by the back wall, a cable in the wrong header, and a tool jammed in a
 fan. The manual underlines one of those headers for you.
 
+**The display still says A2.**
+"No monitor detected" is not about the monitor, it is about the cable. The monitor's HDMI cable is coiled on the
+bench in front of the case — Gerrit dumped it there when he moved the desk. Pick up the loose end, walk around the
+side and behind the tower, and plug it into the rear panel.
+
 **The card is padlocked.**
-Three digits. The shop number is printed on the side panel of the case, and Gerrit's note says the lock uses the end
-of it. Do not use `Esc` to back out of the lock — that also releases your mouse. Use `Q`.
+Three digits, and the tag hanging on the bracket says where they come from: the end of the shop number. That number is
+printed on the side panel of the case. Do not use `Esc` to back out of the lock — that also releases your mouse. Use
+`Q`.
 
 **I have the card but nothing happens.**
 It has to come down to the rail before it will seat. The winch drum is at the right-hand end of the machine: grab it,
@@ -137,31 +151,40 @@ this room that are not interchangeable.
 3. **Shrink ray** — stand on the painted ring, `E` the tripod.
 4. **Power inside the case** (gives the board 12 V and clears the way for everything else):
    - `E` the rocker switch on the PSU block in the front corner.
-   - Pick up the **24-pin** cable end, plug it into the big socket on the board.
-   - Pick up the 8-pin labelled **EPS**, plug it into the CPU socket near the heatsink. (The 8-pin labelled
-     **PCIe** is refused there — that is the trap.)
-   - Pick up the **SATA** connector, plug it into the fan hub.
-   - The rail label gives up the character **R**.
+   - The four cable ends lie beside the PSU, each on a stencilled label: **24-PIN**, **EPS 8-PIN**, **PCIe 8-PIN**,
+     **SATA**. Pick one up — it appears in your hands — then look at its socket and press `E`. The cable draws itself
+     from the PSU to the socket.
+   - **24-PIN** → the big socket on the board.
+   - **EPS 8-PIN** → the CPU socket near the heatsink. (The **PCIe 8-PIN** is refused there — that is the trap.)
+   - **SATA** → the fan hub.
+   - The rail label gives up the character **K**.
 5. **`C1` — memory**
    - Slot **A2**: `E` the leaning module. It slides home. C1 stays up.
    - Slot **B2**: `E` the scorched module. It comes out.
    - The bag beside the slots says **SPARE > B2**. Take the module.
-   - Slot **B2** again: `E` to seat it. `C1` clears, and the module gives up **B**.
+   - Slot **B2** again: `E`, then click the module in the inventory that opens. `C1` clears, and the module gives
+     up **N**.
 6. **`F1` — fans**
    - Pick up the loose 4-pin lying by the back wall, plug it into **CHA_FAN1**.
    - `E` **SYS_FAN3** to pull the CPU fan cable out, then `E` **CPU_FAN** to plug it in there.
    - `E` the screwdriver jammed in the intake fan.
    - All three spin, `F1` clears, and the hub gives up **O**.
-7. **`d4` — the card**
+7. **`A2` — the monitor**
+   - The monitor's HDMI cable is coiled on the bench in front of the case (stencil: **HDMI**). Pick up its end.
+   - Walk out of the case, around the side, behind it. The rear panel has HDMI and two USB-A ports.
+   - `E` the HDMI port. `A2` clears, the monitor on the desk lights up, and the panel gives up **R**.
+8. **`d4` — the card**
    - Padlock: dial **4 5 6** (`↑↓` digit, `←→` next wheel, `E` try). The shop number ends in 123456.
    - Grab the winch drum (`E`, then drag the mouse back) until the card is at the rail.
    - `E` the card to seat it.
    - Pick up the **PCIe** 8-pin, plug it into the socket hanging near the bottom of the card.
-   - `d4` clears and the serial plate gives up **K**.
+   - `d4` clears and the serial plate gives up **E**.
 
-Codes left on the display afterwards: `A2` and `b7` — the monitor and the SSD, still to be built. The characters
-you have collected (**B**, **R**, **O**, **K**) are the first four of the password, and the notepad on `I` is holding
-them for you.
+Codes left on the display afterwards: `A2` and `b7` — the monitor and the SSD, still to be built.
+
+The letters you collect are **N** (memory), **K** (power), **O** (fans), **E** (card) and one more from the monitor,
+in the order you fix them. That order is *not* the password order — the notepad says so at the bottom of the list.
+The order lives on the login screen, as a row of six pictograms, one per part.
 
 </details>
 

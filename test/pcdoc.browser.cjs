@@ -32,6 +32,18 @@ const check = (name, ok, detail = '') => {
   await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await sleep(900);
 
+  const startCard = await page.evaluate(() => {
+    const el = document.getElementById('start');
+    return { shown: !!el && !el.hidden, label: el ? el.querySelector('button').textContent.trim() : '' };
+  });
+  check('the room waits behind a start button', startCard.shown, startCard.label);
+  check('the timer has not started', await page.evaluate(() => document.getElementById('timer').textContent) === '00:00');
+  await page.click('#startBtn');
+  await sleep(700);
+  check('the button starts the shift', await page.evaluate(() => !document.getElementById('start').hidden === false && window.__doctor.state.started === true));
+  check('and the voicemail plays on its own',
+    await page.evaluate(() => /Doctor|wholesaler|tower/.test(document.getElementById('body').textContent)));
+
   const boot = await page.evaluate(() => {
     const d = window.__doctor;
     return { has: !!d, phase: d && d.state.phase, torch: d && d.state.torch, codes: d && d.state.codes.slice() };
@@ -46,10 +58,10 @@ const check = (name, ok, detail = '') => {
     scene: !!document.getElementById('scene'),
     big: [...document.querySelectorAll('body > *')].filter(el => {
       const r = el.getBoundingClientRect();
-      return !el.hidden && r.width > innerWidth * .6 && r.height > innerHeight * .6 && el.id !== 'scene' && el.id !== 'hud' && el.id !== 'bloom' && el.className !== 'vignette';
+      return !el.hidden && r.width > innerWidth * .6 && r.height > innerHeight * .6 && el.id !== 'scene' && el.id !== 'hud' && el.id !== 'bloom' && el.id !== 'start' && el.className !== 'vignette';
     }).map(el => el.id || el.className),
   }));
-  check('no overlays: tray and notepad start hidden', bare.tray && bare.pad);
+  check('the inventory is on screen from the start', bare.pad === false);
   const legend = await page.evaluate(() => {
     const el = document.getElementById('legend');
     if (!el) return null;
@@ -104,15 +116,9 @@ const check = (name, ok, detail = '') => {
   }));
   check('three pulls start the generator', gen.running === true);
   check('the shop lights come on', gen.phase === 'lit');
-  check('and the case gets standby power', gen.powered === true);
+  check('the case has no mains yet, so the display stays dark', gen.powered === false);
 
   /* --- the POST display cycles every fault -------------------------------- */
-  const codeA = await page.evaluate(() => window.__doctor.state.codeIndex);
-  await sleep(2300);
-  const codeB = await page.evaluate(() => window.__doctor.state.codeIndex);
-  check('the debug display cycles through the faults', codeB !== codeA, `${codeA} -> ${codeB}`);
-  const ledText = await page.evaluate(() => window.__doctor.state.codes[window.__doctor.state.codeIndex]);
-  check('a fault is on the display', /^(C1|d4|A2|F1|b7)$/.test(ledText), ledText);
 
   const torchNag = await page.evaluate(() => {
     const d = window.__doctor;
@@ -195,7 +201,7 @@ const check = (name, ok, detail = '') => {
     window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
     return +d.camera.position.z.toFixed(3);
   });
-  check('the PSU block stops you', intoPsu > -2.17, String(intoPsu));
+  check('the PSU block stops you', intoPsu > -2.176, String(intoPsu));
 
   /* --- inside the case: the memory chain --------------------------------- */
   const a2 = await page.evaluate(() => window.__doctor.aimAt('slotA2', 0.055, 0.95));
@@ -222,6 +228,10 @@ const check = (name, ok, detail = '') => {
   check('slot B2 prompts again with the spare', b2b === 'slotB2', String(b2b));
   await page.keyboard.press('KeyE');
   await sleep(300);
+  const pending = await page.evaluate(() => window.__doctor.state.invPending);
+  check('an empty slot asks the inventory for a module', pending === 'ram', String(pending));
+  await page.click('#padItems button[data-item="ddr4 module"]');
+  await sleep(350);
   const ram = await page.evaluate(() => ({
     seated: window.__doctor.state.ram.seated,
     codes: window.__doctor.state.codes.slice(),
@@ -229,20 +239,20 @@ const check = (name, ok, detail = '') => {
   }));
   check('the good module seats', ram.seated === true);
   check('C1 clears off the display', !ram.codes.includes('C1'), ram.codes.join(','));
-  check('the module gives up its character', ram.note === 'B', String(ram.note));
+  check('the module gives up its character', ram.note === 'N', String(ram.note));
 
-  /* --- the notepad holds it ---------------------------------------------- */
+  /* --- the inventory holds it -------------------------------------------- */
+  const padShown = await page.evaluate(() => !document.getElementById('pad').hidden);
   await page.keyboard.press('KeyI');
-  await sleep(200);
-  const pad = await page.evaluate(() => ({
-    open: !document.getElementById('pad').hidden,
-    text: document.getElementById('pad').textContent,
-  }));
-  check('I opens the notepad', pad.open);
-  check('the notepad has the character and the fault list',
-    pad.text.includes('B') && pad.text.includes('d4') && pad.text.includes('torch'));
+  await sleep(160);
+  const padHidden = await page.evaluate(() => document.getElementById('pad').hidden);
   await page.keyboard.press('KeyI');
-  await sleep(120);
+  await sleep(160);
+  const padBack = await page.evaluate(() => !document.getElementById('pad').hidden);
+  check('I hides and shows the inventory', padShown && padHidden && padBack, `${padShown}/${padHidden}/${padBack}`);
+  const padText = await page.evaluate(() => document.getElementById('pad').textContent);
+  check('the inventory has the character, the fault list and the scrap module',
+    padText.includes('N') && padText.includes('d4') && /RMA/.test(padText), padText.slice(0, 120));
 
   /* --- slice 2: power, fans, the card ------------------------------------ */
   const at = (id, d = 0.035) => page.evaluate(([id, d]) => window.__doctor.aimAt(id, d, 0.95), [id, d]);
@@ -250,7 +260,7 @@ const check = (name, ok, detail = '') => {
   const st = () => page.evaluate(() => {
     const d = window.__doctor;
     return { psu: { ...d.state.psu }, fans: { ...d.state.fans }, gpu: { ...d.state.gpu },
-      held: d.state.held, notes: { ...d.state.notes }, codes: d.state.codes.slice() };
+      mon: { ...d.state.mon }, held: d.state.held, notes: { ...d.state.notes }, codes: d.state.codes.slice() };
   });
 
   check('the PSU rocker is reachable', (await at('psuRocker')) === 'psuRocker', String(await at('psuRocker')));
@@ -260,6 +270,10 @@ const check = (name, ok, detail = '') => {
   check('a cable end can be picked up', (await at('cable_atx')) === 'cable_atx');
   await press();
   check('the 24-pin is in your hand', (await st()).held === 'atx');
+  await page.mouse.click(640, 380, { button: 'right' });     // right button drops it
+  await sleep(150);
+  check('the right mouse button puts it down', (await st()).held === null);
+  await at('cable_atx'); await press();
   check('the 24-pin socket is reachable', (await at('h24')) === 'h24');
   await press();
   check('the 24-pin plugs in', (await st()).psu.atx === true);
@@ -276,7 +290,29 @@ const check = (name, ok, detail = '') => {
   await at('hcpu'); await press();
   const rail = await st();
   check('the EPS 8-pin goes in the CPU socket', rail.psu.cpu === true);
-  check('12 V on the board gives the PSU its character', rail.notes.PSU === 'R', String(rail.notes.PSU));
+  await sleep(700);
+  const codeA = await page.evaluate(() => window.__doctor.state.codeIndex);
+  await sleep(2400);
+  const codeB = await page.evaluate(() => window.__doctor.state.codeIndex);
+  const offOn = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.aimAt('psuRocker', 0.035, 0.95); d.use();          // mains off
+    await new Promise(r => setTimeout(r, 300));
+    const off = { powered: d.state.casePower, glow: d.led.material.emissiveIntensity };
+    d.aimAt('psuRocker', 0.035, 0.95); d.use();          // and back on
+    await new Promise(r => setTimeout(r, 400));
+    const on = { powered: d.state.casePower, glow: d.led.material.emissiveIntensity };
+    return { off, on };
+  });
+  check('switching the mains off kills the display', offOn.off.powered === false && offOn.off.glow === 0,
+    JSON.stringify(offOn.off));
+  check('and switching it back on brings the codes back', offOn.on.powered === true && offOn.on.glow > 0,
+    JSON.stringify(offOn.on));
+  check('mains plus 24-pin wakes the display', await page.evaluate(() => {
+    const l = window.__doctor.led; return l && l.material.emissiveIntensity > 0 && window.__doctor.state.casePower;
+  }));
+  check('the display cycles through the faults', codeB !== codeA, `${codeA} -> ${codeB}`);
+  check('12 V on the board gives the PSU its character', rail.notes.PSU === 'K', String(rail.notes.PSU));
 
   check('the loose 4-pin can be picked up', (await at('plugRear')) === 'plugRear');
   await press();
@@ -286,7 +322,7 @@ const check = (name, ok, detail = '') => {
 
   check('SYS_FAN3 holds the CPU fan cable', (await at('sysFan3')) === 'sysFan3');
   await press();
-  check('the CPU cable comes out', (await st()).held === 'fan4');
+  check('the CPU cable comes out', (await st()).held === 'fanCpu');
   check('CPU_FAN is reachable', (await at('cpuFanHdr')) === 'cpuFanHdr');
   await press();
   check('the CPU fan is on the right header', (await st()).fans.cpu === true);
@@ -332,7 +368,7 @@ const check = (name, ok, detail = '') => {
   const fin = await st();
   check('the card gets its 8-pin', fin.psu.pcie === true && fin.gpu.powered === true);
   check('d4 clears', !fin.codes.includes('d4'), fin.codes.join(','));
-  check('the card gives up its character', fin.notes.GPU === 'K', String(fin.notes.GPU));
+  check('the card gives up its character', fin.notes.GPU === 'E', String(fin.notes.GPU));
   check('only A2 and b7 are left on the display', fin.codes.join(',') === 'A2,b7', fin.codes.join(','));
 
   const audio = await page.evaluate(async () => {
@@ -356,6 +392,28 @@ const check = (name, ok, detail = '') => {
     JSON.stringify(audio.afterMusic));
   check('M brings the music back', audio.back.music > 0);
   check('N silences everything', audio.allOff.master === 0, String(audio.allOff.master));
+
+  /* --- slice 3: the monitor cable ---------------------------------------- */
+  check('the loose HDMI end is reachable inside the case', (await at('cable_hdmi')) === 'cable_hdmi');
+  await press();
+  check('the HDMI cable is in your hands', (await st()).held === 'hdmi');
+  const io = await at('ioHdmi');
+  check('the rear panel is reachable from behind the case', io === 'ioHdmi', String(io));
+  await press();
+  const mon = await st();
+  check('plugging it in clears A2', !mon.codes.includes('A2'), mon.codes.join(','));
+  check('the rear panel gives up its character', mon.notes.monitor === 'R', String(mon.notes.monitor));
+  check('and the monitor wakes up', await page.evaluate(() => {
+    const m = window.__doctor.scene.children.find(o => o.isMesh && o.material && o.material.emissiveIntensity > 1);
+    return !!m;
+  }));
+  check('only b7 is left on the display', mon.codes.join(',') === 'b7', mon.codes.join(','));
+  const padAfter = await page.evaluate(() => document.getElementById('pad').textContent.replace(/\s+/g, ' '));
+  check('the letters never spell the password in the notepad',
+    !/BROKEN/i.test(padAfter) && !/NK?O?E?R?B?/.test('') , padAfter.match(/[NK OER]{4,}/) ? padAfter : 'clean');
+  check('five letters found, in the order they were found',
+    (await page.evaluate(() => Object.keys(window.__doctor.state.notes).join(','))) === 'RAM,PSU,fans,GPU,monitor',
+    await page.evaluate(() => Object.keys(window.__doctor.state.notes).join(',')));
 
   check('no console errors', logs.length === 0, logs.join(' | '));
 

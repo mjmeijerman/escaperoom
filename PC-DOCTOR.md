@@ -215,11 +215,7 @@ All five codes clear → LED shows `--` → the monitor wakes with a login windo
 
 The pictogram row is the **order**. The characters are on the parts:
 
-| RAM | PSU | fans | GPU | monitor | SSD |
-| --- | --- | --- | --- | --- | --- |
-| `K` | `A` | `P` | `O` | `T` | `9` |
 
-`KAPOT9`. Gerrit's margin note on the manual: *"wachtwoord = wat de klant altijd als eerste zegt"*.
 
 **Mouse.** The cursor starts top-left of the monitor. Stand against the giant mouse, hold `E`, and drag — the same
 drag gesture as the generator cord and the wand. Push the mouse right/forward and the cursor slides across the
