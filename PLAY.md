@@ -158,7 +158,8 @@ on top — nothing is lost.
 
 **The USB ports do nothing.**
 They are 12 V ports like everything else in there: the mains switch, the 24-pin and the CPU 8-pin have to be in first.
-Both plugs are lying on the bench behind the case, not on the desk.
+Both plugs are lying on the bench **behind the case**, next to a note that says so — pale tops, blue collars, at the end
+of the two cables. Click the plug, or the cable anywhere near it; either picks it up.
 
 **The mouse lights up but does not work — "the mouse is doing weird things".**
 The sensor reads the pad through a glass window in the base, and there is a hair across it. `E` the mouse to tip it

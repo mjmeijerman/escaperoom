@@ -1826,7 +1826,7 @@ function doShrink() {
 const SMALL_ONLY = new Set(['led', 'bag', 'slotA2', 'slotB2', 'psuLabel', 'psuRocker', 'padlock', 'gpu', 'hpcie',
   'h24', 'hcpu', 'hfan', 'plugRear', 'chaFan1', 'sysFan3', 'cpuFanHdr', 'screwdriver', 'gpuDrum',
   'cable_atx', 'cable_eps', 'cable_pcie', 'cable_sata', 'cable_hdmi', 'ioHdmi',
-  'zipBench', 'zipDesk', 'usbKbd', 'usbMouse', 'usbPortA', 'usbPortB', 'airCan', 'mouseLens']);
+  'zipBench', 'zipDesk', 'usbKbd', 'usbMouse', 'usbPortA', 'usbPortB', 'airCan', 'mouseLens', 'usbNote']);
 
 function transcriptHTML() {
   if (!voice.lines.length) return '<p class="sub">a message is playing</p>';
@@ -3265,35 +3265,49 @@ const usbG = new THREE.Group();
 scene.add(usbG);
 function usbPlug(x, z, id, label, rot) {
   const g = new THREE.Group();
-  g.position.set(x, B2 + .006, z);
+  g.position.set(x, BENCH.top + .001, z);      // on the bench, not floating over it
   g.rotation.y = rot;
   usbG.add(g);
-  box(.020, .009, .012, usbMat(), 0, .005, 0, g);          // the shell
-  box(.017, .005, .004, M.metal, 0, .005, .009, g);        // the tongue
-  box(.012, .007, .010, new THREE.MeshStandardMaterial({ color: 0x14181b, roughness: .85 }), 0, .005, -.012, g);
+  box(.026, .011, .016, usbMat(), 0, .0055, 0, g);                                        // the shell
+  box(.021, .004, .005, M.metal, 0, .0055, .011, g);                                      // the tongue
+  box(.026, .003, .015, new THREE.MeshStandardMaterial({ color: 0xdfe6e8, roughness: .85 }), 0, .0125, 0, g);  // pale top: it reads on dark wood
+  box(.015, .010, .010, new THREE.MeshStandardMaterial({ color: 0x2f6fd0, roughness: .7 }), 0, .0055, -.013, g); // the blue collar, like the ports
   register(g, id, label);
   return g;
 }
 const kbdPlug = usbPlug(-2.02, -2.94, 'usbKbd', "the keyboard's USB plug", -.4);
-const mousePlug = usbPlug(-2.12, -3.01, 'usbMouse', "the mouse's USB plug", .5);
+const mousePlug = usbPlug(-2.14, -3.00, 'usbMouse', "the mouse's USB plug", .5);
 
 /* Each plug keeps its cable. It runs off the far end of the bench, and the part
    between the plug and that end is redrawn every frame — so the cable follows
-   the plug into your hands, and follows it into the port when it goes in. */
+   the plug into your hands, and follows it into the port when it goes in. The
+   cable is part of the plug: click anywhere along it and you pick the plug up. */
 const USB_ANCHOR = {
-  usbKbd: V3(-3.50, B2 + .006, -2.93),
-  usbMouse: V3(-3.52, B2 + .006, -3.00),
+  usbKbd: V3(-3.50, BENCH.top + .006, -2.93),
+  usbMouse: V3(-3.52, BENCH.top + .006, -3.00),
 };
 ['usbKbd', 'usbMouse'].forEach(k => {
   const a = USB_ANCHOR[k];
-  tube(a, V3(-3.56, B2 + .002, a.z), .0022, M.black);
-  tube(V3(-3.56, B2 + .002, a.z), V3(-3.60, B2 - .055, a.z), .0022, M.black);   // over the end, out of sight
+  tube(a, V3(-3.56, BENCH.top + .002, a.z), .0022, M.black);
+  tube(V3(-3.56, BENCH.top + .002, a.z), V3(-3.60, BENCH.top - .055, a.z), .0022, M.black);   // over the end, out of sight
 });
 const usbWire = {
-  usbKbd: cyl(.0022, .0022, 1, 6, M.black, -3.2, B2 + .01, -2.9),
-  usbMouse: cyl(.0022, .0022, 1, 6, M.black, -3.2, B2 + .01, -3.0),
+  usbKbd: cyl(.0022, .0022, 1, 6, M.black, -3.2, BENCH.top + .01, -2.9),
+  usbMouse: cyl(.0022, .0022, 1, 6, M.black, -3.2, BENCH.top + .01, -3.0),
 };
-for (const w of Object.values(usbWire)) w.visible = false;
+for (const k of ['usbKbd', 'usbMouse']) {
+  usbWire[k].visible = false;
+  register(usbWire[k], k, "the keyboard's USB cable");
+}
+// a note on the bench, so the two cable ends are not just clutter
+const usbNote = plane(.120, .040, new THREE.MeshStandardMaterial({
+  map: stickerTex([['KEYBOARD + MOUSE', 24, true], ['cable ends · rear panel', 18, false]],
+    { bg: '#e8e2cf', ink: '#1b2328', h: 130, top: 46, align: 'center' }),
+  roughness: .92,
+}), -2.08, BENCH.top + .0015, -2.86);
+usbNote.rotation.x = -Math.PI / 2;
+usbNote.rotation.z = Math.PI - .06;      // read from behind the case, where you stand
+register(usbNote, 'usbNote', 'a note about the cables');
 
 // the two devices' own cables, off the back of the desk and clear of the stand
 const kbCable = new THREE.MeshStandardMaterial({ color: 0x1b2024, roughness: .85 });
@@ -3450,6 +3464,11 @@ function plugUsb() {
 }
 
 Object.assign(THINGS, {
+  usbNote: {
+    kicker: 'the bench, behind the case', title: 'A note in Gerrit\'s hand',
+    text: () => '<p><b>KEYBOARD + MOUSE</b> — cable ends · rear panel.</p>',
+    keys: () => '', act() { },
+  },
   usbKbd: {
     kicker: 'the bench, behind the case', title: 'Keyboard plug',
     text: () => state.usb.kbd
@@ -3541,6 +3560,7 @@ function slice2Tick(dt, t) {
     // the USB cables ride with their plugs: hand, bench, or seated in the port
     for (const k of ['usbKbd', 'usbMouse']) {
       const w = usbWire[k];
+      w.userData.interact = state.held === k ? null : k;   // in the hand, the cable is not a target
       if (state.held === k) {
         w.visible = true; stretchCyl(w, USB_ANCHOR[k], hand);
       } else if (k === 'usbKbd' && state.usb.kbd) {
