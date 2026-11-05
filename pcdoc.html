@@ -94,8 +94,31 @@
     padding:.9em 2.4em;color:#04141a;background:var(--accent);border:0;border-radius:2px;cursor:pointer;
     box-shadow:0 0 0 1px rgba(89,211,255,.5),0 14px 40px rgba(0,0,0,.6)}
   #start button:hover{background:#7ee2ff}
+  #start .touch-only{display:none}
+  body.touch #start .desk-only{display:none}
+  body.touch #start .touch-only{display:block}
   #start small{display:block;margin-top:1.6em;font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;
     text-transform:uppercase;color:#5c6a71}
+
+  /* ---------- touch: a stick and four buttons, nothing else ---------- */
+  #touch{position:fixed;inset:0;z-index:7;pointer-events:none;display:none}
+  body.touch #touch{display:block}
+  #stick{position:absolute;left:16px;bottom:16px;width:136px;height:136px;border-radius:50%;
+    border:1px solid rgba(89,211,255,.35);background:radial-gradient(circle,rgba(10,20,24,.5),rgba(6,10,12,.3));
+    pointer-events:auto;touch-action:none}
+  #stickKnob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;
+    background:rgba(89,211,255,.26);border:1px solid rgba(89,211,255,.6)}
+  #tbtns{position:absolute;right:14px;bottom:16px;display:grid;grid-template-columns:repeat(2,60px);gap:10px;
+    pointer-events:auto}
+  #tbtns button{width:60px;height:60px;border-radius:50%;font-family:var(--mono);font-size:.95rem;
+    letter-spacing:.04em;color:#dff6ff;background:rgba(8,14,17,.72);
+    border:1px solid rgba(89,211,255,.45);touch-action:none}
+  #tbtns button:active{background:rgba(89,211,255,.3)}
+  body.touch #tray{top:56px;bottom:auto;left:8px;width:min(300px,62vw);font-size:.66rem;
+    max-height:34vh;overflow:auto}
+  body.touch #pad{top:56px;right:8px;width:min(280px,54vw);font-size:.66rem;max-height:58vh;overflow:auto}
+  body.touch .toasts{bottom:162px;width:min(340px,88vw)}
+  body.touch .toast{font-size:.68rem;padding:.4em .8em}
 
   #pad.pulse{animation:pulsePad .9s ease-out 2}
   @keyframes pulsePad{0%{box-shadow:0 0 0 0 rgba(89,211,255,.55)}100%{box-shadow:0 0 0 18px rgba(89,211,255,0)}}
@@ -168,12 +191,22 @@
     <p>Gerrit is at the wholesaler. His answering machine has a message for you, the meter is dead, and the
        customer's tower on the bench is in a bad way.</p>
     <button id="startBtn">Start the shift</button>
-    <small>W A S D walk · E use · I inventory · H hint · click to look</small>
+    <small class="desk-only">W A S D walk · E use · I inventory · H hint · click to look</small>
+    <small class="touch-only">stick to walk · one finger to look · E use · ? hint</small>
   </div>
 </div>
 
 <div id="banner" hidden></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="touch" aria-hidden="true">
+  <div id="stick"><i id="stickKnob"></i></div>
+  <div id="tbtns">
+    <button data-act="hint" aria-label="hint">?</button>
+    <button data-act="pad" aria-label="notepad">▤</button>
+    <button data-act="use" aria-label="use">E</button>
+    <button data-act="jump" aria-label="jump">↑</button>
+  </div>
+</div>
 <div id="unlockHint" hidden>Click to look around</div>
 <div id="bloom"></div>
 
@@ -1351,7 +1384,7 @@ function toast(msg, kind = '') {
   el.className = 'toast ' + kind;
   el.textContent = msg;
   toasts.appendChild(el);
-  while (toasts.children.length > 8) toasts.firstElementChild.remove();
+  while (toasts.children.length > (typeof TOUCH !== 'undefined' && TOUCH ? 3 : 8)) toasts.firstElementChild.remove();
   // a line is only useful if it is on screen long enough to read: ~40 ms a letter
   const life = Math.min(9000, 2600 + msg.length * 42);
   setTimeout(() => { el.style.transition = 'opacity .5s'; el.style.opacity = '0'; }, life);
@@ -1965,6 +1998,10 @@ function currentTarget() {
   }
   return null;
 }
+function doUse() {
+  if (state.grab && state.grab.id === 'loginMouse') { loginClick(); renderTray(); return; }
+  use();
+}
 function use() {
   const h = state.hovered;
   if (!h || !THINGS[h.id]) return;
@@ -2069,6 +2106,7 @@ function move(dt) {
   if (keys.has('KeyS') || keys.has('ArrowDown')) fz += 1;
   if (keys.has('KeyA')) fx -= 1;
   if (keys.has('KeyD')) fx += 1;
+  if (state.stick) { fx += state.stick.x; fz += state.stick.y; }
   const sin = Math.sin(yaw), cos = Math.cos(yaw);
   let nx = camera.position.x, nz = camera.position.z;
   if (fx || fz) {
@@ -2123,6 +2161,7 @@ canvas.addEventListener('mousedown', e => {
   }
   if (e.button !== 0) return;
   audioInit();
+  if (TOUCH) return;                            // a finger is not a pointer lock
   if (!state.locked) { canvas.requestPointerLock?.(); return; }
   if (state.grab && state.grab.id === 'loginMouse') { loginClick(); renderTray(); return; }
   if (state.grab) { state.grab = null; renderTray(); return; }
@@ -2200,10 +2239,7 @@ addEventListener('keydown', e => {
     if (state.gpu && state.gpu.trying) { state.gpu.trying = false; renderTray(); }
     return;
   }
-  if (e.code === 'KeyE') {
-    if (state.grab && state.grab.id === 'loginMouse') { loginClick(); renderTray(); return; }
-    use(); return;
-  }
+  if (e.code === 'KeyE') { doUse(); return; }
   if (e.code === 'Space') {
     e.preventDefault();
     if (grounded && !shrinking && state.phase !== 'shrinking') { vy = P.jump; grounded = false; sfx.step(false); }
@@ -4518,6 +4554,102 @@ function slice2Tick(dt, t) {
   if (state.gpu.trying) { /* tray already drawn by renderTray */ }
 }
 
+/* ------------------------------------------------------------------ touch
+   A phone has no pointer lock and no WASD. One stick for walking, one finger
+   on the scene to look, and four buttons for the four keys that matter. */
+const TOUCH = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+state.stick = { x: 0, y: 0 };
+if (TOUCH) {
+  document.body.classList.add('touch');
+  $('#touch').hidden = false;
+  $('#legend').hidden = true;
+  padEl.hidden = true;
+  unlockHint.hidden = true;
+}
+
+function bindTouch() {
+  const stickEl = $('#stick'), knob = $('#stickKnob');
+  const R = 52;
+  let stickId = null;
+  const setStick = (dx, dy) => {
+    const d = Math.hypot(dx, dy) || 1;
+    const k = d > R ? R / d : 1;
+    const x = dx * k, y = dy * k;
+    state.stick.x = x / R;
+    state.stick.y = y / R;
+    knob.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+  };
+  const stickAt = e => {
+    const r = stickEl.getBoundingClientRect();
+    setStick(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+  };
+  stickEl.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    audioInit();
+    stickId = e.pointerId;
+    stickAt(e);
+    try { stickEl.setPointerCapture?.(e.pointerId); } catch { /* synthetic pointer, nothing to capture */ }
+  });
+  stickEl.addEventListener('pointermove', e => { if (e.pointerId === stickId) stickAt(e); });
+  const dropStick = e => {
+    if (e.pointerId !== stickId) return;
+    stickId = null;
+    state.stick.x = 0; state.stick.y = 0;
+    knob.style.transform = 'translate(0,0)';
+  };
+  stickEl.addEventListener('pointerup', dropStick);
+  stickEl.addEventListener('pointercancel', dropStick);
+
+  // one finger on the scene: looking, and every drag gesture the room has
+  let lookId = null, lx = 0, ly = 0;
+  canvas.addEventListener('pointerdown', e => {
+    if (e.target !== canvas) return;
+    audioInit();
+    lookId = e.pointerId; lx = e.clientX; ly = e.clientY;
+    try { canvas.setPointerCapture?.(e.pointerId); } catch { /* synthetic pointer, nothing to capture */ }
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (e.pointerId !== lookId) return;
+    const dx = e.clientX - lx, dy = e.clientY - ly;
+    lx = e.clientX; ly = e.clientY;
+    if (state.grab) {
+      if (state.grab.id === 'loginMouse') { loginMove(dx * 1.8, dy * 1.8); return; }
+      state.grab.p = clamp(state.grab.p + Math.max(0, dy) + Math.max(0, dx) * .4, 0, state.grab.need);
+      if (state.grab.id === 'gpuDrum') {
+        state.gpu.drop = clamp(state.grab.p / state.grab.need, 0, 1);
+        if (Math.random() < .07) sfx.ratchet();
+        renderTray();
+        return;
+      }
+      if (state.grab.p >= state.grab.need) {
+        const g = state.grab; state.grab = null;
+        if (g.id === 'genCord') genPull();
+      }
+      renderTray();
+      return;
+    }
+    yaw -= dx * .005;
+    pitch = clamp(pitch - dy * .005, -1.35, 1.35);
+  });
+  const lookEnd = e => { if (e.pointerId === lookId) lookId = null; };
+  canvas.addEventListener('pointerup', lookEnd);
+  canvas.addEventListener('pointercancel', lookEnd);
+  canvas.addEventListener('dblclick', e => e.preventDefault());
+
+  const act = {
+    use() { doUse(); },
+    jump() { if (grounded && !shrinking && state.phase !== 'shrinking') { vy = P.jump; grounded = false; sfx.step(false); } },
+    pad() { togglePad(); },
+    hint() { giveHint(); },
+  };
+  document.querySelectorAll('#touch button[data-act]').forEach(b => {
+    const fire = e => { e.preventDefault(); audioInit(); const f = act[b.dataset.act]; if (f) f(); };
+    b.addEventListener('pointerdown', fire);
+    b.addEventListener('contextmenu', e => e.preventDefault());
+  });
+}
+if (TOUCH) bindTouch();
+
 /* ------------------------------------------------------------------- loop */
 const clock = new THREE.Clock();
 let hoverT = 0, humT = 0;
@@ -4530,7 +4662,7 @@ function tick() {
 
   diskTick(dt);
   if (state.zip.riding) rideTick(dt);
-  else if (state.running && state.locked && state.phase !== 'shrinking') move(dt);
+  else if (state.running && (state.locked || TOUCH) && state.phase !== 'shrinking') move(dt);
   camera.rotation.set(pitch, yaw, 0);
 
   // music chord every 3.6 s
@@ -4620,9 +4752,9 @@ $('#startBtn').addEventListener('click', () => {
   state.started = true;
   state.running = true;
   state.elapsed = 0;
-  canvas.requestPointerLock?.();
+  if (!TOUCH) canvas.requestPointerLock?.();
   setTimeout(() => playMessage(), 600);          // Gerrit left a message; it plays now
-  setTimeout(() => toast('W A S D to walk · E to use · I for the inventory', ''), 900);
+  setTimeout(() => toast(TOUCH ? 'The stick walks. One finger looks. E uses.' : 'W A S D to walk · E to use · I for the inventory', ''), 900);
 });
 /* ------------------------------------------------------------------ start */
 camera.position.set(0.25, 1.62, 2.6);
