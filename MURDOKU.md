@@ -29,10 +29,10 @@ Coordinates are **C**olumn then **R**ow. C1 is the west edge, R1 the north.
 - **keuken** — C5R1, C5R2, C5R3, C6R1, C6R2, C6R3 (6)
 - **woonkamer** — the other ten
 
-No doors. The rooms are told apart by floor colour, by a knee-high part-wall (1.3 m, the height of the television)
-along every boundary, and by a painted plaque on the wall of each room. The part-walls are scenery — you walk
-straight through them, and through their doorways, which is the point: the grids are the puzzle, not the masonry, and
-nothing in the house is allowed to make a square unreachable.
+No doors. Every room is closed in by a knee-high part-wall (1.3 m, the height of the television) that runs unbroken
+along its boundary, and carries a painted plaque with the room's name. The walls are scenery: they have no colliders,
+so you walk straight through them. The grid is the puzzle, not the masonry, and nothing in the house is allowed to
+make a square unreachable.
 
 ### Furniture
 
@@ -49,7 +49,7 @@ nothing in the house is allowed to make a square unreachable.
 | table | C5R1, C6R1 |
 | plant | C5R3 |
 | plant | C5R4 |
-| window | the east side of C6R4 |
+| window | the east wall, at C6R4 — a casing, four panes and a sill, let into the wall |
 
 ---
 
@@ -68,9 +68,12 @@ Rules, as implemented:
 
 1. one person per square;
 2. one person per **column**;
-3. nobody stands on a squared that has been crossed out;
+3. nobody stands on a square that has been crossed out, on a **table**, on a **plant** or on the **television**;
 4. every statement has to be true of the person it belongs to;
 5. the victim has no statement of his own — he takes whichever square the rest leave free.
+
+Furniture you cannot stand on: both tables (C4R3, and C5R1 + C6R1), both plants (C5R3, C5R4) and the television
+(C3R6). Beds, chairs and carpets are fair game — the case itself puts Alexander on a bed.
 
 "Next to" counts the eight surrounding squares (so Diana in C4R5 is next to the television in C3R6).
 
@@ -124,7 +127,8 @@ file on the west wall is the same text as the notes.
   it, so a new case is a new table and a new set of predicates — not new scenes.
 - `?test` exposes `window.__murdoku` (place, lift, checkWin, the sets of furniture squares) for
   `test/murdoku.browser.cjs`, which walks the whole case: the rooms, the furniture, carrying a guest, crossing a
-  square out, the solution that closes it, a plaque read off the wall, and a walk straight through a part-wall to
-  prove it is scenery (31 checks).
+  square out, the solution that closes it, a plaque read off the wall, a walk straight through a part-wall to prove
+  it is scenery, the furniture nobody may stand on, the closed wall count, and the window's place in the east wall
+  (38 checks).
 - Known gap, deliberate for a first case: the checker accepts the layout above but not a *unique* one — see the note
   on the row rule. A second case should either turn the row rule on or drop the "leftover square" statement.

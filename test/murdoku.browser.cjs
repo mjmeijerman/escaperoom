@@ -242,6 +242,42 @@ const st = page => page.evaluate(() => ({
   check('the part-walls are scenery: you walk straight through them',
     throughWall.z > .4, JSON.stringify(throughWall));
 
+  /* --- furniture you cannot stand on, closed walls, and the window -------- */
+  const noStand = await page.evaluate(() => {
+    const d = window.__murdoku;
+    d.state.placed = {}; d.state.carry = null; d.state.won = false;
+    const tryCell = (id, c, r) => { d.lift(id); return d.place(id, c, r); };
+    const table = tryCell('B', 4, 3);          // the table in C4R3
+    const plant = tryCell('C', 5, 3);          // the plant in C5R3
+    const tv = tryCell('D', 3, 6);             // the television in C3R6
+    const bed = tryCell('A', 1, 1);            // a bed is allowed: Alexander sat on one
+    d.state.placed = {}; d.state.carry = null;
+    return { table, plant, tv, bed };
+  });
+  check('nobody stands on a table', noStand.table === false);
+  check('nor on a plant', noStand.plant === false);
+  check('nor on the television', noStand.tv === false);
+  check('but a bed is fair game', noStand.bed === true);
+
+  const walls = await page.evaluate(() => {
+    const d = window.__murdoku;
+    let expected = 1;                                   // the hall wall
+    for (let c = 1; c < 6; c++) for (let r = 1; r <= 6; r++) if (d.roomAt(c, r) !== d.roomAt(c + 1, r)) expected++;
+    for (let c = 1; c <= 6; c++) for (let r = 1; r < 6; r++) if (d.roomAt(c, r) !== d.roomAt(c, r + 1)) expected++;
+    return { runs: d.WALLS.length, expected,
+      lengths: [...new Set(d.WALLS.map(w => +w.len.toFixed(2)))].sort() };
+  });
+  check('every room is closed in: one unbroken wall per boundary',
+    walls.runs === walls.expected, JSON.stringify(walls));
+  check('and every run is a full cell, with no doorway cut in it',
+    walls.lengths.length === 2 && walls.lengths.includes(2) && walls.lengths.includes(12),
+    JSON.stringify(walls.lengths));
+
+  check('the window is in the east wall, on C6R4', await page.evaluate(() => {
+    const d = window.__murdoku;
+    return d.WINDOW_AT.x > 6.8 && d.WINDOW_AT.x < 7 && Math.abs(d.WINDOW_AT.z - d.cellZ(4)) < .01;
+  }), await page.evaluate(() => JSON.stringify(window.__murdoku.WINDOW_AT)));
+
   check('no console errors', logs.length === 0, logs.join(' | '));
 
   mkdirSync('test/.shots', { recursive: true });
