@@ -59,6 +59,9 @@ Read it — the room runs on stickers, notes and manuals.
 The meter is dead. There is one thing in here with its own power: a torch on the counter in front of you, blinking
 green. Take it (`E`), then find the way out — the green **EXIT** sign, back right.
 
+The customer's intake form and Gerrit's service log are on the workbench, not on the counter — once you are 17 mm tall
+they are the size of billboards and you can read both. The log is a book you have to walk round.
+
 ### 2. The generator
 
 Old, red, bad-tempered, in the yard. The sticker on it is the cold-start procedure. Do it in that order. If you get

@@ -15,8 +15,8 @@ Every piece of story is a **physical object in the room**. Nothing is narrated b
 | # | Object | Where | What it delivers |
 | --- | --- | --- | --- |
 | 1 | **Answering machine** (blinking LED, plays on `E`) | shelf above the bench | Gerrit's voice: the job, the krimpstraal, the generator. `speechSynthesis` in Dutch + subtitle lines on its tiny LCD (readable via the corner tray) |
-| 2 | **Intake form** (`werkbon`, paper) | counter | the customer's complaint in her own words: *"hij valt uit, hij piept, geen beeld, en de muis doet raar"* — four of the six faults, in layman's language. The player learns to translate complaints into faults |
-| 3 | **Service log book** (A5, handwritten) | counter | three previous visits on this same tower. Last line: *"derde keer terug = nieuwe voeding, niet weer prutsen"*. The twist lives here (see 8) |
+| 2 | **Intake form** (`werkbon`, paper) | bench, left end | the customer's complaint in her own words: *"hij valt uit, hij piept, geen beeld, en de muis doet raar"* — four of the six faults, in layman's language. The player learns to translate complaints into faults |
+| 3 | **Service log book** (A5, handwritten) | bench, left of the case | three previous visits on this same tower. Last line: *"derde keer terug = nieuwe voeding, niet weer prutsen"*. The twist lives here (see 8) |
 | 4 | **The manual**, lying open, laminated | front-left of the bench | the **POST code table** and the **wiring diagram**. Shrunk, you walk across it: the letters are fields, the code table is a wall you read by walking backwards |
 | 5 | **Sticky notes** in Gerrit's handwriting | generator, hoist, PSU, mousepad | operating procedures and one bad joke each. These are the room's voice |
 
@@ -432,7 +432,8 @@ Mix rules: one `masterGain`, music at −14 dB and ducked 6 dB for 250 ms under 
 
 `pcdoc.html` is playable up to the point where the room's grammar is proven:
 
-- the dark shop, the torch, the answering machine, the werkbon, the service log, the pegboard, the bench lamp;
+- the dark shop, the torch, the answering machine, the pegboard, the bench lamp; the werkbon and the service log sit
+  on the bench (deviation: they were on the counter, where a 17 mm person could never read them);
 - the generator (fuel cock → choke → three pulls, floods if you get the order wrong, primer to recover);
 - the shrink ray (stand in the ring, pull the lever) and the scale change itself;
 - inside the case: the board as a floor, the four slots, the leaning A2 module, the scorched B2, the CPU cooler,

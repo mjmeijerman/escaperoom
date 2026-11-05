@@ -215,7 +215,7 @@ in the login order the pictograms will give: SSD · monitor · fans · PSU · GP
   ```
 
   Swap the last argument for `test/edo.browser.cjs` to test the Edo Room, or `test/pcdoc.browser.cjs` for PC Doctor
-  (168 checks: torch, generator order, the flood, the shrink, the display cycling, the memory chain, power routing,
+  (174 checks: torch, generator order, the flood, the shrink, the display cycling, the memory chain, power routing,
   the twin 8-pins refusing each other, the three fans, the padlock, the winch, the card, the notepad, hardware
   ignoring a full-sized person, the HDMI run to the rear panel, the two-way cable span down to the desk, the fall off
   an edge, the keyboard and the mouse's dirty lens, the inside of the SSD with its worm and its missing sectors, and

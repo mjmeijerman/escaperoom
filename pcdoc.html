@@ -1056,7 +1056,7 @@ const werkbonTex = tex(512, 640, (g, w, h) => {
   for (let y = 470; y < h - 30; y += 28) g.fillRect(30, y, w - 60, 1);
   grain(g, w, h, .05);
 });
-const werkbon = plane(.21, .28, new THREE.MeshStandardMaterial({ map: werkbonTex, roughness: .95 }), -1.15, COUNTER.top + .002, 1.34);
+const werkbon = plane(.21, .28, new THREE.MeshStandardMaterial({ map: werkbonTex, roughness: .95 }), -3.05, BENCH.top + .002, -2.72);
 werkbon.rotation.x = -Math.PI / 2;
 werkbon.rotation.z = .18;
 register(werkbon, 'werkbon', 'the intake form');
@@ -1077,10 +1077,11 @@ const logTex = tex(512, 384, (g, w, h) => {
     .forEach((l, i) => g.fillText(l, 28, 96 + i * 30));
   grain(g, w, h, .05);
 });
-const logbook = box(.19, .045, .26, M.dark, -2.3, COUNTER.top + .022, 1.36);
+const logbook = box(.19, .045, .26, M.dark, -2.98, BENCH.top + .022, -2.30);
 logbook.rotation.y = -.3;
 decal(.18, .135, logTex, 0, .024, 0, 0, logbook).rotation.x = -Math.PI / 2;
 register(logbook, 'logbook', 'the service log');
+SOLID_LATE.push(S(-3.075, -2.885, BENCH.top, BENCH.top + .046, -2.43, -2.17));   // a book is a thing, not air
 
 /* --------------------------------------------------------------- the shelf */
 box(1.0, .035, .26, M.bench, -2.9, 1.86, -3.02);
@@ -1343,8 +1344,11 @@ function toast(msg, kind = '') {
   el.className = 'toast ' + kind;
   el.textContent = msg;
   toasts.appendChild(el);
-  setTimeout(() => { el.style.transition = 'opacity .35s'; el.style.opacity = '0'; }, 2400);
-  setTimeout(() => el.remove(), 2850);
+  while (toasts.children.length > 8) toasts.firstElementChild.remove();
+  // a line is only useful if it is on screen long enough to read: ~40 ms a letter
+  const life = Math.min(9000, 2600 + msg.length * 42);
+  setTimeout(() => { el.style.transition = 'opacity .5s'; el.style.opacity = '0'; }, life);
+  setTimeout(() => el.remove(), life + 560);
 }
 function banner(html) { bannerEl.innerHTML = html; bannerEl.hidden = false; }
 
@@ -2671,7 +2675,7 @@ function plug(dest) {
   }
   if (state.held !== need) {
     sfx.buzz();
-    const wrong = CABLE[state.held].name;
+    const wrong = CABLE[state.held] ? CABLE[state.held].name : 'That connector';
     if ((state.held === 'eps' && dest === 'hpcie') || (state.held === 'pcie' && dest === 'hcpu')) {
       toast('Same plug, wrong socket. Read the label.', 'bad');
     } else {
@@ -3195,6 +3199,12 @@ Object.assign(THINGS, {
 
 function plugHdmi() {
   if (state.mon.plugged) return;
+  if (state.held && state.held !== 'hdmi') {
+    sfx.buzz();
+    toast(state.held === 'usbKbd' || state.held === 'usbMouse'
+      ? 'That is a USB connector. This port is HDMI.' : 'That will not go into an HDMI port.', 'bad');
+    return;
+  }
   if (state.held !== 'hdmi') {
     sfx.buzz();
     toast('Pick the HDMI cable up first — its end is coiled on the bench in front of the case.');
@@ -3514,7 +3524,10 @@ function takeUsb(kind) {
 function plugUsb() {
   const held = state.held;
   if (held !== 'usbKbd' && held !== 'usbMouse') {
-    sfx.nope(); toast('Your hands are empty. Both connectors are on the desk by the monitor.');
+    if (!held) { sfx.nope(); toast('Your hands are empty. Both connectors are on the desk by the monitor.'); return; }
+    sfx.buzz();
+    toast(held === 'hdmi' ? 'That is the monitor cable. This is a USB port.'
+      : 'That will not go into a USB port.', 'bad');
     return;
   }
   const kbd = held === 'usbKbd';
@@ -4199,7 +4212,7 @@ if (new URLSearchParams(location.search).has('debug') || new URLSearchParams(loc
     setFeet(f) { feet = f; camera.position.y = f + P.eye; },
     zip: ZIP, startRide, tipMouse, cleanLens, plugUsb, takeUsb, takeAir, usbWire, dropHeld,
     a2Solid, b2Solid, SEATED_Z0, SEATED_Z1, USB, kbKeyMat, kbLegendMat, kbDeckG, kbGlow, mLed, mSensor, checkUsbPower, darkUsb,
-    enterDisk, leaveDisk, ejectFromDisk, pullWormLever, DISK, worm, CH, SSD, SOLID_D, sectorBlocks, readmePanel,
+    toast, enterDisk, leaveDisk, ejectFromDisk, pullWormLever, DISK, worm, CH, SSD, SOLID_D, sectorBlocks, readmePanel,
     ssdLed, ssdSocket, ssdPlugG, takeSsdTail, plugSsd, chDoor, DOOR_SHUT_Y, DOOR_OPEN_Y, wormInChamber,
     look(y, pi) { yaw = y; pitch = pi; camera.rotation.set(pitch, yaw, 0); },
     aimAt(id, dist = 1.1, fy = null, at = null) {

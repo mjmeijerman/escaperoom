@@ -40,6 +40,15 @@ const check = (name, ok, detail = '') => {
   check('the timer has not started', await page.evaluate(() => document.getElementById('timer').textContent) === '00:00');
   await page.click('#startBtn');
   await sleep(700);
+  const readTime = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.toast('x'.repeat(140), 'good');                 // a long one, like a solved chain
+    await new Promise(r => setTimeout(r, 3200));
+    const live = [...document.querySelectorAll('#toasts .toast')].filter(el => el.style.opacity !== '0');
+    return live.filter(el => el.textContent.length >= 140).length;
+  });
+  check('a long line stays on screen long enough to read', readTime === 1, String(readTime));
+
   check('the button starts the shift', await page.evaluate(() => !document.getElementById('start').hidden === false && window.__doctor.state.started === true));
   check('and the voicemail plays on its own',
     await page.evaluate(() => /Doctor|wholesaler|tower/.test(document.getElementById('body').textContent)));
@@ -325,6 +334,16 @@ const check = (name, ok, detail = '') => {
     return { x: +d.camera.position.x.toFixed(3), z: +d.camera.position.z.toFixed(3) };
   }, [x, z, yawV, fy, ms]);
 
+  check('the intake form is on the bench, readable at 17 mm', (await at('werkbon', 0.06)) === 'werkbon');
+  await sleep(200);
+  check('and it still says what the customer said',
+    /beeps|picture|mouse/i.test(await page.$eval('#body', el => el.textContent)));
+  // the log is a book, not a sticker: aim at it from beside it, not from inside it
+  const logLook = await page.evaluate(() => window.__doctor.aim(-2.98, -2.52, Math.PI, null, 0.95));
+  check('the service log is on the bench, readable at 17 mm', logLook === 'logbook', String(logLook));
+  const intoLog = await walkInto(-2.98, -2.60, Math.PI, 0.95, 1500);
+  check('the log is a book you bump into, not air', intoLog.z < -2.42, JSON.stringify(intoLog));
+
   check('the 24-pin socket is reachable', (await at('h24')) === 'h24');
   await press();
   check('the 24-pin plugs in', (await st()).psu.atx === true);
@@ -450,6 +469,17 @@ const check = (name, ok, detail = '') => {
   check('the loose HDMI end is reachable inside the case', (await at('cable_hdmi')) === 'cable_hdmi');
   await press();
   check('the HDMI cable is in your hands', (await st()).held === 'hdmi');
+  const wrongPort = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.aimAt('usbPortA', 0.03, 0.95);
+    d.use();
+    await new Promise(r => setTimeout(r, 150));
+    const t = document.querySelectorAll('#toasts .toast');
+    return { plugged: d.state.usb.kbd, said: t.length ? t[t.length - 1].textContent : '', held: d.state.held };
+  });
+  check('a USB port refuses the monitor cable, and says which cable it is',
+    wrongPort.plugged === false && /monitor cable/i.test(wrongPort.said) && wrongPort.held === 'hdmi',
+    JSON.stringify(wrongPort));
   const io = await at('ioHdmi');
   check('the rear panel is reachable from behind the case', io === 'ioHdmi', String(io));
   await press();
