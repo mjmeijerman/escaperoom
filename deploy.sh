@@ -8,9 +8,9 @@ REPO="$(git config --get remote.origin.url)"
 OUT="${TMPDIR:-/tmp}/escaperoom-site"
 
 rm -rf "$OUT"; mkdir -p "$OUT"
-cp pcdoc.html hogwarts.html edo.html classic.html "$OUT/"
+cp pcdoc.html murdoku.html hogwarts.html edo.html classic.html "$OUT/"
 cp -r vendor "$OUT/"
-cp PLAY.md PC-DOCTOR.md README.md "$OUT/"
+cp PLAY.md PC-DOCTOR.md MURDOKU.md README.md "$OUT/"
 cp index.html "$OUT/study.html"          # the Locked Study keeps its room, not the root
 cp site/index.html site/favicon.svg "$OUT/"
 touch "$OUT/.nojekyll"
