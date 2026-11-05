@@ -333,7 +333,7 @@ function decal(w, h, t, x, y, z, ry = 0, parent) {
 }
 const interact = [];
 function register(obj, id, label) {
-  obj.traverse(o => { if (o.isMesh) o.userData.interact = id; });
+  obj.traverse(o => { if (o.isMesh) { o.userData.interact = id; o.userData.label = label; } });
   obj.userData.interact = id;
   obj.userData.label = label;
   interact.push(obj);
