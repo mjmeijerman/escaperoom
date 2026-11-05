@@ -170,7 +170,7 @@ const st = page => page.evaluate(() => ({
   await page.evaluate(() => { const d = window.__murdoku; d.putBack('B'); d.state.marks.clear(); d.syncMarks(); });
 
   // the whole solution, on the real floor
-  const sol = { A: [1, 1], B: [5, 2], C: [3, 3], D: [4, 5], E: [6, 4], V: [2, 6] };
+  const sol = { A: [1, 1], B: [5, 2], C: [3, 3], D: [4, 6], E: [6, 4], V: [2, 5] };
   for (const [id, [c, r]] of Object.entries(sol)) {
     await aimPerson(page, id);
     await page.keyboard.press('KeyE');
@@ -188,16 +188,16 @@ const st = page => page.evaluate(() => ({
     const d = window.__murdoku;
     return d.columnsOK() && d.rowsOK() && d.linesOK();
   }));
-  check('and the murderer is the one nearest the body', await page.evaluate(() => {
+  check('and the murderer is the one who shared the victim\'s room', await page.evaluate(() => {
     const d = window.__murdoku;
-    return d.state.murderer === 'D' && d.murdererOf() === 'D';
+    return d.state.murderer === 'A' && d.murdererOf() === 'A';
   }), await page.evaluate(() => String(window.__murdoku.state.murderer)));
   check('and the sign says so', await page.evaluate(() =>
     !document.getElementById('banner').hidden && /CASE CLOSED/i.test(document.getElementById('banner').textContent)));
   check('a second person in one row is refused a clean placement', await page.evaluate(() => {
     const d = window.__murdoku;
     const keep = { ...d.state.placed };
-    d.lift('E'); d.place('E', 6, 5);                    // E joins D in row 5
+    d.lift('E'); d.place('E', 6, 6);                    // E joins D in row 6
     const after = { rows: d.rowsOK(), cols: d.columnsOK(),
       said: [...document.querySelectorAll('#toasts .toast')].map(t => t.textContent).join(' | ') };
     d.state.placed = keep;
@@ -211,16 +211,17 @@ const st = page => page.evaluate(() => ({
   const revealed = await page.evaluate(async () => {
     const d = window.__murdoku;
     await new Promise(r => setTimeout(r, 1700));           // the reveal runs after 1.4 s
-    const g = d.visuals.D.g;
-    const at = d.state.placed.D;
+    const g = d.visuals.A.g;
+    const at = d.state.placed.A;
     const dist = Math.hypot(d.camera.position.x - d.cellX(at[0]), d.camera.position.z - d.cellZ(at[1]));
     return { knife: !!g.userData.knife, dist: +dist.toFixed(2),
       banner: document.getElementById('banner').textContent.replace(/\s+/g, ' ') };
   });
   check('the murderer is holding a knife', revealed.knife === true);
-  check('and the camera has moved to them', revealed.dist > 1 && revealed.dist < 3.2, JSON.stringify(revealed));
-  check('the banner names the murderer instead of nonsense about a car',
-    /DIANA/.test(revealed.banner) && !/car/i.test(revealed.banner), revealed.banner);
+  check('and the camera has moved to them', revealed.dist > 1 && revealed.dist < 2.6, JSON.stringify(revealed));
+  check('the banner names the murderer and why it is them',
+    /ALEXANDER/.test(revealed.banner) && /logeerkamer/i.test(revealed.banner) && !/car/i.test(revealed.banner),
+    revealed.banner);
 
   /* --- the room itself: how it looks, how it walks ----------------------- */
   check('the camera yaws before it pitches, so turning left does not roll the room',
@@ -352,6 +353,27 @@ const st = page => page.evaluate(() => ({
   });
   check('and the roof stops you: your head stays under the ceiling', roof.head <= roof.wall + .01,
     JSON.stringify(roof));
+
+  /* --- "next to" is beside it, in the same room --------------------------- */
+  check('next to means beside it: the television is not diagonally next to C4R5',
+    await page.evaluate(() => {
+      const d = window.__murdoku;
+      const tv = new Set(['3,6']);
+      return d.nextToSameRoom(4, 5, tv) === false        // diagonal, and a wall between
+        && d.nextToSameRoom(4, 6, tv) === true           // beside it, same room
+        && d.nextToSameRoom(3, 5, tv) === true
+        && d.nextToSameRoom(2, 6, tv) === false;         // beside it, but the logeerkamer
+    }));
+  check('and the body needs a room with exactly one other person', await page.evaluate(() => {
+    const d = window.__murdoku;
+    const keep = { ...d.state.placed };
+    d.lift('E'); d.place('E', 1, 5);                     // now A and E both in the logeerkamer
+    const crowded = d.murdererOf();
+    d.state.placed = keep;
+    Object.entries(keep).forEach(([id, [c, r]]) => d.visuals[id].g.position.set(d.cellX(c), 0, d.cellZ(r)));
+    d.renderPad();
+    return crowded === null;
+  }));
 
   /* --- jumping: everything in the house can be stood on ------------------ */
   const standOn = await page.evaluate(() => {

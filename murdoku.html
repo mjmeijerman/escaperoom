@@ -228,24 +228,23 @@ TVS.forEach(k => NO_STAND.add(k));
 const WINDOW = [6, 4];
 
 /* ------------------------------------------------------------------ people */
-const n8 = (c, r) => {
-  const out = [];
-  for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) {
-    if (!dc && !dr) continue;
-    const a = c + dc, b = r + dr;
-    if (a >= 1 && a <= N && b >= 1 && b <= N) out.push([a, b]);
-  }
-  return out;
+/* "Next to" is the square beside it — never a corner, and never through a wall:
+   the neighbour has to be in the same room. */
+const beside = (c, r) => [[c + 1, r], [c - 1, r], [c, r + 1], [c, r - 1]]
+  .filter(([a, b]) => a >= 1 && a <= N && b >= 1 && b <= N);
+const nextToSameRoom = (c, r, set) => {
+  const home = roomAt(c, r);
+  return beside(c, r).some(([a, b]) => roomAt(a, b) === home && set.has(key(a, b)));
 };
-const nearAny = (c, r, set) => n8(c, r).some(([a, b]) => set.has(key(a, b)));
 
 const PEOPLE = [
   { id: 'A', name: 'Alexander', colour: 0x9a7346, clue: 'Sat on a bed', test: (c, r) => BEDS.has(key(c, r)) },
   { id: 'B', name: 'Bas', colour: 0x4c7f68, clue: 'Was in the kitchen', test: (c, r) => roomAt(c, r) === 'keuken' },
-  { id: 'C', name: 'Clarissa', colour: 0x86557a, clue: 'Stood next to a table', test: (c, r) => nearAny(c, r, TABLES) },
-  { id: 'D', name: 'Diana', colour: 0x5f6a90, clue: 'Was next to the television', test: (c, r) => nearAny(c, r, TVS) },
+  { id: 'C', name: 'Clarissa', colour: 0x86557a, clue: 'Stood next to a table', test: (c, r) => nextToSameRoom(c, r, TABLES) },
+  { id: 'D', name: 'Diana', colour: 0x5f6a90, clue: 'Was next to the television', test: (c, r) => nextToSameRoom(c, r, TVS) },
   { id: 'E', name: 'Elsa', colour: 0x8a8750, clue: 'Stood in front of the window', test: (c, r) => c === WINDOW[0] && r === WINDOW[1] },
-  { id: 'V', name: 'Vladimir', colour: 0x8c3a34, victim: true, clue: 'Lay in the last cell left over', test: null },
+  { id: 'V', name: 'Vladimir', colour: 0x8c3a34, victim: true,
+    clue: 'Lay in the last cell left over, with one other person in that room', test: null },
 ];
 
 const state = {
@@ -621,8 +620,9 @@ const caseTex = tex(640, 900, (g, w, h) => {
   g.fillText('HOUSE RULES', 40, h - 250);
   g.fillStyle = '#3b3336'; g.font = '400 20px ui-monospace,monospace';
   ['one person per column and one per row.', 'nobody stands on a crossed square,',
-    'a table, a plant or the television.', 'the killer was the one nearest the body.']
-    .forEach((l, i) => g.fillText(l, 40, h - 224 + i * 32));
+    'a table, a plant or the television.', 'next to means beside it, same room.',
+    'the body shares its room with exactly', 'one other person. that is the killer.']
+    .forEach((l, i) => g.fillText(l, 40, h - 236 + i * 30));
   grain(g, w, h, .06);
 });
 function buildPlaque() {
@@ -791,8 +791,8 @@ function renderPad() {
     <li><span>one per row</span><b class="${rowsOK() ? '' : 'no'}">${rowsOK() ? 'yes' : 'no'}</b></li>
     <li><span>marks</span><b class="none">${state.marks.size}</b></li>`;
   $('#padRules').innerHTML = 'One person per column and one per row, so neither line can hold two of them. '
-    + 'Nobody on a crossed square, a table, a plant or the television. The victim takes whatever is left. '
-    + 'The killer was the one nearest the body.';
+    + 'Nobody on a crossed square, a table, a plant or the television. Next to means the square beside you, in the '
+    + 'same room. The victim takes the last square, in a room with exactly one other person: that is the killer.';
 }
 function pulsePad() {
   padEl.classList.remove('pulse');
@@ -904,27 +904,26 @@ function putBack(id, say = true) {
   if (say) toast(`${person(id).name} goes back to the hall.`);
   renderPad();
 }
-/* The one nearest the body, Manhattan-wise, with the columns breaking any tie:
-   the only deduction the case asks for, and the only thing left to say. */
+/* Murdoku's own rule: the body is in a room with exactly one other person, and
+   that person is the murderer. Nobody is nearest anything — it is the room. */
 function murdererOf() {
   const v = state.placed.V;
   if (!v) return null;
-  let best = null;
-  for (const p of PEOPLE) {
-    if (p.victim || !state.placed[p.id]) continue;
-    const at = state.placed[p.id];
-    const d = Math.abs(at[0] - v[0]) + Math.abs(at[1] - v[1]);
-    if (!best || d < best.d || (d === best.d && at[0] < best.at[0])) best = { id: p.id, d, at };
-  }
-  return best ? best.id : null;
+  const home = roomAt(v[0], v[1]);
+  const others = PEOPLE.filter(p => !p.victim && state.placed[p.id]
+    && roomAt(state.placed[p.id][0], state.placed[p.id][1]) === home);
+  return others.length === 1 ? others[0].id : null;
 }
 function giveKnife(id) {
   const g = visuals[id].g;
   if (g.userData.knife) return;
   g.userData.knife = true;
   const knife = new THREE.Group();
-  knife.position.set(.3, 1.05, .18);
-  knife.rotation.set(-.35, .2, .5);
+  knife.position.set(.24, 1.06, .26);
+  knife.rotation.set(-1.0, .1, .3);                       // blade up, held out toward whoever is looking
+  const glow = new THREE.PointLight(0xd01818, 1.6, 1.1, 1.6);
+  glow.position.set(0, 0, .22);
+  knife.add(glow);
   g.add(knife);
   box(.022, .022, .26, new THREE.MeshStandardMaterial({ color: 0xd2d7db, roughness: .22, metalness: .85 }), 0, 0, .14, knife);
   box(.03, .03, .09, new THREE.MeshStandardMaterial({ color: 0x2a1c18, roughness: .7 }), 0, 0, -.02, knife);
@@ -935,6 +934,7 @@ function giveKnife(id) {
 function revealMurderer(id) {
   const p = person(id);
   const at = state.placed[id];
+  const where = roomAt(at[0], at[1]);
   giveKnife(id);
   const mx = cellX(at[0]), mz = cellZ(at[1]);
   const body = state.placed.V || at;
@@ -943,21 +943,21 @@ function revealMurderer(id) {
   let dx = mx - bx, dz = mz - bz;
   const len = Math.hypot(dx, dz) || 1;
   dx /= len; dz /= len;
-  let cx = mx + dx * 2.2, cz = mz + dz * 2.2;
+  let cx = mx + dx * 1.9, cz = mz + dz * 1.9;
   if (cx < X0 + .5 || cx > X1 - .5 || cz < Z0 + .5 || cz > 6 - .5) {
-    cx = mx - dx * 2.2; cz = mz - dz * 2.2;
+    cx = mx - dx * 1.9; cz = mz - dz * 1.9;
   }
   state.started = false;
-  const flick = () => { if (state.locked) return; };
+  visuals[id].g.rotation.y = Math.atan2(cx - mx, cz - mz);   // turn them to face the camera
   camera.position.set(cx, 1.62, cz);
   yaw = Math.atan2(-(mx - cx), -(mz - cz));
-  pitch = Math.atan2(1.05 - 1.62, Math.hypot(mx - cx, mz - cz));
+  pitch = Math.atan2(1.15 - 1.62, Math.hypot(mx - cx, mz - cz));
   camera.rotation.set(pitch, yaw, 0);
   camera.updateMatrixWorld(true);
   state.started = true;
   banner('THE MURDERER IS ' + p.name.toUpperCase()
-    + '<small>the one nearest the body. Vladimir can rest.</small>');
-  toast(`${p.name} was nearest to Vladimir, with the knife still in hand.`, 'good');
+    + `<small>${p.name} was alone in the ${where} with the body. Vladimir can rest.</small>`);
+  toast(`${p.name} shared the ${where} with Vladimir — and the knife is still in hand.`, 'good');
 }
 function checkWin() {
   if (state.won) return;
@@ -968,10 +968,15 @@ function checkWin() {
     toast(`${wrong.length} statement${wrong.length > 1 ? 's do' : ' does'} not fit yet.`, 'bad');
     return;
   }
+  if (!murdererOf()) {
+    toast('Vladimir has to be in a room with exactly one other person.', 'bad');
+    return;
+  }
+  if (state.codes === undefined) { /* not this room's state */ }
   state.won = true;
   state.murderer = murdererOf();
   banner('CASE CLOSED<small>everyone accounted for. One of them is holding the knife.</small>');
-  toast('The grid holds: every statement fits, and every row and column has one of them.', 'good');
+  toast('The grid holds: every statement fits, every row and column has one of them — and the body shares its room with one person.', 'good');
   renderPad();
   if (state.murderer) setTimeout(() => revealMurderer(state.murderer), 1400);
 }
@@ -1247,7 +1252,7 @@ if (new URLSearchParams(location.search).has('test') || new URLSearchParams(loca
     BEDS, TABLES, CHAIRS, TVS, RUGS, PLANTS, NO_STAND, WINDOW, WINDOW_AT, FURN, use, readCase, renderPad, trayEl,
     SOLIDS, WALLS, buildWalls, wallSign, groundAt, cameraOrder: () => camera.rotation.order,
     HOUSE: { X0, X1, Z0, Z1, WALL_H, CELL }, plaqueCount: () => interact.filter(o => String(o.userData.interact).startsWith('sign_')).length,
-    rowsOK, linesOK, murdererOf, giveKnife, revealMurderer, checkWinNow: checkWin,
+    rowsOK, linesOK, murdererOf, giveKnife, revealMurderer, checkWinNow: checkWin, beside, nextToSameRoom,
     setFeet(y) { feet = y; camera.position.y = y + P.eye; },
     feet: () => feet,
     setCell(id, c, r) { lift(id); return place(id, c, r); },

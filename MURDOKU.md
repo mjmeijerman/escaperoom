@@ -97,22 +97,20 @@ Furniture you cannot stand on: both tables (C4R3, and C5R1 + C6R1), both plants 
 A Alexander  C1R1   (on the bed)
 B Bas        C5R2   (kitchen)
 C Clarissa   C3R3   (next to the table in C4R3)
-D Diana      C4R5   (next to the television in C3R6)
+D Diana      C4R6   (next to the television in C3R6 — beside it, same room)
 E Elsa       C6R4   (at the window)
-V Vladimir   C2R6   (the last column and the last row: the square nobody else can take)
+V Vladimir   C2R5   (the last square left over)
 ```
 
-With one per row and one per column, the five suspects take rows 1–5 and columns 1–6 minus column 2, so the victim is
-pushed into **C2R6** — the "last square left over" is derived rather than guessed, which is the point of the clue.
+It is the only layout that fits. Run the statements over the thirty-six squares with one person per row and per
+column and exactly one survives: Alexander is forced onto a bed in column 1, Bas into the kitchen in column 5,
+Clarissa beside the table in C4R3 from C3R3, Diana beside the television from C4R6 (C4R5 is a corner away and has a
+wall between it), Elsa at the window in C6R4. That leaves row 5 and column 2 for the body: **C2R5**.
 
-**The murderer is Diana.** She was two squares from the body (C4R5 against Vladimir in C2R6, Manhattan: 2 + 1 = 3);
-Clarissa is next at four, and Alexander, Bas and Elsa are farther. When the grid is full the camera turns to her, a
-knife appears in her hand, and the banner says so. The deduction is kept out of the placement puzzle on purpose: the
+**The murderer is Alexander.** The logeerkamer holds exactly two people — Alexander in C1R1 and Vladimir in C2R5 — so
+nobody else was in there with the body. When the grid is full the camera turns to him, a knife appears in his hand
+with the blade still wet, and the banner says so. The deduction is kept out of the placement puzzle on purpose: the
 grid tells you where everyone was, and the murderer is the *reading* of that answer, not another square to fill.
-
-A note for the next case: the statements are still loose — "sat on a bed" matches four squares and "next to a table"
-several more — so with or without the row rule there are several layouts that satisfy them all. The victim's square is
-forced, the rest is not. Tightening the statements (a named bed, a named side) is what would make a layout unique.
 
 ---
 
