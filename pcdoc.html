@@ -2655,6 +2655,7 @@ function clearCode(c, note, key, msg) {
   if (note) state.notes[key] = note;
   renderPad();
   toast(msg, 'good');
+  drawLogin();                                           // the screen lists what is left
   if (!state.codes.length) setTimeout(openLogin, 700);   // the last fault: the screen asks for a password
 }
 function seatRam() {
@@ -3259,11 +3260,12 @@ function plugHdmi() {
   zipG.visible = true;
   ZIP.ready = true;
 
-  // the monitor wakes
-  monitorScreen.material.map = monitorOnTex;
-  monitorScreen.material.emissiveMap = monitorOnTex;
+  // the monitor wakes on a live canvas: no login yet, so it says what it is waiting for
+  monitorScreen.material.map = screenLive;
+  monitorScreen.material.emissiveMap = screenLive;
   monitorScreen.material.emissiveIntensity = 1.15;
   monitorScreen.material.needsUpdate = true;
+  drawLogin();
 
   sfx.snap();
   setTimeout(() => sfx.chime(), 220);
@@ -4223,7 +4225,26 @@ function drawLogin() {
   g.fillStyle = '#04121a'; g.fillRect(0, 0, w, h);
   g.fillStyle = 'rgba(120,220,255,.045)';
   for (let y = 0; y < h; y += 4) g.fillRect(0, y, w, 1);
-  if (!L.active) return;
+  if (!L.active) {
+    // every fault is not clear yet: say which ones, so the screen is never a riddle
+    g.fillStyle = '#8ff0ff';
+    g.font = '700 24px ui-monospace,monospace';
+    g.fillText('PC DOKTER — BOOT', 28, 44);
+    g.fillStyle = '#ffb84d';
+    g.font = '700 34px ui-monospace,monospace';
+    g.fillText('BOOT HALTED', 28, 112);
+    g.font = '400 21px ui-monospace,monospace';
+    g.fillStyle = 'rgba(255,220,160,.9)';
+    g.fillText(state.codes.length
+      ? state.codes.join(' · ') + '   (' + state.codes.length + ' fault' + (state.codes.length > 1 ? 's' : '') + ')'
+      : 'nothing left · opening the login…', 28, 158);
+    g.fillStyle = 'rgba(140,230,255,.55)';
+    g.font = '400 17px ui-monospace,monospace';
+    g.fillText('the two-digit display on the case is cycling them', 28, 206);
+    g.fillText('the customer login comes up when the last one clears', 28, 234);
+    screenLive.needsUpdate = true;
+    return;
+  }
   if (!L.ok) {
     g.fillStyle = '#8ff0ff';
     g.font = '700 26px ui-monospace,monospace';

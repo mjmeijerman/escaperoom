@@ -174,6 +174,13 @@ A connector goes in with the power on or off — but the device only wakes up on
 note beside them. Click the connector, or the cable near it, then ride the zipline back over with it in your hands.
 The cable follows you; that is the only way it is getting across.
 
+**The monitor says BOOT HALTED.**
+Then a fault is still live: the screen lists which ones. Those are the codes still cycling on the two-digit display
+inside the case. The customer login only comes up when that list is empty.
+
+**The monitor says BOOT HALTED with no codes on it.**
+Wait a moment — it opens the login by itself about a second after the last fault clears.
+
 **The login cursor will not move.**
 Two reasons, and the tray says which. The mouse must be plugged into the rear panel and its sensor window must be
 clean — take the can of air out of the notepad and blow the hair off. Then `E` it to take hold, drag, and `E` again

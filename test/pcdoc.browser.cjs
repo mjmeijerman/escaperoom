@@ -486,6 +486,10 @@ const check = (name, ok, detail = '') => {
   const mon = await st();
   check('plugging it in clears A2', !mon.codes.includes('A2'), mon.codes.join(','));
   check('the rear panel gives up its character', mon.notes.monitor === 'R', String(mon.notes.monitor));
+  check('the monitor wakes on the live screen, not a static card', await page.evaluate(() => {
+    const d = window.__doctor;
+    return d.scene.children.some(o => o.isMesh && o.material && o.material.map === d.screenLive);
+  }));
   check('and the monitor wakes up', await page.evaluate(() => {
     const m = window.__doctor.scene.children.find(o => o.isMesh && o.material && o.material.emissiveIntensity > 1);
     return !!m;
