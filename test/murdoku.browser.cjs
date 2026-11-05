@@ -186,6 +186,62 @@ const st = page => page.evaluate(() => ({
   check('every statement is ticked in the notes', await page.evaluate(() =>
     (document.getElementById('padPeople').textContent.match(/✓/g) || []).length === 5));
 
+  /* --- the room itself: how it looks, how it walks ----------------------- */
+  check('the camera yaws before it pitches, so turning left does not roll the room',
+    await page.evaluate(() => {
+      const d = window.__murdoku;
+      d.teleport(0, 0, 1.2, -.6);
+      d.camera.updateMatrixWorld(true);
+      const up = new d.THREE.Vector3(0, 1, 0).applyQuaternion(d.camera.quaternion);
+      const right = new d.THREE.Vector3(1, 0, 0).applyQuaternion(d.camera.quaternion);
+      return d.cameraOrder() === 'YXZ' && Math.abs(up.dot(right)) < .01;
+    }));
+
+  check('there is a painted plaque for every room and one for the hall', await page.evaluate(() => {
+    const d = window.__murdoku;
+    const ids = d.interact.map(o => o.userData.interact).filter(id => id && id.startsWith('sign_'));
+    return ids.length >= 6 && ids.includes('sign_logeerkamer') && ids.includes('sign_the hall');
+  }));
+
+  const signRead = await page.evaluate(() => {
+    const d = window.__murdoku;
+    const sign = d.interact.find(o => o.userData.interact === 'sign_logeerkamer');
+    const p = new d.THREE.Vector3();
+    sign.getWorldPosition(p);
+    d.state.locked = false;
+    let hit = null;
+    for (const [ax, az] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      for (const dy of [0, -.35, .35]) {
+        d.teleport(p.x + ax * 1.1, p.z + az * 1.1, Math.atan2(ax, az), Math.atan2(dy, 1.1));
+        d.camera.position.y = p.y + dy;
+        d.camera.updateMatrixWorld(true);
+        hit = d.target();
+        if (hit) break;
+      }
+      if (hit) break;
+    }
+    d.state.hovered = hit;
+    const text = hit ? (d.use(), document.getElementById('body').textContent.replace(/\s+/g, ' ')) : '';
+    return { id: hit && hit.id, text };
+  });
+  check('a plaque can be read and names the room and its squares',
+    signRead.id === 'sign_logeerkamer' && /logeerkamer/i.test(signRead.text) && /C1R1/.test(signRead.text),
+    signRead.id + ' · ' + signRead.text.slice(0, 50));
+
+  const throughWall = await page.evaluate(async () => {
+    const d = window.__murdoku;
+    // the wall between the kitchen and the living room, at x 3.2, away from its doorway
+    d.state.locked = true;
+    d.teleport(3.2, -1.2, Math.PI, 0);
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
+    await new Promise(r => setTimeout(r, 1100));
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
+    d.state.locked = false;
+    return { z: +d.camera.position.z.toFixed(2), solids: d.SOLIDS.length };
+  });
+  check('the part-walls are scenery: you walk straight through them',
+    throughWall.z > .4, JSON.stringify(throughWall));
+
   check('no console errors', logs.length === 0, logs.join(' | '));
 
   mkdirSync('test/.shots', { recursive: true });

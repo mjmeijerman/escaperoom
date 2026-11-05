@@ -29,7 +29,10 @@ Coordinates are **C**olumn then **R**ow. C1 is the west edge, R1 the north.
 - **keuken** — C5R1, C5R2, C5R3, C6R1, C6R2, C6R3 (6)
 - **woonkamer** — the other ten
 
-No doors: the rooms are told apart by floor colour and a painted name, so you can walk anywhere.
+No doors. The rooms are told apart by floor colour, by a knee-high part-wall (1.3 m, the height of the television)
+along every boundary, and by a painted plaque on the wall of each room. The part-walls are scenery — you walk
+straight through them, and through their doorways, which is the point: the grids are the puzzle, not the masonry, and
+nothing in the house is allowed to make a square unreachable.
 
 ### Furniture
 
@@ -95,12 +98,15 @@ above; if the row rule is turned on later, the victim moves to C2R6 and nothing 
 | Input | Action |
 | --- | --- |
 | `W A S D` / arrows | walk (`Shift` to hurry) |
-| mouse | look (click to capture, `Esc` to release) |
+| mouse | look (click to capture, `Esc` to release) — yaw first, so turning never rolls the room |
 | `E` | pick a guest up, put them down on the square you are looking at, read the case file |
 | `F` | cross a square out (or clear it again) |
 | `Q` | put the guest in your arms back in the hall |
 | `I` | the notes: every statement, ticked or crossed as you place people |
 | `R` | everyone back to the hall, every mark gone (after the case closes: play again) |
+
+Room plaques read like the case file: look at one and the tray names the room and lists its squares, so the grid is
+always legible even when a rug is over the floor paint.
 
 Carrying a guest: `E` on them, walk to the square, look at the floor and `E` again. The note pad on the right ticks a
 statement as soon as that person stands somewhere that fits it, so the puzzle is legible while you work — a tick is
@@ -118,6 +124,7 @@ file on the west wall is the same text as the notes.
   it, so a new case is a new table and a new set of predicates — not new scenes.
 - `?test` exposes `window.__murdoku` (place, lift, checkWin, the sets of furniture squares) for
   `test/murdoku.browser.cjs`, which walks the whole case: the rooms, the furniture, carrying a guest, crossing a
-  square out, and the solution that closes it (27 checks).
+  square out, the solution that closes it, a plaque read off the wall, and a walk straight through a part-wall to
+  prove it is scenery (31 checks).
 - Known gap, deliberate for a first case: the checker accepts the layout above but not a *unique* one — see the note
   on the row rule. A second case should either turn the row rule on or drop the "leftover square" statement.
