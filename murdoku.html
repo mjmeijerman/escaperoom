@@ -113,6 +113,38 @@
   #pad.pulse{animation:pulsePad .9s ease-out 2}
   @keyframes pulsePad{0%{box-shadow:0 0 0 0 rgba(224,176,114,.55)}100%{box-shadow:0 0 0 18px rgba(224,176,114,0)}}
   #reset{position:fixed;right:16px;bottom:70px;z-index:9;display:none}
+
+  /* ---------- touch: a stick, six buttons, no pointer lock ---------- */
+  #touch{position:fixed;inset:0;z-index:7;pointer-events:none;display:none}
+  body.touch #touch{display:block}
+  #stick{position:absolute;left:14px;bottom:14px;width:126px;height:126px;border-radius:50%;
+    border:1px solid rgba(224,176,114,.34);background:radial-gradient(circle,rgba(26,20,22,.55),rgba(10,8,10,.3));
+    pointer-events:auto;touch-action:none}
+  #stickKnob{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;
+    background:rgba(224,176,114,.26);border:1px solid rgba(224,176,114,.6)}
+  #tbtns{position:absolute;right:12px;bottom:14px;display:grid;grid-template-columns:repeat(3,52px);gap:8px;
+    pointer-events:auto}
+  #tbtns button{width:52px;height:52px;border-radius:50%;font-family:var(--mono);font-size:.86rem;
+    letter-spacing:.02em;color:#ffe8c8;background:rgba(14,10,12,.8);
+    border:1px solid rgba(224,176,114,.45);touch-action:none;padding:0}
+  #tbtns button small{display:block;font-size:.44rem;letter-spacing:.1em;color:#a3968c;margin-top:-2px}
+  #tbtns button:active{background:rgba(224,176,114,.32)}
+  body.touch #legend{display:none}
+  body.touch #tray{left:8px;right:8px;bottom:auto;top:50px;width:auto;font-size:.68rem;max-height:26vh;overflow:auto}
+  body.touch #pad{left:8px;right:8px;top:46px;width:auto;font-size:.64rem;line-height:18px;
+    max-height:calc(100vh - 212px);max-height:calc(100dvh - 212px);overflow:auto;padding:10px 12px;
+    background:linear-gradient(180deg,#1d181a,#12100f);box-shadow:0 18px 50px rgba(0,0,0,.8)}
+  body.touch .toasts{bottom:146px;width:min(400px,92vw)}
+  body.touch .toast{font-size:.68rem;padding:.4em .8em}
+  #pad .padfoot{display:none;margin-top:8px;padding-top:7px;border-top:1px solid rgba(255,255,255,.1)}
+  body.touch #pad .padfoot{display:block}
+  #pad .padfoot button{width:100%;min-height:42px;font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;
+    text-transform:uppercase;color:#dccabd;background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.18);border-radius:2px}
+  #pad .padfoot button:active{background:rgba(224,176,114,.28)}
+  #start .touch-only{display:none}
+  body.touch #start .desk-only{display:none}
+  body.touch #start .touch-only{display:block}
 </style>
 </head>
 <body>
@@ -133,7 +165,8 @@
 
 <aside id="pad"><h2>suspects</h2><ul id="padPeople"></ul>
   <h2>the case</h2><ul id="padClues"></ul>
-  <h2>house rules</h2><div class="rule" id="padRules"></div></aside>
+  <h2>house rules</h2><div class="rule" id="padRules"></div>
+  <div class="padfoot"><button id="padReset" type="button">↺ everyone back to the hall</button></div></aside>
 
 <aside id="legend" aria-label="controls">
   <span><b>W A S D</b> walk</span>
@@ -152,18 +185,32 @@
     <p>A country house, a body in the hall, and five guests who all have an alibi. The floor is a grid of
        thirty-six squares and the whole case is a puzzle: put everyone where the statements say they were.</p>
     <button id="startBtn">Enter the house</button>
-    <small>W A S D walk · E pick up and put down · F mark a cell · I notes · click to look</small>
+    <small class="desk-only">W A S D walk · E pick up and put down · F mark a cell · I notes · click to look</small>
+    <small class="touch-only">stick to walk · one finger to look and tap to use · ▤ notes · ? hint</small>
   </div>
 </div>
 
 <div id="banner" hidden></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
+<div id="touch" aria-hidden="true">
+  <div id="stick"><i id="stickKnob"></i></div>
+  <div id="tbtns">
+    <button data-act="use" aria-label="pick up or put down">E</button>
+    <button data-act="jump" aria-label="jump">↑</button>
+    <button data-act="pad" aria-label="notes">▤</button>
+    <button data-act="back" aria-label="put back">↩</button>
+    <button data-act="mark" aria-label="mark a cell">✗</button>
+    <button data-act="hint" aria-label="hint">?</button>
+  </div>
+</div>
+
 <script type="module">
 import * as THREE from './vendor/three.module.min.js';
 
 const $ = s => document.querySelector(s);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const TOUCH = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;   // a phone, not a mouse
 
 /* ------------------------------------------------------------------ setup */
 const canvas = $('#scene');
@@ -890,7 +937,7 @@ function toast(msg, kind = '') {
   el.className = 'toast ' + kind;
   el.textContent = msg;
   toasts.appendChild(el);
-  while (toasts.children.length > 6) toasts.firstElementChild.remove();
+  while (toasts.children.length > (TOUCH ? 2 : 6)) toasts.firstElementChild.remove();
   const life = Math.min(9000, 2600 + msg.length * 42);
   setTimeout(() => { el.style.transition = 'opacity .5s'; el.style.opacity = '0'; }, life);
   setTimeout(() => el.remove(), life + 560);
@@ -900,8 +947,15 @@ function banner(html) { bannerEl.innerHTML = html; bannerEl.hidden = false; }
 const person = id => PEOPLE.find(p => p.id === id);
 const placedList = () => PEOPLE.filter(p => state.placed[p.id]);
 
-function renderPad() {
+function openPad() {
   padEl.hidden = false;
+  renderPad();
+}
+function togglePad() {
+  // picking someone up redraws the notes but must not throw them open on a phone
+  if (padEl.hidden) openPad(); else padEl.hidden = true;
+}
+function renderPad() {
   $('#padPeople').innerHTML = PEOPLE.map(p => {
     const at = state.placed[p.id];
     const ok = at && p.test ? p.test(at[0], at[1]) : null;
@@ -1131,7 +1185,7 @@ function checkWin() {
   state.murderer = murdererOf();
   banner('CASE CLOSED<small>everyone accounted for. One of them is holding the knife.</small>');
   toast('The grid holds: every statement fits, every row and column has one of them — and the body shares its room with one person.', 'good');
-  renderPad();
+  openPad();
   if (state.murderer) setTimeout(() => revealMurderer(state.murderer), 1400);
 }
 
@@ -1177,6 +1231,7 @@ function move(dt) {
   if (keys.has('KeyS') || keys.has('ArrowDown')) fz += 1;
   if (keys.has('KeyA') || keys.has('ArrowLeft')) fx -= 1;
   if (keys.has('KeyD') || keys.has('ArrowRight')) fx += 1;
+  if (state.stick) { fx += state.stick.x; fz += state.stick.y; }      // the thumb on a phone
   const sin = Math.sin(yaw), cos = Math.cos(yaw);
   if (fx || fz) {
     const len = Math.hypot(fx, fz);
@@ -1271,8 +1326,7 @@ addEventListener('keydown', e => {
   if (!state.started) return;
   if (e.code === 'Tab' || e.code === 'KeyI') {
     e.preventDefault();
-    padEl.hidden = !padEl.hidden;
-    renderPad();
+    togglePad();
     if (document.pointerLockElement) document.exitPointerLock();
     return;
   }
@@ -1302,6 +1356,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => keys.delete(e.code));
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('mousedown', e => {
+  if (TOUCH) return;
   if (!state.locked) { canvas.requestPointerLock?.(); return; }
   use();
 });
@@ -1311,6 +1366,92 @@ document.addEventListener('mousemove', e => {
   yaw -= e.movementX * .0026;
   pitch = clamp(pitch - e.movementY * .0026, -1.3, 1.3);
 });
+
+/* ------------------------------------------------------------------ touch
+   A phone has no pointer lock and no WASD. One stick for walking, one finger on
+   the scene to look, and six buttons for the keys that matter. */
+state.stick = { x: 0, y: 0 };
+if (TOUCH) {
+  document.body.classList.add('touch');
+  $('#touch').hidden = false;
+  padEl.hidden = true;
+}
+
+function bindTouch() {
+  const stickEl = $('#stick'), knob = $('#stickKnob'), R = 48;
+  let stickId = null;
+  const setStick = (dx, dy) => {
+    const d = Math.hypot(dx, dy) || 1, k = d > R ? R / d : 1;
+    const x = dx * k, y = dy * k;
+    state.stick.x = x / R; state.stick.y = y / R;
+    knob.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+  };
+  const stickAt = e => {
+    const r = stickEl.getBoundingClientRect();
+    setStick(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+  };
+  stickEl.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    stickId = e.pointerId; stickAt(e);
+    try { stickEl.setPointerCapture?.(e.pointerId); } catch { /* nothing to capture */ }
+  });
+  stickEl.addEventListener('pointermove', e => { if (e.pointerId === stickId) stickAt(e); });
+  const dropStick = e => {
+    if (e.pointerId !== stickId) return;
+    stickId = null; state.stick.x = 0; state.stick.y = 0;
+    knob.style.transform = 'translate(0,0)';
+  };
+  stickEl.addEventListener('pointerup', dropStick);
+  stickEl.addEventListener('pointercancel', dropStick);
+
+  // one finger on the scene: drag to look, tap to use what the crosshair is on
+  let lookId = null, lx = 0, ly = 0, moved = 0, downAt = 0;
+  canvas.addEventListener('pointerdown', e => {
+    if (e.target !== canvas) return;
+    lookId = e.pointerId; lx = e.clientX; ly = e.clientY; moved = 0; downAt = performance.now();
+    try { canvas.setPointerCapture?.(e.pointerId); } catch { /* nothing to capture */ }
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (e.pointerId !== lookId) return;
+    const dx = e.clientX - lx, dy = e.clientY - ly;
+    lx = e.clientX; ly = e.clientY;
+    moved += Math.abs(dx) + Math.abs(dy);
+    yaw -= dx * .005;
+    pitch = clamp(pitch - dy * .005, -1.3, 1.3);
+  });
+  const lookEnd = e => {
+    if (e.pointerId !== lookId) return;
+    lookId = null;
+    if (moved < 14 && performance.now() - downAt < 450) use();      // a tap, not a drag
+  };
+  canvas.addEventListener('pointerup', lookEnd);
+  canvas.addEventListener('pointercancel', e => { if (e.pointerId === lookId) lookId = null; });
+  canvas.addEventListener('dblclick', e => e.preventDefault());
+
+  const act = {
+    use() { use(); },
+    jump() { if (grounded) { vy = 6.6; grounded = false; } },
+    pad() { togglePad(); },
+    back() { if (state.carry) putBack(state.carry); else toast('Your hands are empty.'); },
+    mark() { toggleMark(); },
+    hint() { giveHint(); },
+  };
+  document.querySelectorAll('#touch button[data-act]').forEach(b => {
+    const fire = e => { e.preventDefault(); act[b.dataset.act]?.(); };
+    b.addEventListener('pointerdown', fire);
+    b.addEventListener('contextmenu', e => e.preventDefault());
+  });
+  const resetBtn = $('#padReset');
+  resetBtn?.addEventListener('click', e => {
+    e.preventDefault();
+    if (state.won) { location.reload(); return; }
+    PEOPLE.forEach(p => { delete state.placed[p.id]; visuals[p.id].g.position.copy(visuals[p.id].home); });
+    state.marks.clear(); syncMarks(); state.carry = null;
+    renderPad();
+    toast('Everyone back to the hall, every mark gone.');
+  });
+}
+if (TOUCH) bindTouch();
 
 /* ------------------------------------------------------------------ loop */
 const clock = new THREE.Clock();
@@ -1349,7 +1490,7 @@ function tick() {
       } else if (state.hovered.id === 'casefile' || state.hovered.id.startsWith('sign_')) {
         actionable = false;
       }
-      promptEl.innerHTML = actionable ? `<kbd>E</kbd>${text}` : text;
+      promptEl.innerHTML = actionable ? `<kbd>${TOUCH ? 'tap' : 'E'}</kbd>${text}` : text;
       promptEl.classList.toggle('read', !actionable);
       promptEl.hidden = false;
       if (state.trayId !== state.hovered.id + (state.carry || '')) {
@@ -1397,10 +1538,10 @@ renderer.setAnimationLoop(tick);
 $('#startBtn').addEventListener('click', () => {
   $('#start').hidden = true;
   state.started = true;
-  renderPad();
+  if (!TOUCH) openPad();
   camera.position.set(0, P.eye, 7.6);
   yaw = 0; pitch = -.04;
-  canvas.requestPointerLock?.();
+  if (!TOUCH) canvas.requestPointerLock?.();
   setTimeout(() => toast('Five guests and a body. Read the case file on the west wall.', ''), 700);
 });
 
@@ -1415,7 +1556,7 @@ if (new URLSearchParams(location.search).has('test') || new URLSearchParams(loca
   window.__murdoku = {
     state, PEOPLE, ROOM_AT, roomAt, cellX, cellZ, key, place, lift, putBack, checkWin, toggleMark,
     columnsOK, cellOfPoint, visuals, camera, scene, THREE, interact, target, raycaster,
-    BEDS, TABLES, CHAIRS, TVS, RUGS, PLANTS, NO_STAND, WINDOW, WINDOW_AT, FURN, use, readCase, renderPad, trayEl,
+    BEDS, TABLES, CHAIRS, TVS, RUGS, PLANTS, NO_STAND, WINDOW, WINDOW_AT, FURN, use, readCase, renderPad, openPad, trayEl,
     SOLIDS, WALLS, buildWalls, wallSign, groundAt, cameraOrder: () => camera.rotation.order,
     HOUSE: { X0, X1, Z0, Z1, WALL_H, CELL }, plaqueCount: () => interact.filter(o => String(o.userData.interact).startsWith('sign_')).length,
     rowsOK, linesOK, murdererOf, giveKnife, revealMurderer, checkWinNow: checkWin, beside, nextToSameRoom, giveHint,

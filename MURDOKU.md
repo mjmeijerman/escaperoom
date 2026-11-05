@@ -145,6 +145,21 @@ grid tells you where everyone was, and the murderer is the *reading* of that ans
 | `H` | een hint in het Nederlands: wie er nog staat, welke verklaring niet klopt, of dat Vladimir met precies één ander in een kamer moet |
 | `R` | everyone back to the hall, every mark gone (after the case closes: play again) |
 
+### On a phone
+
+The house opens on a phone too. There is no pointer lock and no keyboard, so the same six actions move to the screen:
+
+- a **stick** in the bottom left corner to walk; push it further to walk faster,
+- **one finger on the scene** to look — drag to turn, and a *tap* uses whatever the crosshair is on, so picking
+  someone up is a tap, not a tap-then-tap-someone-else,
+- **six buttons** bottom right: `E` use, `↑` jump, `▤` notes, `↩` put back, `✗` mark a square, `?` hint.
+- the notes open as one solid sheet that stops above the buttons, and they carry their own reset at the bottom,
+  because a phone has no `R`.
+
+The keyboard legend disappears, toasts are capped at two so they cannot crawl over the buttons, and the crosshair
+prompt says `tap` instead of `E`. Reaching into the notes does not steal the screen: picking someone up redraws them
+but never throws them open.
+
 Room plaques read like the case file: look at one and the tray names the room and lists its squares, so the grid is
 always legible even when a rug is over the floor paint.
 
@@ -173,7 +188,11 @@ one other person — and it never names a square outright.
   crosshair that names what it is on even when the thing is made of several parts, the row rule, "next to" being the
   square beside you in the same room, the murderer's deduction, the knife in their hand, the camera stepping onto the
   square in front of them, every one of the six looking the way the cast list says, the victim's head off his
-  shoulders, a Dutch hint from `H`, and six guests in the notes each with their own colour (62 checks).
+  shoulders, a Dutch hint from `H`, and six guests in the notes each with their own colour (63 checks).
+- `test/murdoku.mobile.cjs` is the same house at 390 x 844 with a touch screen: the phone layout, the stick moving the
+  camera, a dragged finger turning it, a tap picking a guest up while a drag does not, all six buttons, the notes as a
+  sheet that stops above them, and their own reset (26 checks). Run it the same way, with
+  `node test/murdoku.mobile.cjs`.
 - The case is now unique, not just solvable: with rows, columns and strict adjacency exactly one layout survives, and
   the victim's square falls out of it. That is checked by brute force over the thirty-six squares, and the statements
   are tight enough that no second layout sneaks through.
