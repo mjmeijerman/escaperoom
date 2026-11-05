@@ -956,12 +956,47 @@ kbDeckG.rotation.x = .055;                 // the back edge sits up: a ramp, not
 kbG.add(kbDeckG);
 box(.44, .008, .16, new THREE.MeshStandardMaterial({ color: 0x191e21, roughness: .6 }), 0, .004, 0, kbDeckG);
 const kbKeyMat = new THREE.MeshStandardMaterial({ color: 0x1f262a, roughness: .5, emissive: 0x000000 });
-for (let r = 0; r < 4; r++) for (let c = 0; c < 16; c++) {
-  box(.023, .009, .021, kbKeyMat, -.195 + c * .026, .0125, -.050 + r * .025, kbDeckG);
-}
-// the bottom row: a spacebar and four modifiers
-box(.130, .009, .021, kbKeyMat, -.030, .0125, .050, kbDeckG);
-[-.160, -.100, .100, .160].forEach(x => box(.030, .009, .021, kbKeyMat, x, .0125, .050, kbDeckG));
+
+/* the legends: one atlas, one material, a UV window per key */
+const KEY_ROWS = ['1234567890-= ', 'QWERTYUIOP[] ', "ASDFGHJKL;'  ", 'ZXCVBNM,./   '];
+const keyAtlas = (() => {
+  const glyphs = [...new Set(KEY_ROWS.join('').split('').filter(ch => ch !== ' '))];
+  const CELL = 128, COLS = 8, rows = Math.ceil(glyphs.length / COLS);
+  const c = document.createElement('canvas');
+  c.width = COLS * CELL; c.height = rows * CELL;
+  const g = c.getContext('2d');
+  g.fillStyle = '#e2edf1';
+  g.font = '700 86px ui-monospace,Menlo,Consolas,monospace';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  glyphs.forEach((ch, i) => {
+    g.fillText(ch, (i % COLS) * CELL + CELL / 2, Math.floor(i / COLS) * CELL + CELL / 2 + 4);
+  });
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return { tex: t, index: Object.fromEntries(glyphs.map((ch, i) => [ch, i])), rows };
+})();
+const kbLegendMat = new THREE.MeshStandardMaterial({
+  map: keyAtlas.tex, transparent: true, roughness: .55, emissive: 0x000000, emissiveMap: keyAtlas.tex,
+});
+const KEY_GEO = new THREE.PlaneGeometry(.017, .014);
+KEY_ROWS.forEach((row, r) => row.split('').forEach((ch, c) => {
+  const x = -.180 + c * .030, z = -.052 + r * .026;
+  box(.027, .009, .023, kbKeyMat, x, .0125, z, kbDeckG);
+  if (ch === ' ') return;
+  const g2 = KEY_GEO.clone();
+  const i = keyAtlas.index[ch];
+  const u0 = (i % 8) / 8, v0 = 1 - (Math.floor(i / 8) + 1) / keyAtlas.rows;
+  const uv = g2.attributes.uv;
+  for (let k = 0; k < uv.count; k++) uv.setXY(k, u0 + uv.getX(k) / 8, v0 + uv.getY(k) / keyAtlas.rows);
+  uv.needsUpdate = true;
+  const m = new THREE.Mesh(g2, kbLegendMat);
+  m.rotation.x = -Math.PI / 2;
+  m.position.set(x, .0172, z);          // just clear of the keycap top
+  kbDeckG.add(m);
+}));
+// the bottom row: three modifiers, a spacebar, three more
+[-.180, -.150, -.120, .120, .150, .180].forEach(x => box(.027, .009, .023, kbKeyMat, x, .0125, .050, kbDeckG));
+box(.150, .009, .023, kbKeyMat, .015, .0125, .050, kbDeckG);
 // a strip of backlight along the front lip, and the cable leaving the back
 const kbGlow = box(.40, .0025, .003, new THREE.MeshStandardMaterial({ color: 0x0b0f11, roughness: .5, emissive: 0x000000 }),
   0, .010, .078, kbDeckG);
@@ -1470,16 +1505,14 @@ const THINGS = {
   },
   tower: {
     kicker: 'bench', title: 'The customer\'s tower',
-    text: () => `<p>Side panel off, screws in a cup. From here it is just a black box with a bad attitude.</p>
-      <p class="sub">The shrink ray would let you walk in through that open side.</p>`,
+    text: () => `<p>Side panel off, screws in a cup. A black box with a bad attitude.</p>`,
     keys: () => '', act() { },
   },
   led: {
     kicker: 'inside the case', title: 'Debug display',
     text: () => state.casePower
-      ? `<p>The two-digit display is cycling through every fault it knows about.</p>
-         <p class="got">current: ${state.codes.length ? state.codes[state.codeIndex % state.codes.length] : '--'}</p>
-         <p class="sub">${state.codes.length} faults live. The manual on the bench names them.</p>`
+      ? `<p>Cycling every fault it knows about.</p>
+         <p class="got">current: ${state.codes.length ? state.codes[state.codeIndex % state.codes.length] : '--'}</p>`
       : '<p>Dark. No standby power yet.</p>',
     keys: () => '', act() { },
   },
@@ -1487,10 +1520,7 @@ const THINGS = {
     kicker: 'case floor', title: 'Anti-static bag',
     text: () => state.ram.spare
       ? '<p>Empty. The spare module is in your pocket.</p>'
-      : `<p>A sealed bag with one memory module inside. The sticker on it says <b>SPARE &gt; B2</b> — Gerrit labelled
-         it for exactly this job.</p>
-         <p class="sub">${state.ram.b2Out ? 'B2 is empty and open. Take the module and put it there.'
-           : 'B2 still has the burnt module in it. Pull that one out first.'}</p>`,
+      : '<p>A sealed bag, one module inside. The sticker says <b>SPARE &gt; B2</b>.</p>',
     keys: () => state.ram.spare ? '' : '<kbd>E</kbd>take the module',
     act() {
       if (state.ram.spare) return;
@@ -1498,7 +1528,7 @@ const THINGS = {
       bagGroup.visible = false;
       const bagSolid = SOLID_S.find(b => Math.abs(b.x0 + 1.955) < .01 && Math.abs(b.z0 + 2.05) < .01);
       if (bagSolid) SOLID_S.splice(SOLID_S.indexOf(bagSolid), 1);
-      sfx.pickup(); toast('A good 8 GB module. Slot B2 is right there — E to seat it.', 'good');
+      sfx.pickup(); toast('A good 8 GB module.');
       renderPad();
     },
   },
@@ -1506,7 +1536,7 @@ const THINGS = {
     kicker: 'memory', title: 'Slot A2',
     text: () => state.ram.a2
       ? '<p>Home, both clips down. This one was never the problem.</p>'
-      : '<p>One module is barely in its slot — leaning out, one clip open. It looks clean; it has simply worked loose.</p>',
+      : '<p>Half out of its slot, one clip open. It looks clean.</p>',
     keys: () => state.ram.a2 ? '' : '<kbd>E</kbd>push it home',
     act() {
       if (state.ram.a2) return;
@@ -1516,22 +1546,18 @@ const THINGS = {
       stickIn.position.z = TOWER.z - .01;
       seatA2Collider();
       sfx.snap(); setTimeout(() => sfx.clack(), 90);
-      toast('It slides home and both clips snap down.', 'good');
-      setTimeout(() => toast(state.ram.seated ? 'Both modules seated.' : 'C1 is still up — so the fault is the other module.', ''), 1500);
+      toast('Home. Both clips snap down.', 'good');
+      setTimeout(() => toast(state.ram.seated ? 'Both modules seated.' : 'C1 is still up. The other module, then.', ''), 1500);
       checkRam();
     },
   },
   slotB2: {
     kicker: 'memory', title: 'Slot B2',
     text: () => state.ram.seated
-        ? `<p>The replacement is seated and the clips are down. Whatever it was hiding is in the notepad: <b>${state.notes.RAM || 'N'}</b>.</p>`
+        ? `<p>Seated, clips down. The notepad has <b>${state.notes.RAM || 'N'}</b>.</p>`
         : state.ram.b2Out
-          ? `<p>Empty, clips open. The scorched module lies where you dropped it. ${state.ram.spare
-              ? 'The spare is in your pocket — <b>E</b> seats it.'
-              : 'You need a replacement: the sealed bag beside the slots says <b>SPARE &gt; B2</b>.'}</p>`
-          : `<p>A module with a scorched edge and a burnt chip above the third memory package. Someone wrote <b>RMA</b>
-             on it in marker.</p>
-             <p class="sub">The intake form said "it beeps". This is the beep.</p>`,
+          ? '<p>Empty, clips open.</p>'
+          : '<p>Scorched edge, a burnt chip, and <b>RMA</b> in marker.</p>',
     keys: () => state.ram.seated ? '' : state.ram.b2Out
       ? (state.ram.spare ? '<kbd>E</kbd>seat the spare' : 'empty hands')
       : '<kbd>E</kbd>pull the burnt module out',
@@ -1544,8 +1570,7 @@ const THINGS = {
         state.items.push('burnt DDR4 (RMA)');
         renderPad();
         sfx.snap();
-        toast('Out, and it stays out: burnt chip, scorched edge. That is the beep in the intake form.', 'good');
-        setTimeout(() => toast('A sealed spare sits beside the slots: SPARE > B2.', ''), 1400);
+        toast('Out. Scorched edge, burnt chip — the beep in the intake form.', 'good');
         return;
       }
       // the replacement goes in from the inventory, never straight from your pocket.
@@ -1556,7 +1581,7 @@ const THINGS = {
       pulsePad();
       if (document.pointerLockElement) document.exitPointerLock();
       sfx.click();
-      toast('Slot B2 is empty. Open the inventory and click the module to seat it.', '');
+      toast('Slot B2 is empty. The inventory has the module.', '');
     },
   },
   gen: {
@@ -1663,9 +1688,9 @@ const THINGS = {
   mouse: {
     kicker: 'desk', title: 'Mouse',
     text: () => state.usb.tipped
-      ? '<p>Over on its side, feet in the air, its window facing you.</p>'
+      ? '<p>Over on its side, feet in the air.</p>'
       : !state.usb.mouse
-        ? '<p>On a mousepad, cable trailing off the desk. Not plugged in, so it is a paperweight the size of a car.</p>'
+        ? '<p>On its pad, cable running off. Not plugged in.</p>'
         : '<p>On its pad, logo lit. The intake form was right about this one.</p>',
     keys: () => state.phase === 'shrunk'
       ? (state.usb.tipped ? '<kbd>E</kbd>put it back on its pad' : '<kbd>E</kbd>tip it onto its side')
@@ -2601,13 +2626,13 @@ function checkRam() {
   state.codes = state.codes.filter(c => c !== 'C1');
   state.notes.RAM = 'N';
   renderPad();
-  toast('Both modules home. C1 drops out of the cycle, and the module gives up a N.', 'good');
+  toast('C1 clears. The module gives up an N.', 'good');
 }
 function checkFans() {
   if (!fanDone() || !railLive() || state.fans.spinning) return;
   state.fans.spinning = true;
   sfx.spin();
-  clearCode('F1', 'O', 'fans', 'All three spin. F1 drops out of the cycle.');
+  clearCode('F1', 'O', 'fans', 'All three spin. F1 clears.');
 }
 function checkGpu() {
   if (state.gpu.seated && state.gpu.powered && railLive()) {
@@ -2628,14 +2653,14 @@ function plug(dest) {
   }
   if (!state.held) {
     sfx.nope();
-    toast('Your hands are empty. Pick up a cable end first.');
+    toast('Empty hands. A cable end first.');
     return;
   }
   if (state.held !== need) {
     sfx.buzz();
     const wrong = CABLE[state.held].name;
     if ((state.held === 'eps' && dest === 'hpcie') || (state.held === 'pcie' && dest === 'hcpu')) {
-      toast('Those two 8-pins are the same plug. This one goes in the other socket — read the label.', 'bad');
+      toast('Same plug, wrong socket. Read the label.', 'bad');
     } else {
       toast(`A ${wrong} will not go into ${label}.`, 'bad');
     }
@@ -2753,18 +2778,15 @@ Object.assign(THINGS, {
   gpu: {
     kicker: 'the hoist', title: 'Graphics card',
     text: () => {
-      if (!state.gpu.unlocked) return '<p>It hangs over the slot, held by the winch and a padlock.</p>';
-      if (state.gpu.drop < .92) {
-        return `<p>Hanging ${Math.round((1 - state.gpu.drop) * 100)}% of the way up. It has to come down to the rail first.</p>`;
-      }
-      if (!state.gpu.seated) return '<p>It is at the rail, rocking a little. One push and it will drop in.</p>';
-      // seated: say exactly what the board is still waiting for
+      if (!state.gpu.unlocked) return '<p>Over the slot, held by the winch and a padlock.</p>';
+      if (state.gpu.drop < .92) return `<p>Still ${Math.round((1 - state.gpu.drop) * 100)}% up.</p>`;
+      if (!state.gpu.seated) return '<p>At the rail, rocking a little.</p>';
       const wants = [];
-      if (!state.gpu.powered) wants.push('its own 8-pin (PCIe)');
-      if (!state.psu.rocker || !state.psu.atx || !state.psu.cpu) wants.push('12 V from the board (mains switch, 24-pin, CPU 8-pin)');
+      if (!state.gpu.powered) wants.push('an 8-pin');
+      if (!state.psu.rocker || !state.psu.atx || !state.psu.cpu) wants.push('12 V');
       return wants.length
-        ? `<p>Seated in the rail, but <b>d4 has not cleared</b>: it still wants ${wants.join(', and ')}.</p>`
-        : '<p>Seated, fed, and the board is alive. The serial plate says <b>E</b>.</p>';
+        ? `<p>Seated, but <b>d4</b> is still up: it wants ${wants.join(' and ')}.</p>`
+        : '<p>Seated and fed. The serial plate says <b>E</b>.</p>';
     },
     keys: () => state.gpu.unlocked && !state.gpu.seated && state.gpu.drop > .92 ? '<kbd>E</kbd>seat it' : '',
     act() {
@@ -2775,7 +2797,7 @@ Object.assign(THINGS, {
       SOLID_S.push(S(HOIST.x + .062, HOIST.x + .094, .90, B2 + .040, HOIST.z + .004, HOIST.z + .026));  // the connector on it
       sfx.chunk();
       setTimeout(() => sfx.snap(), 140);
-      toast('It drops into the rail and clicks. Now it wants power.', 'good');
+      toast('It drops into the rail and clicks.', 'good');
       pcieSock.visible = true;
       checkGpu();
     },
@@ -2787,7 +2809,7 @@ Object.assign(THINGS, {
     act() { plug('hpcie'); },
   },
   h24: { kicker: 'the board', title: '24-pin socket', text: () => state.psu.atx ? '<p>In, clipped.</p>' : '<p>The big one. The board lives or dies here.</p>', keys: () => state.psu.atx ? '' : '<kbd>E</kbd>plug it', act() { plug('h24'); } },
-  hcpu: { kicker: 'the board', title: 'CPU power socket', text: () => state.psu.cpu ? '<p>In.</p>' : '<p>An 8-pin, just like the one for the card. The label on the plug is the only difference.</p>', keys: () => state.psu.cpu ? '' : '<kbd>E</kbd>plug it', act() { plug('hcpu'); } },
+  hcpu: { kicker: 'the board', title: 'CPU power socket', text: () => state.psu.cpu ? '<p>In.</p>' : '<p>An 8-pin. The label on the plug is the only difference.</p>', keys: () => state.psu.cpu ? '' : '<kbd>E</kbd>plug it', act() { plug('hcpu'); } },
   hfan: { kicker: 'the fans', title: 'Fan hub', text: () => state.psu.sata ? '<p>Powered. The hub has its 12 V.</p>' : '<p>A little hub with three empty ports and one SATA socket.</p>', keys: () => state.psu.sata ? '' : '<kbd>E</kbd>plug the SATA', act() { plug('hfan'); } },
   plugRear: {
     kicker: 'the fans', title: 'Loose 4-pin',
@@ -2818,12 +2840,12 @@ Object.assign(THINGS, {
   },
   fanHeader: {
     kicker: 'the fans', title: 'SYS_FAN3',
-    text: () => '<p>A 4-pin header stencilled on the board — the plug sitting in it is the part you can move.</p>',
+    text: () => '<p>A 4-pin header, stencilled.</p>',
     keys: () => '', act() { },
   },
   sysFan3: {
     kicker: 'the fans', title: 'CPU fan plug',
-    text: () => state.fans.cpu ? '<p>Empty, and that is correct: the board only insists on <b>CPU_FAN</b> being occupied. A spare header sitting empty is normal.</p>' : '<p>The CPU fan\'s cable is plugged in here. It should not be.</p>',
+    text: () => state.fans.cpu ? '<p>Empty. A spare header may sit empty.</p>' : '<p>The CPU fan\'s cable is plugged in here.</p>',
     keys: () => state.fans.cpu ? '' : '<kbd>E</kbd>pull the 4-pin out',
     act() {
       if (state.fans.cpu) return;
@@ -2931,7 +2953,7 @@ function take(k) {
   if (cableWire[k]) cableWire[k].visible = false;
   showHeld(k);
   sfx.pickup();
-  toast(`Holding the ${CABLE[k].name}. ${CABLE[k].to === 'hpcie' ? 'The card wants it.' : 'Look at the socket and press E.'}`);
+  toast(`The ${CABLE[k].name}.`);
   renderTray();
 }
 function wireTo(dest, k) {
@@ -3128,9 +3150,7 @@ Object.assign(THINGS, {
     kicker: 'cables', title: 'HDMI cable',
     text: () => state.mon.plugged
       ? '<p>Both ends are in: the monitor, round the back, into the case.</p>'
-      : `<p>The monitor's HDMI cable, coiled on the bench where Gerrit dumped it when he moved the desk.</p>
-         <p class="sub">A monitor is only detected once that end is plugged in. The rear panel is on the back of the
-         case, round the side.</p>`,
+      : `<p>The monitor's cable, coiled on the bench where Gerrit dumped it.</p>`,
     keys: () => state.mon.plugged || state.held === 'hdmi' ? '' : '<kbd>E</kbd>pick up the loose end',
     act() {
       if (state.mon.plugged) return;
@@ -3141,14 +3161,14 @@ Object.assign(THINGS, {
       showPreCable(true, false);          // the loose end comes with you, the rest stays put
       showHeld('hdmi');
       sfx.pickup();
-      toast('The monitor\'s cable end. The rear panel is round the back of the case.');
+      toast('The monitor\'s cable end.');
     },
   },
   ioHdmi: {
     kicker: 'the back of the case', title: 'HDMI port',
     text: () => state.mon.plugged
       ? '<p>In. The monitor has a picture now, which means A2 is gone.</p>'
-      : '<p>The rear panel of the case, bolted over a hole in the back. An empty HDMI port, two USB-A ports beside it, and a lot of dust.</p>',
+      : '<p>The rear panel: an empty HDMI port, two USB-A ports, dust.</p>',
     keys: () => state.mon.plugged ? '' : '<kbd>E</kbd>plug the cable in',
     act() { plugHdmi(); },
   },
@@ -3186,8 +3206,8 @@ function plugHdmi() {
 
   sfx.snap();
   setTimeout(() => sfx.chime(), 220);
-  clearCode('A2', 'R', 'monitor', 'The monitor wakes up: A2 drops out of the cycle. The panel gives up an R.');
-  setTimeout(() => toast('The cable is taut now, bench to desk. Gerrit taped a grip on it — it takes your weight.', 'good'), 400);
+  clearCode('A2', 'R', 'monitor', 'A2 clears. The panel gives up an R.');
+  setTimeout(() => toast('The cable is taut now. The grips will take your weight.', 'good'), 400);
   renderPad();
 }
 
@@ -3213,8 +3233,7 @@ function startRide(toDesk) {
   yaw = Math.atan2(-tan.x * ZIP.dir, -tan.z * ZIP.dir);
   pitch = -.05;
   sfx.scratch();
-  toast(toDesk ? 'Both hands on the cable. Down the sag, over the gap, onto the desk.'
-    : 'Both hands. Up the cable, back to the bench.');
+  toast(toDesk ? 'Down the cable.' : 'Up the cable.');
   renderTray();
 }
 function rideTick(dt) {
@@ -3237,7 +3256,7 @@ function finishRide() {
   yaw = desk ? 3.0 : 0.30;                    // the desk end faces the keyboard; the bench end the case
   pitch = .04;
   sfx.step(false);
-  toast(desk ? 'On the desk. The keyboard is a runway and the monitor is a wall.' : 'Back on the bench.', 'good');
+  toast(desk ? 'On the desk.' : 'Back on the bench.', 'good');
   renderTray();
 }
 
@@ -3245,11 +3264,10 @@ Object.assign(THINGS, {
   zipBench: {
     kicker: 'the bench edge', title: 'HDMI cable — the grip',
     text: () => !ZIP.ready
-      ? '<p>The cable is coiled on the bench with one end loose. It is not holding anything up yet.</p>'
+      ? '<p>The cable is coiled on the bench, one end loose.</p>'
       : state.phase !== 'shrunk'
-        ? '<p>Gerrit has taped a grip onto his monitor cable. At this size it is a rope; at your size you would take the monitor with you.</p>'
-        : `<p>A fat serving of tape around the monitor cable, right where it leaves the bench. It runs down over the gap
-           — and it is the only way across.</p>`, 
+        ? '<p>Tape wrapped round a monitor cable. At your size you would take the monitor with you.</p>'
+        : '<p>A serving of tape round the cable, where it leaves the bench.</p>',
     keys: () => ZIP.ready && state.phase === 'shrunk' ? '<kbd>E</kbd>ride it down to the desk' : '',
     act() { startRide(true); },
   },
@@ -3396,8 +3414,7 @@ function tipMouse(over) {
   mouse.position.y = DESK.top + (over ? .0285 : .020);
   syncMouseSolid();
   sfx.clack();
-  toast(over ? 'It goes over with a rattle. The optical window faces you now.'
-    : 'Back on its pad, feet down.', '');
+  toast(over ? 'Over with a rattle.' : 'Back on its pad.', '');
   renderTray();
 }
 function cleanLens() {
@@ -3408,7 +3425,7 @@ function cleanLens() {
   if (state.usb.clean) return;
   if (!state.items.includes('compressed air')) {
     sfx.buzz();
-    toast('The hair sits there, mocking you. The can of air is standing on the bench, left of the case.', 'bad');
+    toast('The hair is still there. You need air.', 'bad');
     return;
   }
   state.invPending = null;
@@ -3417,17 +3434,20 @@ function cleanLens() {
   if (railLive()) lightMouse();          // clean glass, and a steady green read
   sfx.air();
   sfx.pop();
-  toast('The hair lifts off and the dust goes with it. The sensor reads clean — put it back on its pad.', 'good');
+  toast('The hair lifts off. Clean glass.', 'good');
   renderTray();
 }
 
 /* --- the lights, and what wakes them up -------------------------------- */
 function lightKeyboard() {
-  kbKeyMat.emissive = new THREE.Color(0x59d3ff);
-  kbKeyMat.emissiveIntensity = .55;
+  kbKeyMat.emissive = new THREE.Color(0x1d6f8c);
+  kbKeyMat.emissiveIntensity = .30;
   kbKeyMat.needsUpdate = true;
+  kbLegendMat.emissive = new THREE.Color(0x9fe6ff);
+  kbLegendMat.emissiveIntensity = .85;
+  kbLegendMat.needsUpdate = true;
   kbGlow.material.emissive = new THREE.Color(0x59d3ff);
-  kbGlow.material.emissiveIntensity = 1.6;
+  kbGlow.material.emissiveIntensity = 1.1;
 }
 function lightMouse() {
   mLed.material.emissive = new THREE.Color(0x63d68b);
@@ -3443,16 +3463,17 @@ function checkUsbPower() {
   if (state.usb.kbd && !state.usb.kbdLit) {
     state.usb.kbdLit = true;
     lightKeyboard();
-    setTimeout(() => toast("The keyboard's backlight comes up. Every key is a step.", 'good'), 140);
+    setTimeout(() => toast('The keyboard lights up.', 'good'), 140);
   }
   if (state.usb.mouse && !state.usb.mouseLit) {
     state.usb.mouseLit = true;
     lightMouse();
-    setTimeout(() => toast('The mouse lights up — and its sensor glows red. "The mouse is being weird." Now you can see why.', 'good'), 140);
+    setTimeout(() => toast('The mouse lights up. Its sensor reads red.', 'good'), 140);
   }
 }
 function darkUsb() {
   kbKeyMat.emissiveIntensity = 0;
+  kbLegendMat.emissiveIntensity = 0;
   kbGlow.material.emissiveIntensity = 0;
   mLed.material.emissiveIntensity = 0;
   mSensor.material.emissiveIntensity = 0;
@@ -3469,7 +3490,7 @@ function takeUsb(kind) {
   (kind === 'usbKbd' ? kbdPlug : mousePlug).visible = false;
   showHeld(kind);
   sfx.pickup();
-  toast('A USB-A connector in both arms, its cable trailing behind you. The rear panel is across the gap.');
+  toast('A connector in both arms, its cable trailing.');
   renderTray();
 }
 function plugUsb() {
@@ -3487,7 +3508,7 @@ function plugUsb() {
   routeUsb(kbd ? 'usbKbd' : 'usbMouse');
   sfx.snap();
   if (!railLive()) {
-    setTimeout(() => toast('In. The port has no 12 V yet, so the device stays dark.', ''), 140);
+    setTimeout(() => toast('In. No 12 V, so it stays dark.', ''), 140);
   } else {
     checkUsbPower();
   }
@@ -3504,9 +3525,7 @@ Object.assign(THINGS, {
     kicker: 'the desk', title: 'Keyboard connector',
     text: () => state.usb.kbd
       ? '<p>In. The keyboard is awake, backlit, and waiting to be walked on.</p>'
-      : `<p>A USB-A connector, bigger than your arm, at the end of the keyboard's own cable. Gerrit pulled it out of
-         the case and left it on the desk when he moved the monitor.</p>
-         <p class="sub">The port is on the back of the case, across the gap. Carry it over on the cable.</p>`,
+      : '<p>A USB-A connector at the end of the keyboard\'s own cable. Gerrit left it here.</p>',
     keys: () => state.usb.kbd ? '' : '<kbd>E</kbd>take the connector',
     act() { takeUsb('usbKbd'); },
   },
@@ -3514,29 +3533,27 @@ Object.assign(THINGS, {
     kicker: 'the desk', title: 'Mouse connector',
     text: () => state.usb.mouse
       ? '<p>In. And the mouse is already misbehaving, just as the intake form said.</p>'
-      : '<p>The mouse\'s connector, on the desk at the end of its cable. Same trip as the keyboard\'s.</p>',
+      : '<p>The mouse\'s connector, at the end of its cable.</p>',
     keys: () => state.usb.mouse ? '' : '<kbd>E</kbd>take the connector',
     act() { takeUsb('usbMouse'); },
   },
   usbPortA: {
     kicker: 'the back of the case', title: 'USB port',
-    text: () => `<p>One of two blue USB-A ports on the rear panel. Either connector fits either port — they are not fussy.
-         A connector will go in whether or not the board has 12 V; the device only wakes up once it does.</p>`,
+    text: () => '<p>A blue USB-A port. Either connector fits.</p>',
     keys: () => state.held === 'usbKbd' || state.held === 'usbMouse' ? '<kbd>E</kbd>plug it in' : '',
     act() { plugUsb(); },
   },
   usbPortB: {
     kicker: 'the back of the case', title: 'USB port',
-    text: () => '<p>The second blue port. Same deal: the other device goes here.</p>',
+    text: () => '<p>The second blue port.</p>',
     keys: () => state.held === 'usbKbd' || state.held === 'usbMouse' ? '<kbd>E</kbd>plug it in' : '',
     act() { plugUsb(); },
   },
   airCan: {
     kicker: 'the bench', title: 'Compressed air',
     text: () => state.items.includes('compressed air')
-      ? '<p>In the notepad: a blue can with a straw on the nozzle.</p>'
-      : `<p>A can of compressed air, standing on the bench with a note beside it:
-         <b>clean it first, then complain that it is broken</b>.</p>`,
+      ? '<p>In the notepad: a blue can with a straw.</p>'
+      : '<p>A can of air, and a note: <b>clean it first, then complain that it is broken</b>.</p>',
     keys: () => state.items.includes('compressed air') ? '' : '<kbd>E</kbd>take the can',
     act() { takeAir(); },
   },
@@ -3545,8 +3562,8 @@ Object.assign(THINGS, {
     text: () => !state.usb.tipped
       ? '<p>Underneath, where you cannot reach it. The mouse would have to go over onto its side first.</p>'
       : state.usb.clean
-        ? '<p>Clean glass. The sensor reads the pad smoothly now.</p>'
-        : '<p>A hair right across the window, and a felt of dust under it. That is what "the mouse is doing weird things" means.</p>',
+        ? '<p>Clean glass.</p>'
+        : '<p>A hair across the window, and a felt of dust. There is the "weird" in the intake form.</p>',
     keys: () => state.usb.tipped && !state.usb.clean ? '<kbd>E</kbd>the window is filthy' : '',
     act() {
       if (!state.usb.tipped) {
@@ -3556,7 +3573,7 @@ Object.assign(THINGS, {
       if (state.usb.clean) return;
       if (!state.items.includes('compressed air')) {
         sfx.buzz();
-        toast('A hair across the window. You need the can of air — it is standing on the bench, left of the case.', 'bad');
+        toast('A hair across the window. You need air.', 'bad');
         return;
       }
       // the can lives in the notepad now, so the notepad opens and you pick it
@@ -3566,7 +3583,7 @@ Object.assign(THINGS, {
       pulsePad();
       if (document.pointerLockElement) document.exitPointerLock();
       sfx.click();
-      toast('Pick the compressed air out of the inventory.', '');
+      toast('Pick the air out of the inventory.', '');
     },
   },
 });
@@ -3577,7 +3594,7 @@ function takeAir() {
   airSolid.y1 = BENCH.top;             // the can has left the bench
   sfx.pickup();
   renderPad();
-  toast('The can of air goes in the notepad. Pick it there when something needs blowing out.');
+  toast('The can of air goes in the notepad.');
   renderTray();
 }
 
@@ -3748,7 +3765,7 @@ if (new URLSearchParams(location.search).has('debug') || new URLSearchParams(loc
     interact, camera, scene, THREE, raycaster, ledCanvas, ledCtx, ledTexture, ledMat, led, A, audioInit,
     setFeet(f) { feet = f; camera.position.y = f + P.eye; },
     zip: ZIP, startRide, tipMouse, cleanLens, plugUsb, takeUsb, takeAir, usbWire, dropHeld,
-    a2Solid, b2Solid, SEATED_Z0, SEATED_Z1, USB, kbKeyMat, kbGlow, mLed, mSensor, checkUsbPower, darkUsb,
+    a2Solid, b2Solid, SEATED_Z0, SEATED_Z1, USB, kbKeyMat, kbLegendMat, kbDeckG, kbGlow, mLed, mSensor, checkUsbPower, darkUsb,
     look(y, pi) { yaw = y; pitch = pi; camera.rotation.set(pitch, yaw, 0); },
     aimAt(id, dist = 1.1, fy = null, at = null) {
       const cands = interact.filter(o => o.userData.interact === id);

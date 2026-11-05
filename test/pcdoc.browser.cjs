@@ -497,6 +497,11 @@ const check = (name, ok, detail = '') => {
   check('the ride lands you on the desk', zipDown.onDesk && zipDown.y > .77 && zipDown.riding === false,
     JSON.stringify(zipDown));
 
+  check('the keycaps carry letters you can read', await page.evaluate(() => {
+    const d = window.__doctor;
+    const legends = d.kbDeckG.children.filter(o => o.isMesh && o.material === d.kbLegendMat);
+    return legends.length >= 40;
+  }));
   const intoKb = await walkInto(2.42, -0.85, Math.PI, 0.76, 1500);
   check('the keyboard is solid: you walk into it, not through it', intoKb.z < -0.72, JSON.stringify(intoKb));
   const intoMouse = await walkInto(3.05, -0.75, Math.PI, 0.76, 1700);
@@ -532,6 +537,8 @@ const check = (name, ok, detail = '') => {
   await sleep(500);
   check('switching the mains on wakes the keyboard up', await page.evaluate(() =>
     window.__doctor.kbKeyMat.emissiveIntensity > 0 && window.__doctor.state.usb.kbdLit === true));
+  check('and the letters light with it', await page.evaluate(() =>
+    window.__doctor.kbLegendMat.emissiveIntensity > 0));
   check('and the cable is laid along the route you carried it', await page.evaluate(() =>
     window.__doctor.usbWire.usbKbd.visible === false && window.__doctor.USB.usbKbd.routed === true));
 
