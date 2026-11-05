@@ -46,7 +46,11 @@ Consequences, all free:
 - a screwdriver on the bench is a fallen **pillar**; the mug is a **cistern**; dust bunnies are **boulders**;
 - the open manual is a **landscape** — the code table is legible *by walking on it*;
 - the keyboard is a **plaza** of 3 m keys; the mouse is a **boulder you push**;
-- the monitor is a **glowing cliff** you climb to reach the login screen.
+- the monitor is a **glowing cliff**, and its own cable is the **only way to reach it** — see 5.6.
+
+Between the bench and the desk there is no floor worth the name: the desk top is 0.76 m and the bench 0.95 m, and the
+mat between them is eight storeys down. Shrunk, two surfaces are walkable (`SHRUNK_FLOORS`: bench, desk). Step off
+either and the lip catches you — no fall state, no lost progress.
 
 Precision is fine: worst case world extent ~20 m at eye height 17 mm → relative float error ~1e-6. Fog, shadow bias and
 contact-shadow size scale with `SCALES[k]`. Do not scale the *scene*; scale the *player*.
@@ -154,12 +158,23 @@ needed), then guide the GPU down the rail with your shoulder while it hangs, int
 If the player drops it into the slot before the 8-pin, `d4` clears but a fan whines — fine, no penalty, the manual
 says the 8-pin is required for the card to post.
 
-### 5.6 Monitor — `A2`
+### 5.6 Monitor — `A2`, and the span to the desk
 
-The top of the case rear has a **grommet**. The HDMI cable lies coiled in the basement. Carry it out the grommet,
-across the desk (a long, quiet, vertiginous walk — the floor is 8 storeys down), up the monitor's stand, and into the
-HDMI port at the back of the monitor. Plug it and the monitor's standby LED turns blue. Character `7` on the cable
-sleeve. This walk is where the player first sees the keyboard and mouse properly, and starts planning the finale.
+The top of the case rear has a **grommet**. The HDMI cable lies coiled in the basement (in the build: on the bench in
+front of the case, where Gerrit dropped it when he moved the desk).
+
+Do: pick up the loose end, walk round the side and behind the tower, and plug it into the rear panel's HDMI port. The
+monitor's standby LED turns blue. Character `R` on the cable sleeve.
+
+**Deviation from the sketch (better, and it fixes a hole in the map).** The original plan walked the cable up the
+monitor's stand. But the desk at 17 mm is unreachable — the stand post is a 30 cm wall — so the cable became the
+route instead of the errand. Once both ends are in, the run is taut: monitor port → down the back → over the desk
+edge (grip) → across the gap → over the bench lip (grip) → along the bench → rear panel. Two servings of tape are
+the handholds; `E` a grip and you go hand over hand, **both ways**, at ~1.2 m/s of cable. The span is the room's
+answer to a lift, and it makes the desk the second playfield rather than scenery.
+
+The ride owns the camera position, not the camera angle: you can look down at the carpet of carpet, or at the
+monitor coming up. Movement and collision are off for the duration; nothing can be dropped mid-span.
 
 ### 5.7 Fans — `F1`
 
@@ -190,12 +205,16 @@ Second reason the block grid exists: it teaches platforming on a *safe* surface 
 
 ### 5.9 Input devices (both required, both must actually work)
 
-Rear I/O, two USB-A plugs taller than you are.
+Rear I/O, two USB-A plugs taller than you are. **Built:** the plugs are lying on the bench behind the case, beside the
+panel, with their cables trailing off it toward the desk — Gerrit unplugged both at the case end. Either blue port
+takes either plug, and both ports are dead until the board has 12 V (the same gate as everything else).
 
-- **Keyboard**: plug in → RGB backlight comes on, a satisfying *whirr*. Its keys are the finale.
-- **Mouse**: plug in → its logo LED lights, and the on-screen cursor **jitters wildly**. Cause: the intake form was
-  right — *"de muis doet raar"*. The mouse sits on the mousepad; its optical window has a hair and dust in it.
-  Take the **compressed air** can from the parts bin, blast the lens, and the cursor becomes smooth. Gerrit's note:
+- **Keyboard**: plug in → the backlight comes up as one flat glow (the per-key finale lighting is slice 5). Its keys
+  are the finale.
+- **Mouse**: plug in → its logo LED lights, and the sensor under it glows **red**. Cause: the intake form was right —
+  *"de muis doet raar"*. The optical window in the base has a hair and dust in it, and at 17 mm you cannot see under
+  it, so `E` the mouse to **tip it onto its side** (it goes over with a rattle), then blow the window out with the
+  **compressed air** from the parts tub on the bench, then `E` it once more to put it back on its pad. Gerrit's note:
   *"eerst schoonmaken, dan pas zeuren dat het ding stuk is"*. Cheapest real fix in the trade, and the player who has
   ever owned a mouse will laugh.
 
@@ -427,8 +446,24 @@ Mix rules: one `masterGain`, music at −14 dB and ducked 6 dB for 250 ms under 
 Deviation from §5.3: the rocker is on the test-rig PSU inside the case rather than at the rear I/O, because the rear
 I/O trek is slice 3. Move it back out when that zone exists.
 
+### Slice 3 — built
+
+- **the monitor cable** (`A2`): coiled on the bench, one end in the monitor, the other carried round the back and into
+  the rear panel's HDMI port. `A2` clears, the monitor wakes with `PC DOKTER / HDMI 1`, and the panel gives up `R`;
+- **the span**: once plugged, the cable is a two-way ride from the bench lip to the desk (see §5.6). Two taped grips,
+  `E` either end, ~3.4 s of hand-over-hand, no steering and nothing droppable. The desk is a real playfield now: the
+  monitor and its stand are solid, the desk top is walkable, and a step off any edge is caught by a lip instead of
+  ending the run (no fall state, per §9);
+- **the rear I/O**: HDMI plus two USB-A ports, all of them dead until the board has 12 V;
+- **the keyboard and the mouse**: plugs on the bench behind the case. The keyboard's backlight comes up; the mouse's
+  sensor glows red and its optical window has a hair in it. Tip it onto its side, blow the window clean with the
+  compressed-air can from the parts tub, right it again;
+- `test/pcdoc.browser.cjs` covers all of it (125 checks): both ride directions, the landing on the desk, the fall
+  recovery, both USB plugs and both ports, the dirty window and the air.
+
+Known rough edge for slice 5: the keyboard is not yet solid, and its backlight is one flat glow rather than per-key.
+
 ### Next slices
 
-3. the HDMI trek to the monitor (`A2`), the rear I/O, the USB keyboard and mouse, the dirty lens.
 4. the SSD: the sector grid and the worm (`b7`).
 5. the finale: login window, cursor drag, jump-to-type, un-shrink, the end banner.

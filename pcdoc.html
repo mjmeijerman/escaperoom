@@ -1604,13 +1604,24 @@ const THINGS = {
   },
   keyboard: {
     kicker: 'desk', title: 'Keyboard',
-    text: () => '<p>Big, heavy, and unplugged. From where you are standing it looks like a runway.</p>',
+    text: () => state.usb && state.usb.kbd
+      ? '<p>Backlit now, keys lit like a runway at night. Every one of them is a step.</p>'
+      : '<p>Big, heavy, and unplugged. From where you are standing it looks like a runway.</p>',
     keys: () => '', act() { },
   },
   mouse: {
     kicker: 'desk', title: 'Mouse',
-    text: () => '<p>On a mousepad, cable coiled. The intake form was right about this one.</p>',
-    keys: () => '', act() { },
+    text: () => !state.usb || !state.usb.mouse
+      ? '<p>On a mousepad, cable trailing off the desk. Not plugged in, so it is a paperweight the size of a car.</p>'
+      : state.usb.tipped
+        ? '<p>Over on its side, feet in the air, its sensor glowing red at you.</p>'
+        : '<p>On its pad, logo lit. The intake form was right about this one.</p>',
+    keys: () => state.usb && state.usb.mouse && state.phase === 'shrunk'
+      ? (state.usb.tipped
+        ? (state.usb.clean ? '<kbd>E</kbd>put it back on its pad' : '')
+        : '<kbd>E</kbd>tip it onto its side')
+      : '',
+    act() { tipMouse(!state.usb.tipped); },
   },
 };
 
@@ -1780,7 +1791,8 @@ function doShrink() {
 /* Things a 1.6 m person cannot fiddle with. The crosshair ignores them until you are inside the case. */
 const SMALL_ONLY = new Set(['led', 'bag', 'slotA2', 'slotB2', 'psuLabel', 'psuRocker', 'padlock', 'gpu', 'hpcie',
   'h24', 'hcpu', 'hfan', 'plugRear', 'chaFan1', 'sysFan3', 'cpuFanHdr', 'screwdriver', 'gpuDrum',
-  'cable_atx', 'cable_eps', 'cable_pcie', 'cable_sata', 'cable_hdmi', 'ioHdmi']);
+  'cable_atx', 'cable_eps', 'cable_pcie', 'cable_sata', 'cable_hdmi', 'ioHdmi',
+  'zipBench', 'zipDesk', 'usbKbd', 'usbMouse', 'usbPortA', 'usbPortB', 'airCan', 'mouseLens']);
 
 function transcriptHTML() {
   if (!voice.lines.length) return '<p class="sub">a message is playing</p>';
@@ -1893,6 +1905,28 @@ const SOLID_S = [...SOLID_LATE,
   S(BENCH.x0, BENCH.x1, .90, 1.60, BENCH.z1 - .02, BENCH.z1),
 ];
 
+/* The two surfaces a 17 mm person can stand on. Everything else is the drop to
+   the shop floor, eight storeys down. */
+const SHRUNK_FLOORS = [
+  { x0: BENCH.x0, x1: BENCH.x1, z0: BENCH.z0, z1: BENCH.z1, y: BENCH.top },
+  { x0: DESK.x0, x1: DESK.x1, z0: DESK.z0, z1: DESK.z1, y: DESK.top },
+];
+function shrunkGroundAt(x, z) {
+  let g = -1;
+  for (const f of SHRUNK_FLOORS) {
+    if (x > f.x0 && x < f.x1 && z > f.z0 && z < f.z1 && f.y > g) g = f.y;
+  }
+  return g;
+}
+/* No fail states: you go over an edge, the lip catches you and puts you back. */
+function catchFall() {
+  const land = camera.position.x > 1.5 ? ZIP.desk : ZIP.bench;
+  camera.position.set(land.x, land.y + P.eye, land.z);
+  feet = land.y; vy = 0;
+  sfx.nope();
+  toast('You went over the edge. The lip caught you on the way down.', 'bad');
+}
+
 function groundAt(x, z, r, feet, stepUp, list, base) {
   let g = base;
   for (const s of list) {
@@ -1946,12 +1980,14 @@ function move(dt) {
   camera.position.x = pos.x;
   camera.position.z = pos.z;
 
-  // gravity, over whatever is actually under you
-  const baseGround = state.phase === 'shrunk' ? BENCH.top : 0;
+  // gravity, over whatever is actually under you. Shrunk, there are two floors
+  // worth standing on — the bench and the desk — and between them, air.
+  const baseGround = state.phase === 'shrunk' ? shrunkGroundAt(pos.x, pos.z) : 0;
   const ground = groundAt(pos.x, pos.z, P.r, feet, P.stepUp, list, baseGround);
   vy -= (state.phase === 'shrunk' ? 1.8 : 9.8) * dt;
   feet += vy * dt;
   if (feet <= ground) { feet = ground; vy = 0; grounded = true; } else grounded = false;
+  if (state.phase === 'shrunk' && feet < .12) catchFall();
   camera.position.y = feet + P.eye + (state.phase === 'shrunk' ? Math.sin(clock.elapsedTime * 6) * .00025 * (moved > 0 ? 1 : 0) : 0);
 
   if (moved > 1e-6) {
@@ -2132,9 +2168,14 @@ function giveHint() {
   if (state.gpu.drop < .92) return toast('Hint · grab the winch drum and drag back.', '');
   if (!state.gpu.seated) return toast('Hint · the card is at the rail. Push it in.', '');
   if (!state.gpu.powered) return toast('Hint · the card wants its own 8-pin. Pick up the PCIe cable, then look at the card.', '');
-  if (!state.mon.plugged) return toast('Hint · the HDMI cable: one end is in the card, the loose end is coiled on the board. The rear panel is around the back of the case.', '');
+  if (!state.mon.plugged) return toast('Hint · the HDMI cable: one end is in the monitor, the loose end is coiled on the bench. The rear panel is around the back of the case.', '');
   if (!railLive()) return toast('Hint · the card is fine, but the board has no 12 V: mains switch on, 24-pin, CPU 8-pin.', '');
-  return toast('Hint · C1, F1 and d4 are clear. Slices 3-5 build the rest.', 'good');
+  if (!state.usb.kbd) return toast("Hint · the keyboard's USB plug is lying behind the case. Pick it up, then either blue port on the rear panel.", '');
+  if (!state.usb.mouse) return toast("Hint · the mouse's plug is beside the keyboard's, same trip.", '');
+  if (!state.usb.clean) return toast(!state.usb.tipped
+    ? 'Hint · the mouse is on the desk, and so is the only way down there: the taped grip on the HDMI cable at the bench edge.'
+    : 'Hint · the window under the mouse is filthy. The compressed-air can is in the parts tub on the bench.', '');
+  return toast('Hint · five faults are clear and the desk is open. b7 — the SSD — is slice 4, and the login screen comes after it.', 'good');
 }
 
 /* ==================================================================== slice 2
@@ -2272,6 +2313,10 @@ camera.add(heldPlug);
 const heldBody = box(.052, .036, .042, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }), 0, 0, 0, heldPlug);
 box(.040, .012, .012, M.gold, 0, -.022, 0, heldPlug);
 box(.020, .014, .046, M.black, 0, .014, -.010, heldPlug);   // the wire leaving the back of it
+const heldCan = cyl(.021, .021, .062, 12, new THREE.MeshStandardMaterial({ color: 0x2b6fb5, roughness: .5 }), 0, 0, 0, heldPlug);
+heldCan.visible = false;
+const heldCanNozzle = cyl(.007, .007, .010, 8, M.red, 0, .036, 0, heldPlug);
+heldCanNozzle.visible = false;
 function showHeld(kind) {
   const s = P.eye / 1.62;
   heldPlug.scale.setScalar(s * 0.95);
@@ -2279,6 +2324,8 @@ function showHeld(kind) {
   heldBody.material = new THREE.MeshStandardMaterial({
     color: kind === 'atx' ? 0x33393d : kind === 'sata' ? 0x22262a : 0x2a2f33, roughness: .7,
   });
+  heldBody.visible = kind !== 'air';
+  heldCan.visible = heldCanNozzle.visible = kind === 'air';
   heldPlug.visible = true;
 }
 function hideHeld() { heldPlug.visible = false; }
@@ -2774,6 +2821,15 @@ Object.assign(THINGS, {
 function releaseHeld() {
   const h = state.held;
   if (!h) return;
+  if (h === 'usbKbd' || h === 'usbMouse' || h === 'air') {
+    if (h === 'usbKbd') kbdPlug.visible = true;
+    if (h === 'usbMouse') mousePlug.visible = true;
+    if (h === 'air') airCan.visible = true;
+    state.held = null;
+    hideHeld();
+    dragWire.visible = false;
+    return;
+  }
   if (h !== 'fanRear' && h !== 'fanCpu' && !CABLE[h]) return;
   if (h === 'fanRear' && state.fans.rear) { state.held = null; hideHeld(); return; }
   if (h === 'fanCpu' && state.fans.cpu) { state.held = null; hideHeld(); return; }
@@ -2863,11 +2919,13 @@ const ioUsbB = box(.020, .009, .012, new THREE.MeshStandardMaterial({ color: 0x2
   IO.x - .055, IO.y - .012, IO.z - .012);
 [-.11, .11].forEach(dx => box(.008, .008, .004, M.metal, IO.x + dx, IO.y + .044, IO.z - .008));   // screws
 register(ioHdmi, 'ioHdmi', 'the HDMI port on the rear panel');
+register(ioUsbA, 'usbPortA', 'a USB port on the rear panel');
+register(ioUsbB, 'usbPortB', 'a USB port on the rear panel');
 
-// the cable: one end already sits in the card, the loose end is on the board
-const HDMI_MON = V3(2.70, 0.80, -1.20);          // where the monitor's cable starts
-const HDMI_REST = V3(-1.56, B2 + .010, -2.02);   // where its loose end lies
-const HDMI_BENCH = V3(1.10, B2 + .016, -1.92);    // where it comes over the bench edge
+// the cable: one end already sits in the monitor, the loose end is on the bench
+const HDMI_MON = V3(2.70, 1.090, -1.478);         // the monitor's HDMI port, on its back
+const HDMI_REST = V3(-1.56, B2 + .010, -2.02);    // where its loose end lies
+const HDMI_DESK = V3(2.40, .778, -1.330);         // where it comes over the desk edge
 const hdmiG = new THREE.Group();
 hdmiG.position.copy(HDMI_REST).setY(B2);
 scene.add(hdmiG);
@@ -2898,6 +2956,58 @@ grommet.position.copy(GROMMET);
 scene.add(grommet);
 
 state.mon = { plugged: false };
+
+/* ------------------------------------------------------------------ the span
+   Once both ends are in, the monitor cable is the way between the bench and
+   the desk: a 17 mm person hangs from it and goes hand over hand. Two tape
+   servings are the grips. It works both ways, which is the whole point — the
+   desk has no other stair. */
+const ZIP_PATH = [
+  HDMI_MON,                                     // the monitor's port
+  V3(2.66, 1.010, -1.470),
+  V3(2.58, 0.830, -1.430),                      // down the back of the monitor
+  HDMI_DESK,                                    // onto the desk
+  V3(2.28, 0.774, -1.360),                      // the desk grip
+  V3(1.98, 0.800, -1.520),
+  V3(1.56, 0.860, -1.640),
+  V3(1.02, 0.930, -1.790),
+  V3(0.34, 0.974, -1.960),                      // the bench grip, over the lip
+  V3(-0.40, 0.966, -2.140),
+  V3(-1.20, 0.966, -2.460),
+  V3(IO.x + .020, IO.y - .012, IO.z - .020),    // the rear panel
+];
+const ZIP = {
+  ready: false, riding: false, dir: 1, u: 0, to: 'desk', seconds: 3.4, soundT: 0,
+  curve: new THREE.CatmullRomCurve3(ZIP_PATH.slice(4, 9).reverse()),
+  bench: V3(0.30, BENCH.top, -2.05),            // where you get off, bench end
+  desk: V3(2.28, DESK.top, -1.26),              // ...and desk end
+};
+state.zip = ZIP;
+
+const zipG = new THREE.Group();
+zipG.visible = false;
+scene.add(zipG);
+function zipGrip(p, id, label) {
+  const g = new THREE.Group();
+  g.position.copy(p);
+  zipG.add(g);
+  const wrap = cyl(.0062, .0062, .032, 8, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .8 }), 0, 0, 0, g);
+  wrap.rotation.z = Math.PI / 2;                // a serving of tape across the cable
+  box(.012, .009, .014, new THREE.MeshStandardMaterial({ color: 0xcfc7ae, roughness: .95 }), 0, 0, 0, g);
+  register(g, id, label);
+  return g;
+}
+zipGrip(ZIP_PATH[8], 'zipBench', 'the HDMI cable, taped into a grip');
+zipGrip(ZIP_PATH[4], 'zipDesk', 'the HDMI cable, taped into a grip');
+// Gerrit's note, on the bench beside the grip
+const zipNote = plane(.115, .036, new THREE.MeshStandardMaterial({
+  map: stickerTex([['HDMI', 30, true], ['HANG ON · IT HOLDS', 20, false]],
+    { bg: '#e8e2cf', ink: '#1b2328', h: 170, top: 54, align: 'center' }),
+  roughness: .92,
+}), 0.34, BENCH.top + .0015, -2.09);
+zipNote.rotation.x = -Math.PI / 2;
+zipNote.rotation.z = .1;
+zipG.add(zipNote);
 
 const monitorOnTex = tex(512, 320, (g, w, h) => {
   const grd = g.createLinearGradient(0, 0, w, h);
@@ -2961,15 +3071,12 @@ function plugHdmi() {
   wireHdmi.visible = false; wireHdmiB.visible = false;
   if (cableLabel.hdmi) cableLabel.hdmi.visible = false;
 
-  // monitor → where it lay → round the back → port
-  const port = V3(IO.x + .020, IO.y - .012, IO.z - .018);
-  const benchP = V3(-1.56, B2 + .012, -2.05);
-  const cornerP = V3(-1.58, B2 + .045, -2.92);
+  // one cable, from the monitor's port, down the back, across the gap, over the
+  // bench lip and back along the bench into the rear panel
   const cabMat = new THREE.MeshStandardMaterial({ color: 0x1b2024, roughness: .8 });
-  tube(HDMI_MON, HDMI_BENCH, .0022, cabMat);
-  tube(HDMI_BENCH, benchP, .0022, cabMat);
-  tube(benchP, cornerP, .0022, cabMat);
-  tube(cornerP, port, .0022, cabMat);
+  for (let i = 1; i < ZIP_PATH.length; i++) tube(ZIP_PATH[i - 1], ZIP_PATH[i], .0022, cabMat);
+  zipG.visible = true;
+  ZIP.ready = true;
 
   // the monitor wakes
   monitorScreen.material.map = monitorOnTex;
@@ -2980,7 +3087,289 @@ function plugHdmi() {
   sfx.snap();
   setTimeout(() => sfx.chime(), 220);
   clearCode('A2', 'R', 'monitor', 'The monitor wakes up: A2 drops out of the cycle. The panel gives up an R.');
+  setTimeout(() => toast('The cable is taut now, bench to desk. Gerrit taped a grip on it — it takes your weight.', 'good'), 400);
   renderPad();
+}
+
+/* --- riding the cable, both ways --------------------------------------- */
+function startRide(toDesk) {
+  if (!ZIP.ready) {
+    toast('The cable is still coiled on the bench, its far end loose. The rear panel is around the back of the case.');
+    return;
+  }
+  if (state.phase !== 'shrunk') {
+    sfx.nope();
+    toast('You would pull the monitor off the desk. At 17 mm it is a rope.');
+    return;
+  }
+  if (ZIP.riding) return;
+  ZIP.riding = true;
+  ZIP.dir = toDesk ? 1 : -1;
+  ZIP.u = toDesk ? 0 : 1;
+  ZIP.to = toDesk ? 'desk' : 'bench';
+  state.grab = null;
+  vy = 0;
+  const tan = ZIP.curve.getTangentAt(ZIP.u);
+  yaw = Math.atan2(-tan.x * ZIP.dir, -tan.z * ZIP.dir);
+  pitch = -.05;
+  sfx.scratch();
+  toast(toDesk ? 'Both hands on the cable. Down the sag, over the gap, onto the desk.'
+    : 'Both hands. Up the cable, back to the bench.');
+  renderTray();
+}
+function rideTick(dt) {
+  ZIP.u = clamp(ZIP.u + ZIP.dir * dt / ZIP.seconds, 0, 1);
+  const p = ZIP.curve.getPointAt(ZIP.u);
+  camera.position.set(p.x, p.y + .009, p.z);
+  feet = camera.position.y - P.eye;
+  vy = 0;
+  ZIP.soundT -= dt;
+  if (ZIP.soundT <= 0) { ZIP.soundT = .5; sfx.scratch(); }   // hand over hand
+  if (ZIP.dir > 0 ? ZIP.u >= 1 : ZIP.u <= 0) finishRide();
+}
+function finishRide() {
+  const desk = ZIP.to === 'desk';
+  const land = desk ? ZIP.desk : ZIP.bench;
+  ZIP.riding = false;
+  camera.position.set(land.x, land.y + P.eye, land.z);
+  feet = land.y;
+  vy = 0;
+  yaw = desk ? 3.0 : 0.30;                    // the desk end faces the keyboard; the bench end the case
+  pitch = .04;
+  sfx.step(false);
+  toast(desk ? 'On the desk. The keyboard is a runway and the monitor is a wall.' : 'Back on the bench.', 'good');
+  renderTray();
+}
+
+Object.assign(THINGS, {
+  zipBench: {
+    kicker: 'the bench edge', title: 'HDMI cable — the grip',
+    text: () => !ZIP.ready
+      ? '<p>The cable is coiled on the bench with one end loose. It is not holding anything up yet.</p>'
+      : state.phase !== 'shrunk'
+        ? '<p>Gerrit has taped a grip onto his monitor cable. At this size it is a rope; at your size you would take the monitor with you.</p>'
+        : `<p>A fat serving of tape around the monitor cable, right where it leaves the bench. It runs down over the gap
+           — and it is the only way across.</p>`, 
+    keys: () => ZIP.ready && state.phase === 'shrunk' ? '<kbd>E</kbd>ride it down to the desk' : '',
+    act() { startRide(true); },
+  },
+  zipDesk: {
+    kicker: 'the desk', title: 'HDMI cable — the grip',
+    text: () => state.phase !== 'shrunk'
+      ? '<p>The monitor\'s cable comes over the desk edge, taped where it turns.</p>'
+      : '<p>The way back up. Two hands and a slow haul gets you to the bench.</p>',
+    keys: () => ZIP.ready && state.phase === 'shrunk' ? '<kbd>E</kbd>ride it back to the bench' : '',
+    act() { startRide(false); },
+  },
+});
+
+/* ==================================================================== slice 3b
+   The two blue ports on the rear panel, the keyboard and the mouse that belong
+   in them, and the actual fault the customer described: "and the mouse is
+   being weird" — a hair across an optical window.                              */
+
+state.usb = { kbd: false, mouse: false, tipped: false, clean: false };
+
+Object.assign(sfx, {
+  air() {
+    hiss({ dur: .8, vol: .13, f: 4400, q: .4, f2: 1100 });
+    tone({ f: 2400, f2: 700, dur: .75, vol: .014, type: 'triangle' });
+  },
+});
+
+/* the two plugs, lying on the bench behind the case, their cables running off it */
+const usbMat = () => new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 });
+const usbG = new THREE.Group();
+scene.add(usbG);
+function usbPlug(x, z, id, label, rot) {
+  const g = new THREE.Group();
+  g.position.set(x, B2 + .006, z);
+  g.rotation.y = rot;
+  usbG.add(g);
+  box(.020, .009, .012, usbMat(), 0, .005, 0, g);          // the shell
+  box(.017, .005, .004, M.metal, 0, .005, .009, g);        // the tongue
+  box(.012, .007, .010, new THREE.MeshStandardMaterial({ color: 0x14181b, roughness: .85 }), 0, .005, -.012, g);
+  register(g, id, label);
+  return g;
+}
+const kbdPlug = usbPlug(-1.70, -2.95, 'usbKbd', "the keyboard's USB plug", .5);
+const mousePlug = usbPlug(-1.88, -3.00, 'usbMouse', "the mouse's USB plug", -.3);
+[[-1.70, -2.95, -1.30, -2.30], [-1.30, -2.30, -1.08, -1.98],
+ [-1.88, -3.00, -1.52, -2.36], [-1.52, -2.36, -1.20, -1.99]].forEach(([x0, z0, x1, z1]) =>
+  tube(V3(x0, B2 + .009, z0), V3(x1, B2 + .008, z1), .0022, M.black));
+
+/* the parts tub, and the can of air in it */
+box(.16, .045, .12, new THREE.MeshStandardMaterial({ color: 0x2f3438, roughness: .9 }), -1.15, BENCH.top + .022, -1.99);
+box(.145, .006, .105, new THREE.MeshStandardMaterial({ color: 0x1b1f22, roughness: .95 }), -1.15, BENCH.top + .038, -1.99);
+const airCan = new THREE.Group();
+airCan.position.set(-1.15, BENCH.top + .044, -1.99);
+scene.add(airCan);
+cyl(.019, .019, .056, 14, new THREE.MeshStandardMaterial({ color: 0x2b6fb5, roughness: .5 }), 0, .028, 0, airCan);
+cyl(.006, .006, .012, 8, M.red, 0, .060, 0, airCan);
+box(.011, .004, .008, M.metalDark, 0, .066, .004, airCan);
+register(airCan, 'airCan', 'a can of compressed air');
+const canLabel = decal(.030, .020, stickerTex([['LUCHT', 26, true]],
+  { bg: '#e8e2cf', ink: '#1b2328', h: 100, top: 66, align: 'center', border: false }),
+  -1.15, BENCH.top + .072, -1.9695);
+
+/* the mouse gets a logo LED, a sensor window, and a hair in it */
+const mLed = box(.010, .0015, .006, new THREE.MeshStandardMaterial({ color: 0x1a2024, emissive: 0x000000, roughness: .4 }),
+  0, .0176, -.020, mouse);
+const mSensor = cyl(.0055, .0055, .0016, 14, new THREE.MeshStandardMaterial({ color: 0x0b1012, emissive: 0x000000, roughness: .25 }),
+  0, -.0177, -.014, mouse);
+mSensor.rotation.x = Math.PI / 2;
+register(mSensor, 'mouseLens', "the mouse's optical window");
+const mHair = box(.0008, .0005, .0022, new THREE.MeshStandardMaterial({ color: 0x6b5a44, roughness: .95 }),
+  .0012, -.0186, -.014, mouse);
+
+/* the monitor and its stand are places and obstacles, not scenery */
+SOLID_S.push(S(2.37, 3.03, DESK.top + .30, DESK.top + .70, -1.4625, -1.4175));   // the panel
+SOLID_S.push(S(2.67, 2.73, DESK.top + .02, DESK.top + .30, -1.385, -1.335));     // the post
+SOLID_S.push(S(2.57, 2.83, DESK.top, DESK.top + .02, -1.44, -1.24));             // the base
+
+/* --- the mouse and its window ------------------------------------------ */
+function tipMouse(over) {
+  if (!state.usb.mouse) {
+    sfx.nope(); toast('It is not plugged in. Start at the back of the case.');
+    return;
+  }
+  if (state.phase !== 'shrunk') return;
+  state.usb.tipped = over;
+  mouse.rotation.z = over ? -Math.PI / 2 : 0;
+  mouse.position.y = DESK.top + (over ? .0285 : .020);
+  sfx.clack();
+  toast(over ? 'It goes over with a rattle. The optical window faces you now.'
+    : 'Back on its pad, feet down.', '');
+  renderTray();
+}
+function cleanLens() {
+  if (!state.usb.tipped) {
+    sfx.nope(); toast('It is underneath, where you cannot get at it. Tip the mouse over first.');
+    return;
+  }
+  if (state.usb.clean) return;
+  if (state.held !== 'air') {
+    sfx.buzz();
+    toast('The hair sits there, mocking you. The compressed-air can is in the parts tub on the bench.', 'bad');
+    return;
+  }
+  state.usb.clean = true;
+  mHair.visible = false;
+  mSensor.material.emissive = new THREE.Color(0x63d68b);
+  mSensor.material.emissiveIntensity = 1.5;
+  mSensor.material.needsUpdate = true;
+  sfx.air();
+  sfx.pop();
+  toast('The hair lifts off and the dust goes with it. The sensor reads clean — put it back on its pad.', 'good');
+  renderTray();
+}
+
+/* --- carrying and plugging the two devices ----------------------------- */
+function takeUsb(kind) {
+  if (state.usb[kind === 'usbKbd' ? 'kbd' : 'mouse']) return;
+  if (state.held === kind) return;
+  releaseHeld();
+  state.held = kind;
+  (kind === 'usbKbd' ? kbdPlug : mousePlug).visible = false;
+  showHeld(kind);
+  sfx.pickup();
+  toast('A USB-A plug in both arms. The blue ports are on the rear panel.');
+  renderTray();
+}
+function plugUsb() {
+  const held = state.held;
+  if (held !== 'usbKbd' && held !== 'usbMouse') {
+    sfx.nope(); toast('Your hands are empty. Both plugs are lying on the bench behind the case.');
+    return;
+  }
+  if (!railLive()) {
+    sfx.buzz(); toast('The port is dead. The board has no 12 V: mains, 24-pin, then the CPU 8-pin.', 'bad');
+    return;
+  }
+  const kbd = held === 'usbKbd';
+  state.usb[kbd ? 'kbd' : 'mouse'] = true;
+  state.held = null;
+  hideHeld();
+  const socket = kbd ? ioUsbA : ioUsbB;
+  box(.014, .008, .010, usbMat(), socket.position.x, socket.position.y, IO.z - .020);   // the plug, seated
+  sfx.snap();
+  if (kbd) {
+    kbKeys.material.emissive = new THREE.Color(0x63d68b);
+    kbKeys.material.emissiveIntensity = .55;
+    kbKeys.material.needsUpdate = true;
+    setTimeout(() => toast("The keyboard's backlight comes up. Every key is a step.", 'good'), 140);
+  } else {
+    mLed.material.emissive = new THREE.Color(0x63d68b);
+    mLed.material.emissiveIntensity = 1.7;
+    mSensor.material.emissive = new THREE.Color(0xff3a2a);
+    mSensor.material.emissiveIntensity = 1.3;
+    setTimeout(() => toast('The mouse lights up — and its sensor glows red. "The mouse is being weird." Now you can see why.', 'good'), 140);
+  }
+  renderTray();
+}
+
+Object.assign(THINGS, {
+  usbKbd: {
+    kicker: 'the bench, behind the case', title: 'Keyboard plug',
+    text: () => state.usb.kbd
+      ? '<p>In. The keyboard is awake, backlit, and waiting to be walked on.</p>'
+      : '<p>A USB-A plug bigger than your arm, cable trailing off the bench toward the desk. Gerrit pulled both cables out at the back and left them lying.</p>',
+    keys: () => state.usb.kbd ? '' : '<kbd>E</kbd>pick up the plug',
+    act() { takeUsb('usbKbd'); },
+  },
+  usbMouse: {
+    kicker: 'the bench, behind the case', title: 'Mouse plug',
+    text: () => state.usb.mouse
+      ? '<p>In. And the mouse is already misbehaving, just as the intake form said.</p>'
+      : '<p>The mouse\'s cable, plug on the bench. Both devices were unplugged at the case end.</p>',
+    keys: () => state.usb.mouse ? '' : '<kbd>E</kbd>pick up the plug',
+    act() { takeUsb('usbMouse'); },
+  },
+  usbPortA: {
+    kicker: 'the back of the case', title: 'USB port',
+    text: () => '<p>One of two blue USB-A ports on the rear panel. Either device will take either port — they are not fussy.</p>',
+    keys: () => state.held === 'usbKbd' || state.held === 'usbMouse' ? '<kbd>E</kbd>plug it in' : '',
+    act() { plugUsb(); },
+  },
+  usbPortB: {
+    kicker: 'the back of the case', title: 'USB port',
+    text: () => '<p>The second blue port. Same deal: the other device goes here.</p>',
+    keys: () => state.held === 'usbKbd' || state.held === 'usbMouse' ? '<kbd>E</kbd>plug it in' : '',
+    act() { plugUsb(); },
+  },
+  airCan: {
+    kicker: 'the parts tub', title: 'Compressed air',
+    text: () => state.held === 'air'
+      ? '<p>In your arms: a blue can, taller than you, with a straw on the nozzle.</p>'
+      : `<p>A can of compressed air in the parts tub. Gerrit's note is taped to the tub:
+         <b>clean it first, then complain that it is broken</b>.</p>`,
+    keys: () => state.held === 'air' ? '' : '<kbd>E</kbd>pick it up',
+    act() { takeAir(); },
+  },
+  mouseLens: {
+    kicker: 'the desk', title: "The mouse's optical window",
+    text: () => !state.usb.mouse
+      ? '<p>A dark glass eye in the base of the mouse. Nothing in it is working: the mouse has no power.</p>'
+      : !state.usb.tipped
+        ? '<p>Underneath, where you cannot reach it. The mouse would have to go over onto its side first.</p>'
+        : state.usb.clean
+          ? '<p>Clean glass and a clean red light. That is a working sensor.</p>'
+          : '<p>A hair right across the window, and a felt of dust under it. That is what "the mouse is doing weird things" means.</p>',
+    keys: () => state.usb.mouse && state.usb.tipped && !state.usb.clean
+      ? (state.held === 'air' ? '<kbd>E</kbd>blast it with the air' : '')
+      : '',
+    act() { cleanLens(); },
+  },
+});
+function takeAir() {
+  if (state.held === 'air') return;
+  releaseHeld();
+  state.held = 'air';
+  airCan.visible = false;
+  showHeld('air');
+  sfx.pickup();
+  toast('The can of air. Bring it to whatever needs blowing out.');
+  renderTray();
 }
 
 /* --- per-frame animation ----------------------------------------------- */
@@ -3003,8 +3392,8 @@ function slice2Tick(dt, t) {
       state.fans.rear ? CHA_FAN1_P : state.held === 'fanRear' ? hand : plugRear.position);
     stretchCyl(wireCpu, CPU_FAN_P,
       state.fans.cpu ? CPU_FAN_P2 : state.held === 'fanCpu' ? hand : cpuPlug.position);
-    stretchCyl(wireHdmi, HDMI_MON, HDMI_BENCH);
-    stretchCyl(wireHdmiB, HDMI_BENCH, state.held === 'hdmi' ? hand : HDMI_REST);
+    stretchCyl(wireHdmi, HDMI_MON, HDMI_DESK);
+    stretchCyl(wireHdmiB, HDMI_DESK, state.held === 'hdmi' ? hand : HDMI_REST);
     wireHdmi.visible = wireHdmiB.visible = !state.mon.plugged;
   }
   // fans only turn while the board actually has 12 V — kill the mains and they coast to a stop
@@ -3026,7 +3415,8 @@ function tick() {
   const dt = Math.min(clock.getDelta(), .1);   // slow machines should not crawl
   const t = clock.elapsedTime;
 
-  if (state.running && state.locked && state.phase !== 'shrinking') move(dt);
+  if (state.zip.riding) rideTick(dt);
+  else if (state.running && state.locked && state.phase !== 'shrinking') move(dt);
   camera.rotation.set(pitch, yaw, 0);
 
   // music chord every 3.6 s
@@ -3130,6 +3520,7 @@ if (new URLSearchParams(location.search).has('debug') || new URLSearchParams(loc
     state, THINGS, sfx, drawLed, use, currentTarget, genPull, pullLever, doShrink, startGenerator, giveHint,
     interact, camera, scene, THREE, raycaster, ledCanvas, ledCtx, ledTexture, ledMat, led, A, audioInit,
     setFeet(f) { feet = f; camera.position.y = f + P.eye; },
+    zip: ZIP, startRide, tipMouse, cleanLens, plugUsb, takeUsb, takeAir,
     look(y, pi) { yaw = y; pitch = pi; camera.rotation.set(pitch, yaw, 0); },
     aimAt(id, dist = 1.1, fy = null, at = null) {
       const cands = interact.filter(o => o.userData.interact === id);
