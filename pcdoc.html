@@ -2787,14 +2787,7 @@ function plug(dest) {
     }
   }
   sfx.snap();
-  if (need === 'atx' || need === 'eps') {
-    setTimeout(() => sfx.relay(), 120);
-    if (railLive() && !state.notes.PSU) {
-      state.notes.PSU = 'K';
-      renderPad();
-      setTimeout(() => toast('12 V on the board. The fans have power to waste.', 'good'), 260);
-    }
-  }
+  if (need === 'atx' || need === 'eps') setTimeout(() => sfx.relay(), 120);
   if (need === 'atx') setTimeout(powerCase, 400);
   if (need === 'pcie') state.gpu.powered = true;
   checkFans();
@@ -4679,6 +4672,14 @@ function tick() {
     }
   }
 
+  // the PSU's character comes with the 12 V, whichever order you got there in
+  if (!state.notes.PSU && state.psu && railLive()) {
+    state.notes.PSU = 'K';
+    renderPad();
+    pulsePad();
+    toast('12 V on the board. The rail label gives up a K.', 'good');
+  }
+
   // the debug display cycles every fault in turn
   if (ledOn) {
     state.codeT += dt;
@@ -4770,7 +4771,7 @@ if (new URLSearchParams(location.search).has('debug') || new URLSearchParams(loc
     zip: ZIP, startRide, tipMouse, cleanLens, plugUsb, takeUsb, takeAir, usbWire, dropHeld,
     a2Solid, b2Solid, SEATED_Z0, SEATED_Z1, USB, kbKeyMat, kbLegendMat, kbDeckG, kbGlow, mLed, mSensor, checkUsbPower, darkUsb,
     toast, enterDisk, leaveDisk, ejectFromDisk, pullWormLever, DISK, worm, CH, SSD, SOLID_D, sectorBlocks, readmePanel,
-    openLogin, loginMove, loginClick, typeKey, checkPassword, unshrink, kbKeyMap, FIELD, UNSHRINK_BTN, screenLive,
+    openLogin, loginMove, loginClick, typeKey, checkPassword, unshrink, kbKeyMap, FIELD, UNSHRINK_BTN, screenLive, renderPad,
     ssdLed, ssdSocket, ssdPlugG, takeSsdTail, plugSsd, chDoor, hatchDoor, DOOR_SHUT_Y, DOOR_OPEN_Y, wormInChamber, blockAt, DOOR, HATCH,
     look(y, pi) { yaw = y; pitch = pi; camera.rotation.set(pitch, yaw, 0); },
     aimAt(id, dist = 1.1, fy = null, at = null) {
