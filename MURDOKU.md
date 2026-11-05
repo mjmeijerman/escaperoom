@@ -91,6 +91,22 @@ Furniture you cannot stand on: both tables (C4R3, and C5R1 + C6R1), both plants 
 
 "Next to" counts the eight surrounding squares (so Diana in C4R5 is next to the television in C3R6).
 
+### The cast
+
+Everyone in the house is a person, not a marker: a body, a head, eyes, a mouth, and hair that says who they are.
+
+| | Who | Hair | Face |
+| --- | --- | --- | --- |
+| **Alexander** | man | short, grey | glasses |
+| **Bas** | man | long, blond | blond beard and moustache |
+| **Clarissa** | woman | long, brown | — |
+| **Diana** | tinted woman | half-long, black | — |
+| **Elsa** | black woman | grey, swept back with a bun | — |
+| **Vladimir** | man (the body) | short, dark blond | eyes shut, lying on the floor |
+
+The colours are in the data (`PEOPLE` carries `skin`, `hair`, `style`, `glasses`, `beard`), so a new cast is a new
+table.
+
 ### The solution
 
 ```

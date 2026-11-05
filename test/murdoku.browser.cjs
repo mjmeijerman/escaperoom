@@ -411,6 +411,28 @@ const st = page => page.evaluate(() => ({
   check('and the jump is high enough for the tallest thing in the house (the television)',
     apex > 1.35, String(apex));
 
+  /* --- the cast looks like the cast --------------------------------------- */
+  const looks = await page.evaluate(() => {
+    const d = window.__murdoku;
+    const hex = n => '#' + n.toString(16).padStart(6, '0');
+    return Object.fromEntries(d.PEOPLE.map(p => {
+      const l = d.visuals[p.id].g.userData.look;
+      return [p.id, { skin: hex(l.skin), hair: hex(l.hair), style: l.style, glasses: l.glasses, beard: l.beard }];
+    }));
+  });
+  check('Alexander: a man with short grey hair and glasses',
+    looks.A.style === 'short' && looks.A.glasses === true && looks.A.hair === '#9c9c9c', JSON.stringify(looks.A));
+  check('Bas: a man with long blond hair and a blond beard',
+    looks.B.style === 'long' && looks.B.beard === true && looks.B.hair === '#d8c07a', JSON.stringify(looks.B));
+  check('Clarissa: a woman with long brown hair',
+    looks.C.style === 'long' && looks.C.hair === '#4a2c1a' && !looks.C.beard, JSON.stringify(looks.C));
+  check('Diana: a tinted woman with black half-long hair',
+    looks.D.style === 'halflong' && looks.D.hair === '#15151a' && looks.D.skin === '#b07a52', JSON.stringify(looks.D));
+  check('Elsa: a black woman with grey, fancy hair',
+    looks.E.style === 'updo' && looks.E.hair === '#cfcfcf' && looks.E.skin === '#6e4a34', JSON.stringify(looks.E));
+  check('Vladimir: a man with short dark-blond hair',
+    looks.V.style === 'short' && looks.V.hair === '#a88a4a', JSON.stringify(looks.V));
+
   check('no console errors', logs.length === 0, logs.join(' | '));
 
   mkdirSync('test/.shots', { recursive: true });

@@ -238,12 +238,17 @@ const nextToSameRoom = (c, r, set) => {
 };
 
 const PEOPLE = [
-  { id: 'A', name: 'Alexander', colour: 0x9a7346, clue: 'Sat on a bed', test: (c, r) => BEDS.has(key(c, r)) },
-  { id: 'B', name: 'Bas', colour: 0x4c7f68, clue: 'Was in the kitchen', test: (c, r) => roomAt(c, r) === 'keuken' },
-  { id: 'C', name: 'Clarissa', colour: 0x86557a, clue: 'Stood next to a table', test: (c, r) => nextToSameRoom(c, r, TABLES) },
-  { id: 'D', name: 'Diana', colour: 0x5f6a90, clue: 'Was next to the television', test: (c, r) => nextToSameRoom(c, r, TVS) },
-  { id: 'E', name: 'Elsa', colour: 0x8a8750, clue: 'Stood in front of the window', test: (c, r) => c === WINDOW[0] && r === WINDOW[1] },
-  { id: 'V', name: 'Vladimir', colour: 0x8c3a34, victim: true,
+  { id: 'A', name: 'Alexander', colour: 0x9a7346, skin: 0xd8b49a, hair: 0x9c9c9c, style: 'short', glasses: true,
+    clue: 'Sat on a bed', test: (c, r) => BEDS.has(key(c, r)) },
+  { id: 'B', name: 'Bas', colour: 0x4c7f68, skin: 0xdfc0a2, hair: 0xd8c07a, style: 'long', beard: true,
+    clue: 'Was in the kitchen', test: (c, r) => roomAt(c, r) === 'keuken' },
+  { id: 'C', name: 'Clarissa', colour: 0x86557a, skin: 0xd9b193, hair: 0x4a2c1a, style: 'long',
+    clue: 'Stood next to a table', test: (c, r) => nextToSameRoom(c, r, TABLES) },
+  { id: 'D', name: 'Diana', colour: 0x5f6a90, skin: 0xb07a52, hair: 0x15151a, style: 'halflong',
+    clue: 'Was next to the television', test: (c, r) => nextToSameRoom(c, r, TVS) },
+  { id: 'E', name: 'Elsa', colour: 0x8a8750, skin: 0x6e4a34, hair: 0xcfcfcf, style: 'updo',
+    clue: 'Stood in front of the window', test: (c, r) => c === WINDOW[0] && r === WINDOW[1] },
+  { id: 'V', name: 'Vladimir', colour: 0x8c3a34, skin: 0xc9a27f, hair: 0xa88a4a, style: 'short', victim: true,
     clue: 'Lay in the last cell left over, with one other person in that room', test: null },
 ];
 
@@ -639,33 +644,97 @@ function buildPlaque() {
 function makePerson(p) {
   const g = new THREE.Group();
   scene.add(g);
-  const mat = new THREE.MeshStandardMaterial({ color: p.colour, roughness: .8 });
-  const skin = new THREE.MeshStandardMaterial({ color: 0xd8b49a, roughness: .7 });
+  const coat = new THREE.MeshStandardMaterial({ color: p.colour, roughness: .85 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: p.skin, roughness: .72 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x221b1e, roughness: .9 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: p.hair, roughness: .88 });
+  const eyeWhite = new THREE.MeshStandardMaterial({ color: 0xf2ece2, roughness: .5 });
+  const pupil = new THREE.MeshStandardMaterial({ color: 0x14181c, roughness: .4 });
+  const lip = new THREE.MeshStandardMaterial({ color: p.victim ? 0x7a4a4a : 0x8a4a48, roughness: .8 });
+
+  const body = new THREE.Group();
+  g.add(body);
   if (p.victim) {
-    // lying down, with a chalk outline around him
-    const body = new THREE.Group();
-    body.rotation.z = Math.PI / 2;
-    body.position.y = .2;
-    g.add(body);
-    cyl(.19, .16, 1.15, 12, mat, 0, 0, 0, body).rotation.z = Math.PI / 2;
-    sphere(.15, skin, 0, 0, -.68, body);
-    cyl(.07, .07, .8, 8, dark, 0, 0, .95, body).rotation.x = Math.PI / 2;
+    body.rotation.z = Math.PI / 2;                 // lying down
+    body.position.y = .22;
+  }
+  // legs, coat, arms
+  cyl(.07, .07, .78, 8, dark, -.15, .3, 0, body);
+  cyl(.07, .07, .78, 8, dark, .15, .3, 0, body);
+  cyl(.22, .3, .92, 14, coat, 0, .9, 0, body);
+  cyl(.06, .06, .62, 8, coat, -.28, .95, 0, body).rotation.z = .12;
+  cyl(.06, .06, .62, 8, coat, .28, .95, 0, body).rotation.z = -.12;
+
+  // head
+  const head = new THREE.Group();
+  head.position.set(0, 1.58, 0);
+  body.add(head);
+  sphere(.185, skinMat, 0, 0, 0, head, 18);
+  cyl(.06, .07, .1, 8, skinMat, 0, -.19, 0, head);           // neck
+
+  // face
+  const faceZ = -.168;
+  if (p.victim) {
+    // eyes shut
+    [-.062, .062].forEach(x => box(.052, .008, .012, pupil, x, .028, faceZ + .004, head));
+  } else {
+    [-.062, .062].forEach(x => {
+      sphere(.034, eyeWhite, x, .024, faceZ + .004, head, 10);
+      sphere(.016, pupil, x, .024, faceZ - .012, head, 8);
+    });
+  }
+  sphere(.022, skinMat, 0, -.028, faceZ - .026, head, 8);     // nose
+  box(.062, .012, .014, lip, 0, -.088, faceZ + .002, head);   // mouth
+  if (p.glasses) {
+    const frame = new THREE.MeshStandardMaterial({ color: 0x2a2320, roughness: .5, metalness: .3 });
+    [-.062, .062].forEach(x => {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(.042, .0055, 5, 14), frame);
+      ring.position.set(x, .024, faceZ - .002);
+      head.add(ring);
+    });
+    box(.03, .006, .006, frame, 0, .028, faceZ - .004, head);
+    [-.104, .104].forEach(x => box(.006, .006, .06, frame, x, .03, faceZ + .03, head));
+  }
+
+  // hair
+  const cap = sphere(.188, hairMat, 0, .022, .012, head, 16);
+  cap.scale.set(1.02, .86, 1.05);
+  if (p.style === 'long') {
+    [-.155, .155].forEach(x => {
+      const side = cyl(.055, .04, .5, 8, hairMat, x, -.16, .02, head);
+      side.rotation.z = x < 0 ? .06 : -.06;
+    });
+    const back = cyl(.16, .12, .42, 10, hairMat, 0, -.14, .12, head);
+    back.scale.set(1.05, 1, .5);
+  } else if (p.style === 'halflong') {
+    [-.16, .16].forEach(x => cyl(.05, .038, .3, 8, hairMat, x, -.06, .02, head));
+    const back = cyl(.14, .1, .26, 10, hairMat, 0, -.06, .12, head);
+    back.scale.set(1.05, 1, .5);
+  } else if (p.style === 'updo') {
+    // grey and fancy: swept back, with a bun
+    const sweep = sphere(.16, hairMat, 0, .075, .05, head, 12);
+    sweep.scale.set(1.02, .7, .9);
+    sphere(.075, hairMat, 0, .1, .16, head, 10);
+    [-.09, .09].forEach(x => {
+      const wave = sphere(.075, hairMat, x, .02, .06, head, 10);
+      wave.scale.set(1, .8, .8);
+    });
+  }
+  if (p.beard) {
+    const beard = sphere(.11, hairMat, 0, -.1, -.08, head, 12);
+    beard.scale.set(1, .85, .7);
+    box(.08, .018, .02, hairMat, 0, -.062, faceZ + .006, head);   // moustache
+  }
+
+  if (p.victim) {
     const outline = new THREE.Mesh(new THREE.RingGeometry(.42, .5, 24), M.chalk);
     outline.rotation.x = -Math.PI / 2;
     outline.position.y = .02;
     outline.scale.set(1, 1.5, 1);
     g.add(outline);
     box(.9, .02, 1.6, new THREE.MeshStandardMaterial({ color: 0x1c161a, roughness: 1 }), 0, .01, 0, g);
-  } else {
-    const body = new THREE.Group();
-    g.add(body);
-    cyl(.21, .29, 1.1, 12, mat, 0, .75, 0, body);
-    sphere(.19, skin, 0, 1.46, 0, body);
-    cyl(.07, .07, .72, 8, dark, -.15, .25, 0, body);
-    cyl(.07, .07, .72, 8, dark, .15, .25, 0, body);
-    body.rotation.y = Math.PI;
   }
+
   // a name plate over their head
   const plateTex = tex(512, 128, (c, w, h) => {
     c.clearRect(0, 0, w, h);
@@ -677,9 +746,10 @@ function makePerson(p) {
   });
   const plate = new THREE.Mesh(new THREE.PlaneGeometry(.72, .18),
     new THREE.MeshBasicMaterial({ map: plateTex, transparent: true, depthWrite: false }));
-  plate.position.set(0, p.victim ? .95 : 2.0, 0);
+  plate.position.set(0, p.victim ? 1.0 : 2.05, 0);
   plate.userData.billboard = true;
   g.add(plate);
+  g.userData.look = { skin: p.skin, hair: p.hair, style: p.style, glasses: !!p.glasses, beard: !!p.beard };
   register(g, 'p_' + p.id, p.name);
   return { g, plate };
 }
