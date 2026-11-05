@@ -620,8 +620,8 @@ const caseTex = tex(640, 900, (g, w, h) => {
   g.fillStyle = '#1b1619'; g.font = '700 24px ui-monospace,monospace';
   g.fillText('HOUSE RULES', 40, h - 250);
   g.fillStyle = '#3b3336'; g.font = '400 20px ui-monospace,monospace';
-  ['one person per column, and one per square.', 'nobody stands on a crossed square,',
-    'a table, a plant or the television.', 'a weapon, a motive: not your problem.']
+  ['one person per column and one per row.', 'nobody stands on a crossed square,',
+    'a table, a plant or the television.', 'the killer was the one nearest the body.']
     .forEach((l, i) => g.fillText(l, 40, h - 224 + i * 32));
   grain(g, w, h, .06);
 });
@@ -787,10 +787,12 @@ function renderPad() {
   }).join('');
   $('#padClues').innerHTML = `
     <li><span>placed</span><b class="${placedList().length === 6 ? '' : 'none'}">${placedList().length}/6</b></li>
-    <li><span>columns clear</span><b class="${columnsOK() ? '' : 'no'}">${columnsOK() ? 'yes' : 'no'}</b></li>
+    <li><span>one per column</span><b class="${columnsOK() ? '' : 'no'}">${columnsOK() ? 'yes' : 'no'}</b></li>
+    <li><span>one per row</span><b class="${rowsOK() ? '' : 'no'}">${rowsOK() ? 'yes' : 'no'}</b></li>
     <li><span>marks</span><b class="none">${state.marks.size}</b></li>`;
-  $('#padRules').innerHTML = 'One person per column. One person per square. Nobody on a crossed square, a table, '
-    + 'a plant or the television. The victim takes whatever is left. The grid is the confession.';
+  $('#padRules').innerHTML = 'One person per column and one per row, so neither line can hold two of them. '
+    + 'Nobody on a crossed square, a table, a plant or the television. The victim takes whatever is left. '
+    + 'The killer was the one nearest the body.';
 }
 function pulsePad() {
   padEl.classList.remove('pulse');
@@ -807,6 +809,16 @@ function columnsOK() {
   }
   return true;
 }
+function rowsOK() {
+  const used = new Set();
+  for (const p of placedList()) {
+    const at = state.placed[p.id];
+    if (used.has(at[1])) return false;
+    used.add(at[1]);
+  }
+  return true;
+}
+const linesOK = () => columnsOK() && rowsOK();
 
 function tray(html, keys = '', kicker = '', title = '') {
   trayEl.hidden = false;
@@ -878,6 +890,7 @@ function place(id, c, r) {
     : ok ? `${p.name} on C${c}R${r}. That fits their statement.`
       : `${p.name} on C${c}R${r}. That does not fit their statement.`, ok === false ? 'bad' : ok ? 'good' : '');
   if (!columnsOK()) toast('Two of them are in the same column.', 'bad');
+  else if (!rowsOK()) toast('Two of them are in the same row.', 'bad');
   renderPad();
   checkWin();
   return true;
@@ -891,19 +904,76 @@ function putBack(id, say = true) {
   if (say) toast(`${person(id).name} goes back to the hall.`);
   renderPad();
 }
+/* The one nearest the body, Manhattan-wise, with the columns breaking any tie:
+   the only deduction the case asks for, and the only thing left to say. */
+function murdererOf() {
+  const v = state.placed.V;
+  if (!v) return null;
+  let best = null;
+  for (const p of PEOPLE) {
+    if (p.victim || !state.placed[p.id]) continue;
+    const at = state.placed[p.id];
+    const d = Math.abs(at[0] - v[0]) + Math.abs(at[1] - v[1]);
+    if (!best || d < best.d || (d === best.d && at[0] < best.at[0])) best = { id: p.id, d, at };
+  }
+  return best ? best.id : null;
+}
+function giveKnife(id) {
+  const g = visuals[id].g;
+  if (g.userData.knife) return;
+  g.userData.knife = true;
+  const knife = new THREE.Group();
+  knife.position.set(.3, 1.05, .18);
+  knife.rotation.set(-.35, .2, .5);
+  g.add(knife);
+  box(.022, .022, .26, new THREE.MeshStandardMaterial({ color: 0xd2d7db, roughness: .22, metalness: .85 }), 0, 0, .14, knife);
+  box(.03, .03, .09, new THREE.MeshStandardMaterial({ color: 0x2a1c18, roughness: .7 }), 0, 0, -.02, knife);
+  box(.05, .012, .02, M.metal, 0, 0, .03, knife);
+  box(.026, .026, .11, new THREE.MeshStandardMaterial({ color: 0x9b1414, emissive: 0x5a0808, emissiveIntensity: .7, roughness: .45 }),
+    0, 0, .2, knife);                                      // the blade, still wet
+}
+function revealMurderer(id) {
+  const p = person(id);
+  const at = state.placed[id];
+  giveKnife(id);
+  const mx = cellX(at[0]), mz = cellZ(at[1]);
+  const body = state.placed.V || at;
+  const bx = cellX(body[0]), bz = cellZ(body[1]);
+  // stand two metres off, on the far side of the murderer from the body
+  let dx = mx - bx, dz = mz - bz;
+  const len = Math.hypot(dx, dz) || 1;
+  dx /= len; dz /= len;
+  let cx = mx + dx * 2.2, cz = mz + dz * 2.2;
+  if (cx < X0 + .5 || cx > X1 - .5 || cz < Z0 + .5 || cz > 6 - .5) {
+    cx = mx - dx * 2.2; cz = mz - dz * 2.2;
+  }
+  state.started = false;
+  const flick = () => { if (state.locked) return; };
+  camera.position.set(cx, 1.62, cz);
+  yaw = Math.atan2(-(mx - cx), -(mz - cz));
+  pitch = Math.atan2(1.05 - 1.62, Math.hypot(mx - cx, mz - cz));
+  camera.rotation.set(pitch, yaw, 0);
+  camera.updateMatrixWorld(true);
+  state.started = true;
+  banner('THE MURDERER IS ' + p.name.toUpperCase()
+    + '<small>the one nearest the body. Vladimir can rest.</small>');
+  toast(`${p.name} was nearest to Vladimir, with the knife still in hand.`, 'good');
+}
 function checkWin() {
   if (state.won) return;
   if (placedList().length < PEOPLE.length) return;
-  if (!columnsOK()) return;
+  if (!linesOK()) return;
   const wrong = PEOPLE.filter(p => p.test && !p.test(...state.placed[p.id]));
   if (wrong.length) {
     toast(`${wrong.length} statement${wrong.length > 1 ? 's do' : ' does'} not fit yet.`, 'bad');
     return;
   }
   state.won = true;
-  banner('CASE CLOSED<small>everyone accounted for. Vladimir can rest, and the murderer can start the car.</small>');
-  toast('The grid holds. Every statement fits and every column has one of them.', 'good');
+  state.murderer = murdererOf();
+  banner('CASE CLOSED<small>everyone accounted for. One of them is holding the knife.</small>');
+  toast('The grid holds: every statement fits, and every row and column has one of them.', 'good');
   renderPad();
+  if (state.murderer) setTimeout(() => revealMurderer(state.murderer), 1400);
 }
 
 /* ------------------------------------------------------------------ movement */
@@ -1177,6 +1247,7 @@ if (new URLSearchParams(location.search).has('test') || new URLSearchParams(loca
     BEDS, TABLES, CHAIRS, TVS, RUGS, PLANTS, NO_STAND, WINDOW, WINDOW_AT, FURN, use, readCase, renderPad, trayEl,
     SOLIDS, WALLS, buildWalls, wallSign, groundAt, cameraOrder: () => camera.rotation.order,
     HOUSE: { X0, X1, Z0, Z1, WALL_H, CELL }, plaqueCount: () => interact.filter(o => String(o.userData.interact).startsWith('sign_')).length,
+    rowsOK, linesOK, murdererOf, giveKnife, revealMurderer, checkWinNow: checkWin,
     setFeet(y) { feet = y; camera.position.y = y + P.eye; },
     feet: () => feet,
     setCell(id, c, r) { lift(id); return place(id, c, r); },

@@ -170,7 +170,7 @@ const st = page => page.evaluate(() => ({
   await page.evaluate(() => { const d = window.__murdoku; d.putBack('B'); d.state.marks.clear(); d.syncMarks(); });
 
   // the whole solution, on the real floor
-  const sol = { A: [1, 1], B: [5, 2], C: [3, 3], D: [4, 5], E: [6, 4], V: [2, 5] };
+  const sol = { A: [1, 1], B: [5, 2], C: [3, 3], D: [4, 5], E: [6, 4], V: [2, 6] };
   for (const [id, [c, r]] of Object.entries(sol)) {
     await aimPerson(page, id);
     await page.keyboard.press('KeyE');
@@ -184,10 +184,43 @@ const st = page => page.evaluate(() => ({
     Object.entries(sol).every(([id, [c, r]]) => fin.placed[id] && fin.placed[id][0] === c && fin.placed[id][1] === r),
     JSON.stringify(fin.placed));
   check('which closes the case', fin.won === true);
+  check('one per row as well as one per column', await page.evaluate(() => {
+    const d = window.__murdoku;
+    return d.columnsOK() && d.rowsOK() && d.linesOK();
+  }));
+  check('and the murderer is the one nearest the body', await page.evaluate(() => {
+    const d = window.__murdoku;
+    return d.state.murderer === 'D' && d.murdererOf() === 'D';
+  }), await page.evaluate(() => String(window.__murdoku.state.murderer)));
   check('and the sign says so', await page.evaluate(() =>
     !document.getElementById('banner').hidden && /CASE CLOSED/i.test(document.getElementById('banner').textContent)));
+  check('a second person in one row is refused a clean placement', await page.evaluate(() => {
+    const d = window.__murdoku;
+    const keep = { ...d.state.placed };
+    d.lift('E'); d.place('E', 6, 5);                    // E joins D in row 5
+    const after = { rows: d.rowsOK(), cols: d.columnsOK(),
+      said: [...document.querySelectorAll('#toasts .toast')].map(t => t.textContent).join(' | ') };
+    d.state.placed = keep;
+    Object.entries(keep).forEach(([id, [c, r]]) => d.visuals[id].g.position.set(d.cellX(c), 0, d.cellZ(r)));
+    d.renderPad();
+    return { rows: after.rows, cols: after.cols, said: /same row/i.test(after.said) };
+  }).then(r => r.rows === false && r.cols === true && r.said === true));
+
   check('every statement is ticked in the notes', await page.evaluate(() =>
     (document.getElementById('padPeople').textContent.match(/✓/g) || []).length === 5));
+  const revealed = await page.evaluate(async () => {
+    const d = window.__murdoku;
+    await new Promise(r => setTimeout(r, 1700));           // the reveal runs after 1.4 s
+    const g = d.visuals.D.g;
+    const at = d.state.placed.D;
+    const dist = Math.hypot(d.camera.position.x - d.cellX(at[0]), d.camera.position.z - d.cellZ(at[1]));
+    return { knife: !!g.userData.knife, dist: +dist.toFixed(2),
+      banner: document.getElementById('banner').textContent.replace(/\s+/g, ' ') };
+  });
+  check('the murderer is holding a knife', revealed.knife === true);
+  check('and the camera has moved to them', revealed.dist > 1 && revealed.dist < 3.2, JSON.stringify(revealed));
+  check('the banner names the murderer instead of nonsense about a car',
+    /DIANA/.test(revealed.banner) && !/car/i.test(revealed.banner), revealed.banner);
 
   /* --- the room itself: how it looks, how it walks ----------------------- */
   check('the camera yaws before it pitches, so turning left does not roll the room',

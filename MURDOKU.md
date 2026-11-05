@@ -79,10 +79,12 @@ jump onto the furniture but not through the roof.
 Rules, as implemented:
 
 1. one person per square;
-2. one person per **column**;
+2. one person per **column** and one person per **row** — a line can never hold two of them;
 3. nobody stands on a square that has been crossed out, on a **table**, on a **plant** or on the **television**;
 4. every statement has to be true of the person it belongs to;
-5. the victim has no statement of his own — he takes whichever square the rest leave free.
+5. the victim has no statement of his own — he takes whichever square the rest leave free, which with rows and
+   columns both in play is exactly one square;
+6. nobody is the murderer until the grid is full: **the killer is the one nearest the body**, Manhattan-wise.
 
 Furniture you cannot stand on: both tables (C4R3, and C5R1 + C6R1), both plants (C5R3, C5R4) and the television
 (C3R6). Beds, chairs and carpets are fair game — the case itself puts Alexander on a bed.
@@ -97,14 +99,20 @@ B Bas        C5R2   (kitchen)
 C Clarissa   C3R3   (next to the table in C4R3)
 D Diana      C4R5   (next to the television in C3R6)
 E Elsa       C6R4   (at the window)
-V Vladimir   C2R5   (the last column, and the last square in it)
+V Vladimir   C2R6   (the last column and the last row: the square nobody else can take)
 ```
 
-A note on the rules, because it is the one place this room argues with itself. With only clues + *one per column*, a
-lot of layouts fit, and the victim could sit anywhere in the leftover column. Add the classic murdoku rule *one per
-row as well* and the leftover square becomes exactly **C2R6** — the victim is then forced, which is what "lay in the
-last square left over" is supposed to mean. This build implements clues + one per column and accepts the layout
-above; if the row rule is turned on later, the victim moves to C2R6 and nothing else changes.
+With one per row and one per column, the five suspects take rows 1–5 and columns 1–6 minus column 2, so the victim is
+pushed into **C2R6** — the "last square left over" is derived rather than guessed, which is the point of the clue.
+
+**The murderer is Diana.** She was two squares from the body (C4R5 against Vladimir in C2R6, Manhattan: 2 + 1 = 3);
+Clarissa is next at four, and Alexander, Bas and Elsa are farther. When the grid is full the camera turns to her, a
+knife appears in her hand, and the banner says so. The deduction is kept out of the placement puzzle on purpose: the
+grid tells you where everyone was, and the murderer is the *reading* of that answer, not another square to fill.
+
+A note for the next case: the statements are still loose — "sat on a bed" matches four squares and "next to a table"
+several more — so with or without the row rule there are several layouts that satisfy them all. The victim's square is
+forced, the rest is not. Tightening the statements (a named bed, a named side) is what would make a layout unique.
 
 ---
 
@@ -118,7 +126,7 @@ above; if the row rule is turned on later, the victim moves to C2R6 and nothing 
 | `E` | pick a guest up, put them down on the square you are looking at, read the case file |
 | `F` | cross a square out (or clear it again) |
 | `Q` | put the guest in your arms back in the hall |
-| `I` | the notes: every statement, ticked or crossed as you place people |
+| `I` | the notes: every statement, ticked or crossed as you place people, and whether rows and columns are still clean |
 | `R` | everyone back to the hall, every mark gone (after the case closes: play again) |
 
 Room plaques read like the case file: look at one and the tray names the room and lists its squares, so the grid is
@@ -144,6 +152,7 @@ names whatever it is resting on, and the case file on the west wall is the same 
   it is scenery, the furniture nobody may stand on, the closed wall count, the window's place in the east wall, a
   plaque on every wall face, the outer shell standing on the grid's edge, and that every piece of furniture is
   something you can stand on — plus a jump that clears the television, a head that stops at the ceiling, and a
-  crosshair that names what it is on even when the thing is made of several parts (45 checks).
+  crosshair that names what it is on even when the thing is made of several parts, the row rule, the murderer's
+  deduction, the knife in their hand and the camera turning to them (51 checks).
 - Known gap, deliberate for a first case: the checker accepts the layout above but not a *unique* one — see the note
   on the row rule. A second case should either turn the row rule on or drop the "leftover square" statement.
