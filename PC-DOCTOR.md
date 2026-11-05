@@ -514,8 +514,10 @@ Known rough edge for slice 5: the keyboard is not yet solid, and its backlight i
 
 - **the login window**: a live canvas on the monitor with six drawn pictograms (SSD, monitor, fan, PSU, GPU, RAM) and a
   password field, plus the cursor. It comes up on its own the moment the last code clears.
-- **the cursor**: the physical mouse drags it — `E` the mouse, drag, and the on-screen arrow follows; `E` the left
-  button clicks it. The field takes focus with a click, and the desktop says so when you click nothing.
+- **the cursor**: the physical mouse drags it — `E` the mouse, drag, and the on-screen arrow follows; `E` again
+  clicks wherever the pointer is, and the mouse's own left button does the same. It only takes hold if the mouse is
+  **plugged in and clean**, so the dirty-sensor chain is a real gate on the finale. The field says `ENTER PASSWORD`,
+  lights up while the pointer is over it, and the desktop answers a click that lands nowhere.
 - **the keyboard**: every lettered key is its own target and presses with `E`, with the keycap dipping and a clack.
   Six presses: **B R O K E N**. A wrong six clears the field.
 - **the way out**: `PASSWORD RECOVERED`, one button on the screen, and a white bloom that leaves you at 1.62 m in a

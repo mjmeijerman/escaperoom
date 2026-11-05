@@ -175,7 +175,9 @@ note beside them. Click the connector, or the cable near it, then ride the zipli
 The cable follows you; that is the only way it is getting across.
 
 **The login cursor will not move.**
-Grab the mouse first: `E` it, then drag. Dragging only works while you are holding it, and `Q` lets go.
+Two reasons, and the tray says which. The mouse must be plugged into the rear panel and its sensor window must be
+clean — take the can of air out of the notepad and blow the hair off. Then `E` it to take hold, drag, and `E` again
+to click. `Q` lets go.
 
 **A key press does not type anything.**
 The field has to be focused first — click it with the left button. The key is pressed with `E` while you look at it.
@@ -250,9 +252,12 @@ again to put it back on its pad.
    - `E` the port mouth inside to step back out. A missing sector spits you out at the port, no harm done.
 
 13. **The login** — with every code clear the monitor comes up on a customer login: six pictograms in a row, and a
-    field.
+    field that says **ENTER PASSWORD**.
     - The cursor is on the screen; the mouse is on the desk. `E` the mouse, drag it, and the cursor moves. Push it
-      into the field, then `E` the mouse's left button to click. (`Q` lets go of the mouse.)
+      over the field and press `E` again to click — the field takes the click and starts taking letters. `Q` lets go.
+      (The mouse's own left button does the same thing if you would rather look at it and press `E` there.)
+    - **The mouse has to be plugged in and clean.** An unplugged mouse will not take hold, and a dirty sensor makes
+      the pointer jump: no cleaning, no login.
     - Walk the keyboard. Every lettered key answers `E`: press **B R O K E N**. The pictograms are the order —
       SSD, monitor, fans, PSU, GPU, RAM — which is that word.
     - The screen says **PASSWORD RECOVERED** and puts one button on it. Cursor onto the button, left button to

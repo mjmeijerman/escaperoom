@@ -791,6 +791,35 @@ const check = (name, ok, detail = '') => {
     loginUp.after.x > loginUp.before.x + .1 && loginUp.after.y > loginUp.before.y + .1, JSON.stringify(loginUp));
   check('clicking the field gives it focus', loginUp.focus === true);
 
+  const mouseGate = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.grab = null;
+    const plug = d.state.usb.mouse, clean = d.state.usb.clean;
+    d.state.usb.mouse = false;
+    d.THINGS.mouse.act();
+    const noPlug = !!d.state.grab;
+    d.state.usb.mouse = true; d.state.usb.clean = false;
+    d.THINGS.mouse.act();
+    const dirty = !!d.state.grab;
+    d.state.usb.clean = true;
+    d.THINGS.mouse.act();
+    const took = d.state.grab && d.state.grab.id === 'loginMouse';
+    // E while holding it should click what the pointer is on
+    d.state.login.focus = false;
+    d.state.login.cursor = { x: .5, y: .82 };
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' }));
+    await new Promise(r => setTimeout(r, 120));
+    const clicked = d.state.login.focus;
+    d.state.grab = null;
+    d.state.usb.mouse = plug; d.state.usb.clean = clean;
+    d.state.login.focus = true;
+    return { noPlug, dirty, took, clicked };
+  });
+  check('the cursor will not move if the mouse is not plugged in', mouseGate.noPlug === false);
+  check('nor if its sensor is filthy', mouseGate.dirty === false);
+  check('plugged and clean, the mouse takes hold', mouseGate.took === true);
+  check('E while you hold it clicks what the pointer is on', mouseGate.clicked === true, JSON.stringify(mouseGate));
+
   await page.evaluate(async () => {
     const d = window.__doctor;
     d.state.zip.seconds = 0.35;

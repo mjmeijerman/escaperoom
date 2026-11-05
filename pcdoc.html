@@ -1914,6 +1914,18 @@ function renderTray() {
     keysEl.innerHTML = '<kbd>↑↓</kbd>digit · <kbd>←→</kbd>wheel · <kbd>E</kbd>try it · <kbd>Q</kbd>let go';
     return;
   }
+  if (state.grab && state.grab.id === 'loginMouse') {
+    trayEl.hidden = false;
+    kickerEl.textContent = 'the mouse';
+    titleEl.textContent = 'The cursor';
+    const t = loginTargetAt();
+    bodyEl.innerHTML = `<p>Drag: the pointer on the screen follows you.</p>
+      <p class="sub">${t === 'field' ? 'Over the password field. <b>E</b> to click it.'
+        : t === 'button' ? 'Over the button. <b>E</b> to click it.'
+        : 'Move it onto the password field, then <b>E</b> to click.'}</p>`;
+    keysEl.innerHTML = '<kbd>E</kbd>click · <kbd>Q</kbd>let go';
+    return;
+  }
   if (state.grab) {
     trayEl.hidden = false;
     kickerEl.textContent = 'in your hands';
@@ -2112,6 +2124,7 @@ canvas.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
   audioInit();
   if (!state.locked) { canvas.requestPointerLock?.(); return; }
+  if (state.grab && state.grab.id === 'loginMouse') { loginClick(); renderTray(); return; }
   if (state.grab) { state.grab = null; renderTray(); return; }
   use();
 });
@@ -2187,7 +2200,10 @@ addEventListener('keydown', e => {
     if (state.gpu && state.gpu.trying) { state.gpu.trying = false; renderTray(); }
     return;
   }
-  if (e.code === 'KeyE') { use(); return; }
+  if (e.code === 'KeyE') {
+    if (state.grab && state.grab.id === 'loginMouse') { loginClick(); renderTray(); return; }
+    use(); return;
+  }
   if (e.code === 'Space') {
     e.preventDefault();
     if (grounded && !shrinking && state.phase !== 'shrinking') { vy = P.jump; grounded = false; sfx.step(false); }
@@ -2278,9 +2294,13 @@ function giveHint() {
     : 'Hint · the window under the mouse is filthy. The can of air is standing on the bench, left of the case.', '');
   if (!state.ssd.plugged) return toast("Hint · the drive on the bench in front of the case has a loose cable end. The rear panel has the only SATA socket.", '');
   if (state.codes.includes('b7')) return toast('Hint · the drive is lit red. Its port is a doorway.', '');
-  if (state.login.active && !state.login.ok) return !state.login.focus
-    ? toast('Hint · push the cursor onto the password field with the mouse, then press its left button.', '')
-    : toast('Hint · the pictograms are the order: SSD, monitor, fans, PSU, GPU, RAM. Six letters.', '');
+  if (state.login.active && !state.login.ok) {
+    if (!state.usb.mouse) return toast('Hint · the login needs a working mouse. Plug it in at the rear panel.', '');
+    if (!state.usb.clean) return toast('Hint · the pointer jumps because the sensor is filthy. Tip the mouse and blow the window out.', '');
+    return !state.login.focus
+      ? toast('Hint · E the mouse, drag the cursor onto ENTER PASSWORD, then E to click.', '')
+      : toast('Hint · the pictograms are the order: SSD, monitor, fans, PSU, GPU, RAM. Six letters.', '');
+  }
   if (state.login.ok) return toast('Hint · the button on the screen. Push the cursor onto it and click.', '');
   return toast('Hint · every fault is clear. The monitor wants a password.', 'good');
 }
@@ -4212,12 +4232,19 @@ function drawLogin() {
     g.fillStyle = 'rgba(140,230,255,.55)';
     g.font = '400 17px ui-monospace,monospace';
     g.fillText('the order is the row above · six characters', 28, 186);
-    g.strokeStyle = L.focus ? '#c8f4ff' : 'rgba(140,230,255,.45)';
-    g.lineWidth = L.focus ? 4 : 2;
+    const overField = L.cursor.x > FIELD.x0 && L.cursor.x < FIELD.x1 && L.cursor.y > FIELD.y0 && L.cursor.y < FIELD.y1;
+    g.fillStyle = overField ? '#ffffff' : 'rgba(200,244,255,.85)';
+    g.font = '700 20px ui-monospace,monospace';
+    g.fillText('ENTER PASSWORD', 28, 276);
+    g.strokeStyle = L.focus ? '#c8f4ff' : overField ? '#8ff0ff' : 'rgba(140,230,255,.45)';
+    g.lineWidth = L.focus || overField ? 4 : 2;
     g.strokeRect(28, 296, 584, 62);
     g.fillStyle = '#eafcff';
     g.font = '700 38px ui-monospace,monospace';
     g.fillText(L.typed.split('').join(' ') + (L.focus ? '▏' : ''), 46, 340);
+    g.fillStyle = L.focus ? '#7fffc0' : 'rgba(140,230,255,.5)';
+    g.font = '400 17px ui-monospace,monospace';
+    g.fillText(L.focus ? 'field focused · press the keys' : 'click the field, then press the keys', 28, 386);
   } else {
     g.fillStyle = '#8ff0ff';
     g.font = '700 26px ui-monospace,monospace';
@@ -4228,9 +4255,11 @@ function drawLogin() {
     g.font = '400 20px ui-monospace,monospace';
     g.fillStyle = 'rgba(140,255,200,.75)';
     g.fillText('customer boots normally', 28, 156);
-    g.fillStyle = 'rgba(90,240,180,.16)';
+    const overBtn = L.cursor.x > UNSHRINK_BTN.x0 && L.cursor.x < UNSHRINK_BTN.x1
+      && L.cursor.y > UNSHRINK_BTN.y0 && L.cursor.y < UNSHRINK_BTN.y1;
+    g.fillStyle = overBtn ? 'rgba(120,255,200,.3)' : 'rgba(90,240,180,.16)';
     g.fillRect(140, 228, 360, 92);
-    g.strokeStyle = '#7fffc0'; g.lineWidth = 4;
+    g.strokeStyle = '#7fffc0'; g.lineWidth = overBtn ? 6 : 4;
     g.strokeRect(140, 228, 360, 92);
     g.fillStyle = '#eafff5'; g.font = '700 24px ui-monospace,monospace';
     g.fillText('UN-SHRINK THE OPERATOR', 160, 282);
@@ -4263,6 +4292,14 @@ function openLogin() {
   setTimeout(() => toast('The pictograms are the order.', ''), 2600);
 }
 
+function loginTargetAt() {
+  const c = state.login.cursor;
+  if (!state.login.active) return null;
+  if (!state.login.ok) {
+    return c.x > FIELD.x0 && c.x < FIELD.x1 && c.y > FIELD.y0 && c.y < FIELD.y1 ? 'field' : null;
+  }
+  return c.x > UNSHRINK_BTN.x0 && c.x < UNSHRINK_BTN.x1 && c.y > UNSHRINK_BTN.y0 && c.y < UNSHRINK_BTN.y1 ? 'button' : null;
+}
 function loginMove(dx, dy) {
   const c = state.login;
   c.cursor.x = clamp(c.cursor.x + dx * .0011, .01, .99);
@@ -4369,10 +4406,12 @@ Object.assign(THINGS, {
           ? '<p>On its pad, cable running off. Not plugged in.</p>'
           : '<p>On its pad, logo lit. The intake form was right about this one.</p>',
     keys: () => state.login.active
-      ? '<kbd>E</kbd>take hold · drag to move the cursor'
+      ? (state.usb.mouse && state.usb.clean ? '<kbd>E</kbd>take hold · drag to move the cursor' : '')
       : (state.phase === 'shrunk' ? (state.usb.tipped ? '<kbd>E</kbd>put it back on its pad' : '<kbd>E</kbd>tip it onto its side') : ''),
     act() {
       if (state.login.active) {
+        if (!state.usb.mouse) { sfx.buzz(); toast('The mouse is not plugged in. The ports are on the rear panel.', 'bad'); return; }
+        if (!state.usb.clean) { sfx.buzz(); toast('The sensor is filthy: the pointer jumps in squares. Clean that window first.', 'bad'); return; }
         state.grab = { id: 'loginMouse', p: 0, need: 1, label: 'drag the mouse to move the cursor' };
         sfx.click();
         toast('The cursor is yours. Drag.');
@@ -4387,7 +4426,7 @@ Object.assign(THINGS, {
     text: () => state.login.active
       ? '<p>A big plastic button with a hinge under it.</p>'
       : '<p>The left button. Nothing to click yet.</p>',
-    keys: () => state.login.active ? '<kbd>E</kbd>click' : '',
+    keys: () => state.login.active ? '<kbd>E</kbd>click whatever the cursor is on' : '',
     act() { loginClick(); },
   },
 });
