@@ -15,8 +15,8 @@ Every piece of story is a **physical object in the room**. Nothing is narrated b
 | # | Object | Where | What it delivers |
 | --- | --- | --- | --- |
 | 1 | **Answering machine** (blinking LED, plays on `E`) | shelf above the bench | Gerrit's voice: the job, the krimpstraal, the generator. `speechSynthesis` in Dutch + subtitle lines on its tiny LCD (readable via the corner tray) |
-| 2 | **Intake form** (`werkbon`, paper) | counter | the customer's complaint in her own words: *"hij valt uit, hij piept, geen beeld, en de muis doet raar"* — four of the six faults, in layman's language. The player learns to translate complaints into faults |
-| 3 | **Service log book** (A5, handwritten) | counter | three previous visits on this same tower. Last line: *"derde keer terug = nieuwe voeding, niet weer prutsen"*. The twist lives here (see 8) |
+| 2 | **Intake form** (`werkbon`, paper) | bench, left end | the customer's complaint in her own words: *"hij valt uit, hij piept, geen beeld, en de muis doet raar"* — four of the six faults, in layman's language. The player learns to translate complaints into faults |
+| 3 | **Service log book** (A5, handwritten) | bench, left of the case | three previous visits on this same tower. Last line: *"derde keer terug = nieuwe voeding, niet weer prutsen"*. The twist lives here (see 8) |
 | 4 | **The manual**, lying open, laminated | front-left of the bench | the **POST code table** and the **wiring diagram**. Shrunk, you walk across it: the letters are fields, the code table is a wall you read by walking backwards |
 | 5 | **Sticky notes** in Gerrit's handwriting | generator, hoist, PSU, mousepad | operating procedures and one bad joke each. These are the room's voice |
 
@@ -46,7 +46,11 @@ Consequences, all free:
 - a screwdriver on the bench is a fallen **pillar**; the mug is a **cistern**; dust bunnies are **boulders**;
 - the open manual is a **landscape** — the code table is legible *by walking on it*;
 - the keyboard is a **plaza** of 3 m keys; the mouse is a **boulder you push**;
-- the monitor is a **glowing cliff** you climb to reach the login screen.
+- the monitor is a **glowing cliff**, and its own cable is the **only way to reach it** — see 5.6.
+
+Between the bench and the desk there is no floor worth the name: the desk top is 0.76 m and the bench 0.95 m, and the
+mat between them is eight storeys down. Shrunk, two surfaces are walkable (`SHRUNK_FLOORS`: bench, desk). Step off
+either and the lip catches you — no fall state, no lost progress.
 
 Precision is fine: worst case world extent ~20 m at eye height 17 mm → relative float error ~1e-6. Fog, shadow bias and
 contact-shadow size scale with `SCALES[k]`. Do not scale the *scene*; scale the *player*.
@@ -154,12 +158,23 @@ needed), then guide the GPU down the rail with your shoulder while it hangs, int
 If the player drops it into the slot before the 8-pin, `d4` clears but a fan whines — fine, no penalty, the manual
 says the 8-pin is required for the card to post.
 
-### 5.6 Monitor — `A2`
+### 5.6 Monitor — `A2`, and the span to the desk
 
-The top of the case rear has a **grommet**. The HDMI cable lies coiled in the basement. Carry it out the grommet,
-across the desk (a long, quiet, vertiginous walk — the floor is 8 storeys down), up the monitor's stand, and into the
-HDMI port at the back of the monitor. Plug it and the monitor's standby LED turns blue. Character `7` on the cable
-sleeve. This walk is where the player first sees the keyboard and mouse properly, and starts planning the finale.
+The top of the case rear has a **grommet**. The HDMI cable lies coiled in the basement (in the build: on the bench in
+front of the case, where Gerrit dropped it when he moved the desk).
+
+Do: pick up the loose end, walk round the side and behind the tower, and plug it into the rear panel's HDMI port. The
+monitor's standby LED turns blue. Character `R` on the cable sleeve.
+
+**Deviation from the sketch (better, and it fixes a hole in the map).** The original plan walked the cable up the
+monitor's stand. But the desk at 17 mm is unreachable — the stand post is a 30 cm wall — so the cable became the
+route instead of the errand. Once both ends are in, the run is taut: monitor port → down the back → over the desk
+edge (grip) → across the gap → over the bench lip (grip) → along the bench → rear panel. Two servings of tape are
+the handholds; `E` a grip and you go hand over hand, **both ways**, at ~1.2 m/s of cable. The span is the room's
+answer to a lift, and it makes the desk the second playfield rather than scenery.
+
+The ride owns the camera position, not the camera angle: you can look down at the carpet of carpet, or at the
+monitor coming up. Movement and collision are off for the duration; nothing can be dropped mid-span.
 
 ### 5.7 Fans — `F1`
 
@@ -174,7 +189,7 @@ Three fans, three different mistakes (three separate "aha"s, not one repeated ch
 All three spinning → airflow sound, dust motes drift, `F1` clears. Character `P` on the fan hub.
 (The screwdriver is used nowhere else. It is a red herring that *feels* like a tool, which is the joke.)
 
-### 5.8 Virus — `b7`
+### 5.8 Virus — `b7` (built, see §13 and the notes below)
 
 Power the SSD (SATA from 5.3), then enter it through the **SATA port** like a doorway. Inside: a lattice of glowing
 blocks (the sector grid) over a black void, missing sectors = holes to jump.
@@ -185,17 +200,26 @@ glitches, you are ejected back out of the port, and you climb back in. No other 
 Goal: lure it into the **quarantaine** chamber in the middle of the grid, leave through the small hatch, then pull the
 big lever outside. Door slams. The lattice turns green.
 
-Inside the chamber, once sealed: a `LEESMIJ.txt` tablet — the twist (see 8) — and the SSD's label. Character `9`.
+Taped to the outside of the chamber, beside the door, once it is sealed: `README.txt` — the twist (see 8) — and
+beside it the drive's own label. Character `B`.
 Second reason the block grid exists: it teaches platforming on a *safe* surface before the keyboard finale.
 
 ### 5.9 Input devices (both required, both must actually work)
 
-Rear I/O, two USB-A plugs taller than you are.
+Rear I/O, two USB-A connectors taller than you are. **Built:** each connector sits on the desk by the monitor at the
+end of its own device cable, because that is where Gerrit left them when he moved the monitor — the cable is drawn
+from the device to the connector every frame, so it follows the connector into your hands. The ports are on the other
+side of the gap, so the trip is the point: ride the zipline down, pick a connector up, ride back with it, plug it in.
+Either blue port takes either connector, with the mains on or off — a connector is passive. The *device* needs the
+board's 12 V to light up, and lights itself the moment the rail comes live.
 
-- **Keyboard**: plug in → RGB backlight comes on, a satisfying *whirr*. Its keys are the finale.
-- **Mouse**: plug in → its logo LED lights, and the on-screen cursor **jitters wildly**. Cause: the intake form was
-  right — *"de muis doet raar"*. The mouse sits on the mousepad; its optical window has a hair and dust in it.
-  Take the **compressed air** can from the parts bin, blast the lens, and the cursor becomes smooth. Gerrit's note:
+- **Keyboard**: plug in → the backlight comes up as one flat glow (the per-key finale lighting is slice 5). Its keys
+  are the finale.
+- **Mouse**: plug in → its logo LED lights, and the sensor under it glows **red**. Cause: the intake form was right —
+  *"de muis doet raar"*. The optical window in the base has a hair and dust in it, and at 17 mm you cannot see under
+  it, so `E` the mouse to **tip it onto its side** (it goes over with a rattle), then blow the window out with the
+  **compressed air** from the notepad — `E` the window to open the notepad, then click the can — then `E` the mouse
+  once more to put it back on its pad. Gerrit's note:
   *"eerst schoonmaken, dan pas zeuren dat het ding stuk is"*. Cheapest real fix in the trade, and the player who has
   ever owned a mouse will laugh.
 
@@ -213,13 +237,12 @@ All five codes clear → LED shows `--` → the monitor wakes with a login windo
    [________________]                    <- 6 tekens
 ```
 
-The pictogram row is the **order**. The characters are on the parts:
+The pictogram row is the **order**. The characters are on the parts, and in this build they are
+**N** RAM · **K** PSU · **O** fans · **E** GPU · **R** monitor · **B** SSD, so the login order the pictograms have to
+give is **SSD · monitor · fans · PSU · GPU · RAM** — which reads **BROKEN**. (The design bible's §12.1 said
+BROKEN; this is the letter assignment that gets there with the letters the slices actually handed out.)
 
-| RAM | PSU | fans | GPU | monitor | SSD |
-| --- | --- | --- | --- | --- | --- |
-| `K` | `A` | `P` | `O` | `T` | `9` |
 
-`KAPOT9`. Gerrit's margin note on the manual: *"wachtwoord = wat de klant altijd als eerste zegt"*.
 
 **Mouse.** The cursor starts top-left of the monitor. Stand against the giant mouse, hold `E`, and drag — the same
 drag gesture as the generator cord and the wand. Push the mouse right/forward and the cursor slides across the
@@ -267,7 +290,7 @@ convention), and it points at the code the LED is showing, not at a fixed order 
 
 ## 8. The twist (pure story, no mechanic)
 
-In the SSD's quarantine chamber, `LEESMIJ.txt`:
+In the drive, taped beside the quarantine door, `README.txt`:
 
 > **FIXMASTER PRO 2019 — GRATIS VERSIE**
 > "Bedankt voor het gebruiken van onze *volledig legale* diagnosetool.
@@ -409,7 +432,8 @@ Mix rules: one `masterGain`, music at −14 dB and ducked 6 dB for 250 ms under 
 
 `pcdoc.html` is playable up to the point where the room's grammar is proven:
 
-- the dark shop, the torch, the answering machine, the werkbon, the service log, the pegboard, the bench lamp;
+- the dark shop, the torch, the answering machine, the pegboard, the bench lamp; the werkbon and the service log sit
+  on the bench (deviation: they were on the counter, where a 17 mm person could never read them);
 - the generator (fuel cock → choke → three pulls, floods if you get the order wrong, primer to recover);
 - the shrink ray (stand in the ring, pull the lever) and the scale change itself;
 - inside the case: the board as a floor, the four slots, the leaning A2 module, the scorched B2, the CPU cooler,
@@ -431,8 +455,74 @@ Mix rules: one `masterGain`, music at −14 dB and ducked 6 dB for 250 ms under 
 Deviation from §5.3: the rocker is on the test-rig PSU inside the case rather than at the rear I/O, because the rear
 I/O trek is slice 3. Move it back out when that zone exists.
 
-### Next slices
+### Slice 3 — built
 
-3. the HDMI trek to the monitor (`A2`), the rear I/O, the USB keyboard and mouse, the dirty lens.
-4. the SSD: the sector grid and the worm (`b7`).
-5. the finale: login window, cursor drag, jump-to-type, un-shrink, the end banner.
+- **the monitor cable** (`A2`): coiled on the bench, one end in the monitor, the other carried round the back and into
+  the rear panel's HDMI port. `A2` clears, the monitor wakes with `PC DOKTER / HDMI 1`, and the panel gives up `R`;
+- **the span**: once plugged, the cable is a two-way ride from the bench lip to the desk (see §5.6). Two taped grips,
+  `E` either end, ~3.4 s of hand-over-hand, no steering and nothing droppable. The desk is a real playfield now: the
+  monitor and its stand are solid, the desk top is walkable, and a step off any edge is caught by a lip instead of
+  ending the run (no fall state, per §9);
+- **the rear I/O**: HDMI plus two USB-A ports. A connector goes in whether or not the board has 12 V; the device
+  lights itself the moment the rail comes live;
+- **the keyboard and the mouse**: connectors on the desk at the ends of their own cables, carried back over to the
+  rear panel on the zipline — one hand, one connector, two trips. Once plugged the cable is laid along the route you
+  carried it (down the span, round the back of the case) instead of cutting through the bench. The keyboard is a
+  tilted deck of individual keycaps with a backlight strip; the mouse has a shell, a band, two buttons and a wheel,
+  and its sensor glows red with a hair across the window. It tips over whether or not it has power. Tip it, blow the
+  window clean with the compressed-air can (the can goes into the notepad; the window opens the notepad and you
+  click it there), right it again;
+- **solidity, and the cables**: the keyboard, the (upright and tipped) mouse and the air can are obstacles, not air.
+  The monitor cable runs round the outside of the case instead of through its right-hand panel, the unplugged cable is
+  one draped run rather than a straight line across the room, and the device cables leave the desk over its back edge
+  clear of the monitor stand;
+- `test/pcdoc.browser.cjs` covers all of it (125 checks): both ride directions, the landing on the desk, the fall
+  recovery, both USB plugs and both ports, the dirty window and the air.
+
+Known rough edge for slice 5: the keyboard is not yet solid, and its backlight is one flat glow rather than per-key.
+
+### Slice 4 — built
+
+- **the drive**: a 240 GB SSD on the bench in front of the case, **unplugged**, its tail (a SATA plug on a short
+  cable) lying beside it. The only SATA socket is on the rear panel, so the tail has to be carried round the back of
+  the case first — the cable is drawn from the drive to the plug every frame, and becomes a fixed route once it is
+  in. The status LED is dark while it is unplugged, **red** once it is connected and the board has 12 V, and green
+  after `b7` is quarantined. The drive's SATA port is the doorway, and it refuses you while the drive is
+  disconnected.
+- **the sector grid**: 68 blocks in an 8 × 9 lattice with four sectors missing, over a void. Fall through one and
+  the drive spits you out at the port; nothing is lost.
+- **the worm**: follows you at 0.075 m/s (you walk at 0.105) and eats the block it crawls over — the lattice goes dark
+  behind it and grows back when you are ejected. Touch it and you are out.
+- **the quarantaine chamber**: three cells square, a door on one wall and a hatch on the other, its own floor, ribs
+  down the back and sides, a rim on every wall. Both openings have a panelled slab sitting up in guides, the
+  `QUARANTINE` plate is bolted to the front door, and a rod runs from the door to the lever — pull it and the arm
+  swings while both panels travel down. The room ends up shut front and back. Get the worm inside, leave by the hatch, pull. `b7` clears and the drive gives up **B**.
+- **the worm** is ten tapering segments, alternating bright and dark, with legs that paddle, a face of dark sockets,
+  amber irises and pupils that rides on the head's own wobble, and a red light that travels with it. It plans a route:
+  a breadth-first search over the cell lattice every half second, with holes, chamber walls and the lever stand as
+  obstacles, so it walks *round* a missing sector, a wall or the lever instead of leaning on it, and it comes into the
+  chamber through whichever opening is on its side.
+- **the twist**: `README.txt` appears taped to the *outside* of the chamber wall, beside the door, at a height that is
+  a paper and not a floor covering — the free "diagnostic tool" from the design's §8, in English, in her own words.
+  The drive's label, with the `B`, is on the side wall next to it.
+- **one deviation, deliberate**: the inside of the drive is bigger than the outside. The design's one-world rule
+  cannot survive a lattice you can walk on inside a 7 mm-thick drive, so the grid is built in its own volume under
+  the shop and the port is a doorway. The shrink ray already asked you to accept one impossible thing; this is the
+  same one, spent once.
+
+### Slice 5 — built
+
+- **the login window**: a live canvas on the monitor with six drawn pictograms (SSD, monitor, fan, PSU, GPU, RAM) and a
+  password field, plus the cursor. It comes up on its own the moment the last code clears.
+- **the cursor**: the physical mouse drags it — `E` the mouse, drag, and the on-screen arrow follows; `E` again
+  clicks wherever the pointer is, and the mouse's own left button does the same. It only takes hold if the mouse is
+  **plugged in and clean**, so the dirty-sensor chain is a real gate on the finale. The field says `ENTER PASSWORD`,
+  lights up while the pointer is over it, and the desktop answers a click that lands nowhere.
+- **the keyboard**: every lettered key is its own target and presses with `E`, with the keycap dipping and a clack.
+  Six presses: **B R O K E N**. A wrong six clears the field.
+- **the way out**: `PASSWORD RECOVERED`, one button on the screen, and a white bloom that leaves you at 1.62 m in a
+  lit shop with the sign on. `R` walks it again; the timer stops the moment you are out.
+
+Deviations from §6, both deliberate: the cursor is dragged with the plastic mouse rather than pushed with the body,
+and the keys are **pressed** with `E` rather than jumped on — the keyboard is 3.3 cm of solid plastic at 17 mm and the
+jump apex is 3.6 cm, which is not a puzzle, just a coin toss.

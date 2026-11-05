@@ -32,6 +32,27 @@ const check = (name, ok, detail = '') => {
   await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await sleep(900);
 
+  const startCard = await page.evaluate(() => {
+    const el = document.getElementById('start');
+    return { shown: !!el && !el.hidden, label: el ? el.querySelector('button').textContent.trim() : '' };
+  });
+  check('the room waits behind a start button', startCard.shown, startCard.label);
+  check('the timer has not started', await page.evaluate(() => document.getElementById('timer').textContent) === '00:00');
+  await page.click('#startBtn');
+  await sleep(700);
+  const readTime = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.toast('x'.repeat(140), 'good');                 // a long one, like a solved chain
+    await new Promise(r => setTimeout(r, 3200));
+    const live = [...document.querySelectorAll('#toasts .toast')].filter(el => el.style.opacity !== '0');
+    return live.filter(el => el.textContent.length >= 140).length;
+  });
+  check('a long line stays on screen long enough to read', readTime === 1, String(readTime));
+
+  check('the button starts the shift', await page.evaluate(() => !document.getElementById('start').hidden === false && window.__doctor.state.started === true));
+  check('and the voicemail plays on its own',
+    await page.evaluate(() => /Doctor|wholesaler|tower/.test(document.getElementById('body').textContent)));
+
   const boot = await page.evaluate(() => {
     const d = window.__doctor;
     return { has: !!d, phase: d && d.state.phase, torch: d && d.state.torch, codes: d && d.state.codes.slice() };
@@ -46,10 +67,10 @@ const check = (name, ok, detail = '') => {
     scene: !!document.getElementById('scene'),
     big: [...document.querySelectorAll('body > *')].filter(el => {
       const r = el.getBoundingClientRect();
-      return !el.hidden && r.width > innerWidth * .6 && r.height > innerHeight * .6 && el.id !== 'scene' && el.id !== 'hud' && el.id !== 'bloom' && el.className !== 'vignette';
+      return !el.hidden && r.width > innerWidth * .6 && r.height > innerHeight * .6 && el.id !== 'scene' && el.id !== 'hud' && el.id !== 'bloom' && el.id !== 'start' && el.className !== 'vignette';
     }).map(el => el.id || el.className),
   }));
-  check('no overlays: tray and notepad start hidden', bare.tray && bare.pad);
+  check('the inventory is on screen from the start', bare.pad === false);
   const legend = await page.evaluate(() => {
     const el = document.getElementById('legend');
     if (!el) return null;
@@ -104,15 +125,23 @@ const check = (name, ok, detail = '') => {
   }));
   check('three pulls start the generator', gen.running === true);
   check('the shop lights come on', gen.phase === 'lit');
-  check('and the case gets standby power', gen.powered === true);
+  check('the case has no mains yet, so the display stays dark', gen.powered === false);
+
+  /* --- the torch retires when the mains arrive ---------------------------- */
+  await sleep(2400);               // the shop lights up, then the torch goes back down
+  const torchParked = await page.evaluate(() => {
+    const d = window.__doctor;
+    d.aimAt('torch', 1.0);
+    const keys = d.THINGS.torch.keys();
+    d.use();
+    return { held: d.state.torch, keys, items: d.state.items.includes('torch') };
+  });
+  check('the torch goes back on the counter once the lights are on', torchParked.held === false);
+  check('and it leaves the inventory with it', torchParked.items === false);
+  check('it still reads, but it can no longer be picked up',
+    torchParked.keys === '' && torchParked.held === false, JSON.stringify(torchParked));
 
   /* --- the POST display cycles every fault -------------------------------- */
-  const codeA = await page.evaluate(() => window.__doctor.state.codeIndex);
-  await sleep(2300);
-  const codeB = await page.evaluate(() => window.__doctor.state.codeIndex);
-  check('the debug display cycles through the faults', codeB !== codeA, `${codeA} -> ${codeB}`);
-  const ledText = await page.evaluate(() => window.__doctor.state.codes[window.__doctor.state.codeIndex]);
-  check('a fault is on the display', /^(C1|d4|A2|F1|b7)$/.test(ledText), ledText);
 
   const torchNag = await page.evaluate(() => {
     const d = window.__doctor;
@@ -195,7 +224,7 @@ const check = (name, ok, detail = '') => {
     window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
     return +d.camera.position.z.toFixed(3);
   });
-  check('the PSU block stops you', intoPsu > -2.17, String(intoPsu));
+  check('the PSU block stops you', intoPsu > -2.176, String(intoPsu));
 
   /* --- inside the case: the memory chain --------------------------------- */
   const a2 = await page.evaluate(() => window.__doctor.aimAt('slotA2', 0.055, 0.95));
@@ -203,6 +232,27 @@ const check = (name, ok, detail = '') => {
   await page.keyboard.press('KeyE');
   await sleep(200);
   check('the loose module pushes home', await page.evaluate(() => window.__doctor.state.ram.a2 === true));
+
+  // the module moved, so its collider has to move with it — front face included
+  const a2Box = await page.evaluate(() => {
+    const d = window.__doctor, s = d.a2Solid;
+    return { z0: +s.z0.toFixed(3), z1: +s.z1.toFixed(3), want0: +d.SEATED_Z0.toFixed(3), want1: +d.SEATED_Z1.toFixed(3) };
+  });
+  check('the A2 collider follows the module home',
+    Math.abs(a2Box.z0 - a2Box.want0) < .002 && Math.abs(a2Box.z1 - a2Box.want1) < .002, JSON.stringify(a2Box));
+  const a2Walk = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.setFeet(0.95);
+    d.camera.position.set(-2.13, 0.95 + d.P.eye, -2.30);
+    d.look(0, 0);                       // straight at the seated module
+    d.state.locked = true;
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
+    await new Promise(r => setTimeout(r, 1200));
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
+    d.state.locked = false;
+    return +d.camera.position.z.toFixed(3);
+  });
+  check('and there is no walking through its front face', a2Walk > -2.405 && a2Walk < -2.36, String(a2Walk));
   check('C1 stays up, because it is the other module',
     await page.evaluate(() => window.__doctor.state.codes.includes('C1')));
 
@@ -222,6 +272,10 @@ const check = (name, ok, detail = '') => {
   check('slot B2 prompts again with the spare', b2b === 'slotB2', String(b2b));
   await page.keyboard.press('KeyE');
   await sleep(300);
+  const pending = await page.evaluate(() => window.__doctor.state.invPending);
+  check('an empty slot asks the inventory for a module', pending === 'ram', String(pending));
+  await page.click('#padItems button[data-item="ddr4 module"]');
+  await sleep(350);
   const ram = await page.evaluate(() => ({
     seated: window.__doctor.state.ram.seated,
     codes: window.__doctor.state.codes.slice(),
@@ -229,20 +283,21 @@ const check = (name, ok, detail = '') => {
   }));
   check('the good module seats', ram.seated === true);
   check('C1 clears off the display', !ram.codes.includes('C1'), ram.codes.join(','));
-  check('the module gives up its character', ram.note === 'B', String(ram.note));
+  check('the module gives up its character', ram.note === 'N', String(ram.note));
 
-  /* --- the notepad holds it ---------------------------------------------- */
+  /* --- the inventory holds it -------------------------------------------- */
+  const padShown = await page.evaluate(() => !document.getElementById('pad').hidden);
   await page.keyboard.press('KeyI');
-  await sleep(200);
-  const pad = await page.evaluate(() => ({
-    open: !document.getElementById('pad').hidden,
-    text: document.getElementById('pad').textContent,
-  }));
-  check('I opens the notepad', pad.open);
-  check('the notepad has the character and the fault list',
-    pad.text.includes('B') && pad.text.includes('d4') && pad.text.includes('torch'));
+  await sleep(160);
+  const padHidden = await page.evaluate(() => document.getElementById('pad').hidden);
   await page.keyboard.press('KeyI');
-  await sleep(120);
+  await sleep(160);
+  const padBack = await page.evaluate(() => !document.getElementById('pad').hidden);
+  check('I hides and shows the inventory', padShown && padHidden && padBack, `${padShown}/${padHidden}/${padBack}`);
+  const padText = await page.evaluate(() => document.getElementById('pad').textContent);
+  check('the inventory has the character, the fault list and the scrap module',
+    padText.includes('N') && padText.includes('d4') && /RMA/.test(padText), padText.slice(0, 120));
+  check('and it does not lecture about the order', !/order they go in|order found/i.test(padText));
 
   /* --- slice 2: power, fans, the card ------------------------------------ */
   const at = (id, d = 0.035) => page.evaluate(([id, d]) => window.__doctor.aimAt(id, d, 0.95), [id, d]);
@@ -250,6 +305,8 @@ const check = (name, ok, detail = '') => {
   const st = () => page.evaluate(() => {
     const d = window.__doctor;
     return { psu: { ...d.state.psu }, fans: { ...d.state.fans }, gpu: { ...d.state.gpu },
+      mon: { ...d.state.mon }, usb: { ...d.state.usb }, ssd: { ...d.state.ssd },
+      zip: { ready: !!d.state.zip.ready, riding: !!d.state.zip.riding },
       held: d.state.held, notes: { ...d.state.notes }, codes: d.state.codes.slice() };
   });
 
@@ -260,6 +317,33 @@ const check = (name, ok, detail = '') => {
   check('a cable end can be picked up', (await at('cable_atx')) === 'cable_atx');
   await press();
   check('the 24-pin is in your hand', (await st()).held === 'atx');
+  await page.mouse.click(640, 380, { button: 'right' });     // right button drops it
+  await sleep(150);
+  check('the right mouse button puts it down', (await st()).held === null);
+  await at('cable_atx'); await press();
+  const walkInto = (x, z, yawV, fy, ms = 900) => page.evaluate(async ([x, z, yawV, fy, ms]) => {
+    const d = window.__doctor;
+    d.setFeet(fy);
+    d.camera.position.set(x, fy + d.P.eye, z);
+    d.look(yawV, 0);
+    d.state.locked = true;
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
+    await new Promise(r => setTimeout(r, ms));
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
+    d.state.locked = false;
+    return { x: +d.camera.position.x.toFixed(3), z: +d.camera.position.z.toFixed(3) };
+  }, [x, z, yawV, fy, ms]);
+
+  check('the intake form is on the bench, readable at 17 mm', (await at('werkbon', 0.06)) === 'werkbon');
+  await sleep(200);
+  check('and it still says what the customer said',
+    /beeps|picture|mouse/i.test(await page.$eval('#body', el => el.textContent)));
+  // the log is a book, not a sticker: aim at it from beside it, not from inside it
+  const logLook = await page.evaluate(() => window.__doctor.aim(-2.98, -2.52, Math.PI, null, 0.95));
+  check('the service log is on the bench, readable at 17 mm', logLook === 'logbook', String(logLook));
+  const intoLog = await walkInto(-2.98, -2.60, Math.PI, 0.95, 1500);
+  check('the log is a book you bump into, not air', intoLog.z < -2.42, JSON.stringify(intoLog));
+
   check('the 24-pin socket is reachable', (await at('h24')) === 'h24');
   await press();
   check('the 24-pin plugs in', (await st()).psu.atx === true);
@@ -276,7 +360,29 @@ const check = (name, ok, detail = '') => {
   await at('hcpu'); await press();
   const rail = await st();
   check('the EPS 8-pin goes in the CPU socket', rail.psu.cpu === true);
-  check('12 V on the board gives the PSU its character', rail.notes.PSU === 'R', String(rail.notes.PSU));
+  await sleep(700);
+  const codeA = await page.evaluate(() => window.__doctor.state.codeIndex);
+  await sleep(2400);
+  const codeB = await page.evaluate(() => window.__doctor.state.codeIndex);
+  const offOn = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.aimAt('psuRocker', 0.035, 0.95); d.use();          // mains off
+    await new Promise(r => setTimeout(r, 300));
+    const off = { powered: d.state.casePower, glow: d.led.material.emissiveIntensity };
+    d.aimAt('psuRocker', 0.035, 0.95); d.use();          // and back on
+    await new Promise(r => setTimeout(r, 400));
+    const on = { powered: d.state.casePower, glow: d.led.material.emissiveIntensity };
+    return { off, on };
+  });
+  check('switching the mains off kills the display', offOn.off.powered === false && offOn.off.glow === 0,
+    JSON.stringify(offOn.off));
+  check('and switching it back on brings the codes back', offOn.on.powered === true && offOn.on.glow > 0,
+    JSON.stringify(offOn.on));
+  check('mains plus 24-pin wakes the display', await page.evaluate(() => {
+    const l = window.__doctor.led; return l && l.material.emissiveIntensity > 0 && window.__doctor.state.casePower;
+  }));
+  check('the display cycles through the faults', codeB !== codeA, `${codeA} -> ${codeB}`);
+  check('12 V on the board gives the PSU its character', rail.notes.PSU === 'K', String(rail.notes.PSU));
 
   check('the loose 4-pin can be picked up', (await at('plugRear')) === 'plugRear');
   await press();
@@ -286,7 +392,7 @@ const check = (name, ok, detail = '') => {
 
   check('SYS_FAN3 holds the CPU fan cable', (await at('sysFan3')) === 'sysFan3');
   await press();
-  check('the CPU cable comes out', (await st()).held === 'fan4');
+  check('the CPU cable comes out', (await st()).held === 'fanCpu');
   check('CPU_FAN is reachable', (await at('cpuFanHdr')) === 'cpuFanHdr');
   await press();
   check('the CPU fan is on the right header', (await st()).fans.cpu === true);
@@ -312,6 +418,8 @@ const check = (name, ok, detail = '') => {
   }
   await press();
   check('456 opens the padlock', (await st()).gpu.unlocked === true);
+  const intoPole = await walkInto(-1.78, -2.55, 0, 0.95, 1200);
+  check('the padlock post is something you walk into, not over', intoPole.z > -2.60, JSON.stringify(intoPole));
 
   // drag the winch drum
   check('the winch drum is reachable', (await at('gpuDrum')) === 'gpuDrum');
@@ -332,7 +440,7 @@ const check = (name, ok, detail = '') => {
   const fin = await st();
   check('the card gets its 8-pin', fin.psu.pcie === true && fin.gpu.powered === true);
   check('d4 clears', !fin.codes.includes('d4'), fin.codes.join(','));
-  check('the card gives up its character', fin.notes.GPU === 'K', String(fin.notes.GPU));
+  check('the card gives up its character', fin.notes.GPU === 'E', String(fin.notes.GPU));
   check('only A2 and b7 are left on the display', fin.codes.join(',') === 'A2,b7', fin.codes.join(','));
 
   const audio = await page.evaluate(async () => {
@@ -356,6 +464,436 @@ const check = (name, ok, detail = '') => {
     JSON.stringify(audio.afterMusic));
   check('M brings the music back', audio.back.music > 0);
   check('N silences everything', audio.allOff.master === 0, String(audio.allOff.master));
+
+  /* --- slice 3: the monitor cable ---------------------------------------- */
+  check('the loose HDMI end is reachable inside the case', (await at('cable_hdmi')) === 'cable_hdmi');
+  await press();
+  check('the HDMI cable is in your hands', (await st()).held === 'hdmi');
+  const wrongPort = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.aimAt('usbPortA', 0.03, 0.95);
+    d.use();
+    await new Promise(r => setTimeout(r, 150));
+    const t = document.querySelectorAll('#toasts .toast');
+    return { plugged: d.state.usb.kbd, said: t.length ? t[t.length - 1].textContent : '', held: d.state.held };
+  });
+  check('a USB port refuses the monitor cable, and says which cable it is',
+    wrongPort.plugged === false && /monitor cable/i.test(wrongPort.said) && wrongPort.held === 'hdmi',
+    JSON.stringify(wrongPort));
+  const io = await at('ioHdmi');
+  check('the rear panel is reachable from behind the case', io === 'ioHdmi', String(io));
+  await press();
+  const mon = await st();
+  check('plugging it in clears A2', !mon.codes.includes('A2'), mon.codes.join(','));
+  check('the rear panel gives up its character', mon.notes.monitor === 'R', String(mon.notes.monitor));
+  check('the monitor wakes on the live screen, not a static card', await page.evaluate(() => {
+    const d = window.__doctor;
+    return d.scene.children.some(o => o.isMesh && o.material && o.material.map === d.screenLive);
+  }));
+  check('and the monitor wakes up', await page.evaluate(() => {
+    const m = window.__doctor.scene.children.find(o => o.isMesh && o.material && o.material.emissiveIntensity > 1);
+    return !!m;
+  }));
+  check('only b7 is left on the display', mon.codes.join(',') === 'b7', mon.codes.join(','));
+
+  /* --- slice 3: the rear I/O, the span, and the desk --------------------- */
+  check('the cable becomes a two-way span once both ends are in', (await st()).zip.ready === true);
+
+  const ride = (dir) => page.evaluate(async (dir) => {
+    const d = window.__doctor;
+    d.state.zip.seconds = 0.35;
+    const hit = d.aimAt(dir === 'down' ? 'zipBench' : 'zipDesk', 0.05, dir === 'down' ? 0.95 : 0.76);
+    d.use();
+    await new Promise(r => setTimeout(r, 800));
+    return { hit, x: +d.camera.position.x.toFixed(2), y: +d.camera.position.y.toFixed(3), z: +d.camera.position.z.toFixed(2),
+      onDesk: d.camera.position.x > 1.9, riding: d.state.zip.riding, held: d.state.held };
+  }, dir);
+  const deskAt = (id, d = 0.04) => page.evaluate(([id, d]) => window.__doctor.aimAt(id, d, 0.76), [id, d]);
+
+  /* --- the can of air, on the bench -------------------------------------- */
+  check('the compressed-air can stands on the bench', (await at('airCan')) === 'airCan');
+  const intoCan = await walkInto(-2.55, -2.42, Math.PI, 0.95, 1400);
+  check('the air can is a thing you bump into, not air',
+    intoCan.z < -2.30 && intoCan.z > -2.40, JSON.stringify(intoCan));
+  await at('airCan');
+  await press();
+  const inPad = await page.evaluate(() => ({
+    items: window.__doctor.state.items.slice(),
+    held: window.__doctor.state.held,
+    onBench: window.__doctor.scene.children.some(o => o.visible && o.userData && o.userData.interact === 'airCan'),
+  }));
+  check('taking the can puts it in the notepad, not in your hands',
+    inPad.items.includes('compressed air') && inPad.held === null, JSON.stringify(inPad));
+  check('and the can leaves the bench', inPad.onBench === false);
+
+  /* --- down the cable, to the desk --------------------------------------- */
+  const zipDown = await ride('down');
+  check('the ride lands you on the desk', zipDown.onDesk && zipDown.y > .77 && zipDown.riding === false,
+    JSON.stringify(zipDown));
+  const lookKept = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.zip.seconds = 0.35;
+    d.look(1.1, -.2);                                   // a look the ride must not touch
+    d.aimAt('zipDesk', 0.05, 0.76);
+    d.look(1.1, -.2);
+    d.use();
+    await new Promise(r => setTimeout(r, 750));
+    return { yaw: +d.camera.rotation.y.toFixed(2), pitch: +d.camera.rotation.x.toFixed(2), riding: d.state.zip.riding };
+  });
+  check('coming off the cable leaves your look direction alone',
+    Math.abs(lookKept.yaw - 1.1) < .25 && Math.abs(lookKept.pitch + .2) < .25 && lookKept.riding === false,
+    JSON.stringify(lookKept));
+  // back to the desk for the rest of the walkthrough
+  await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.zip.seconds = 0.35;
+    d.aimAt('zipBench', 0.05, 0.95); d.use();
+    await new Promise(r => setTimeout(r, 750));
+  });
+
+  check('the keycaps carry letters you can read', await page.evaluate(() => {
+    const d = window.__doctor;
+    const legends = d.kbDeckG.children.filter(o => o.isMesh && o.material === d.kbLegendMat);
+    return legends.length >= 40;
+  }));
+  const intoKb = await walkInto(2.42, -0.85, Math.PI, 0.76, 1500);
+  check('the keyboard is solid: you walk into it, not through it', intoKb.z < -0.72, JSON.stringify(intoKb));
+  const intoMouse = await walkInto(3.05, -0.75, Math.PI, 0.76, 1700);
+  check('so is the mouse', intoMouse.z < -0.60, JSON.stringify(intoMouse));
+
+  /* --- the keyboard connector: pick it up here, plug it in there ---------- */
+  // the mains goes off first: a connector should still go into a dead port
+  await page.evaluate(() => window.__doctor.THINGS.psuRocker.act());
+  await sleep(200);
+  check('the board is unpowered for this trip', await page.evaluate(() => window.__doctor.state.psu.rocker === false));
+  check('the keyboard connector is on the desk', (await deskAt('usbKbd')) === 'usbKbd');
+  await press();
+  check('the connector is in your arms', (await st()).held === 'usbKbd');
+  const usbCable = await page.evaluate(() => {
+    const w = window.__doctor.usbWire.usbKbd;
+    return { visible: w.visible, len: +w.scale.y.toFixed(2) };
+  });
+  check('and its cable comes with it', usbCable.visible === true && usbCable.len > .3, JSON.stringify(usbCable));
+
+  const rideUpHeld = await ride('up');
+  check('you can ride the cable with a connector in your arms',
+    rideUpHeld.onDesk === false && rideUpHeld.held === 'usbKbd' && rideUpHeld.riding === false, JSON.stringify(rideUpHeld));
+  check('the cable stretches all the way back to the keyboard', await page.evaluate(() =>
+    window.__doctor.usbWire.usbKbd.visible === true && window.__doctor.usbWire.usbKbd.scale.y > 2));
+
+  check('a rear USB port is within reach', (await at('usbPortA')) === 'usbPortA');
+  await press();
+  const kbdIn = await st();
+  check('the keyboard is plugged in, with the mains off', kbdIn.usb.kbd === true);
+  check('and it stays dark, because nothing has 12 V', await page.evaluate(() =>
+    window.__doctor.kbKeyMat.emissiveIntensity === 0));
+  await page.evaluate(() => window.__doctor.THINGS.psuRocker.act());
+  await sleep(500);
+  check('switching the mains on wakes the keyboard up', await page.evaluate(() =>
+    window.__doctor.kbKeyMat.emissiveIntensity > 0 && window.__doctor.state.usb.kbdLit === true));
+  check('and the letters light with it', await page.evaluate(() =>
+    window.__doctor.kbLegendMat.emissiveIntensity > 0));
+  check('and the cable is laid along the route you carried it', await page.evaluate(() =>
+    window.__doctor.usbWire.usbKbd.visible === false && window.__doctor.USB.usbKbd.routed === true));
+
+  /* --- the mouse connector: the same trip -------------------------------- */
+  const down2 = await ride('down');
+  check('back down to the desk for the second one', down2.onDesk === true, JSON.stringify(down2));
+  check('the mouse connector is on the desk', (await deskAt('usbMouse')) === 'usbMouse');
+  await press();
+  check('the mouse connector is in your arms', (await st()).held === 'usbMouse');
+  const up2 = await ride('up');
+  check('and it rides back with you', up2.onDesk === false && up2.held === 'usbMouse', JSON.stringify(up2));
+  check('a second port takes the mouse', (await at('usbPortB')) === 'usbPortB');
+  await press();
+  const mouseIn = await st();
+  check('the mouse is plugged in', mouseIn.usb.mouse === true);
+  check('and it is malfunctioning, as the intake form said', mouseIn.usb.clean === false);
+
+  /* --- back to the desk for the mouse itself ----------------------------- */
+  const down3 = await ride('down');
+  check('down again, to the mouse', down3.onDesk === true, JSON.stringify(down3));
+  check('the mouse is within reach on the desk', (await deskAt('mouse', 0.05)) === 'mouse');
+  await press();
+  check('it goes over onto its side', (await st()).usb.tipped === true);
+  check('the optical window is exposed', (await deskAt('mouseLens')) === 'mouseLens');
+  await sleep(220);
+  check('the tray says what is wrong with it', /hair/i.test(await page.$eval('#body', el => el.textContent)));
+  await press();
+  const pendingAir = await page.evaluate(() => ({
+    pending: window.__doctor.state.invPending,
+    padShown: !document.getElementById('pad').hidden,
+    button: !!document.querySelector('#padItems button[data-item="compressed air"]'),
+  }));
+  check('clicking the dirty window asks for the air out of the inventory',
+    pendingAir.pending === 'air' && pendingAir.padShown && pendingAir.button, JSON.stringify(pendingAir));
+  await page.click('#padItems button[data-item="compressed air"]');
+  await sleep(220);
+  const cleaned = await st();
+  check('picking the air cleans the window', cleaned.usb.clean === true);
+  await sleep(900);
+  check('and the mouse rights itself once it is clean', (await st()).usb.tipped === false,
+    JSON.stringify(await st().then(s2 => s2.usb)));
+
+  const zipUp = await ride('up');
+  check('the far grip rides you back to the bench', zipUp.onDesk === false && zipUp.riding === false,
+    JSON.stringify(zipUp));
+
+  /* --- slice 4: the drive, its tail, and the inside of it ---------------- */
+  check('the customer\'s SSD is on the bench, port and all', (await at('ssdPort')) === 'ssdPort');
+  const unplugged = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.aimAt('ssdPort', 0.05, 0.95); d.use();
+    await new Promise(r => setTimeout(r, 200));
+    return { inside: d.state.disk.inside, led: d.ssdLed.material.emissiveIntensity };
+  });
+  check('an unplugged drive is not a doorway', unplugged.inside === false, JSON.stringify(unplugged));
+  check('and its LED is dark', unplugged.led === 0, String(unplugged.led));
+
+  check('the tail is lying beside it', (await at('ssdPlug')) === 'ssdPlug');
+  await press();
+  check('the cable end is in your arms', (await st()).held === 'ssdTail');
+  check('the SATA socket is on the rear panel', (await at('ssdSocket')) === 'ssdSocket');
+  await press();
+  const plugged = await st();
+  check('plugging it in connects the drive', plugged.ssd.plugged === true);
+  check('the drive lights red while b7 is in it', await page.evaluate(async () => {
+    await new Promise(r => setTimeout(r, 200));
+    const m = window.__doctor.ssdLed.material;
+    return m.emissive.getHex() === 0xff3a2a && m.emissiveIntensity > 0;
+  }));
+  const entered = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.aimAt('ssdPort', 0.05, 0.95);
+    d.use();
+    await new Promise(r => setTimeout(r, 350));
+    return { inside: d.state.disk.inside, y: +d.camera.position.y.toFixed(2), blocks: d.sectorBlocks.length };
+  });
+  check('the port is a doorway into the sector grid', entered.inside === true && entered.y < -5, JSON.stringify(entered));
+  check('the grid has sectors missing', entered.blocks < 8 * 9, String(entered.blocks));
+
+  const chased = await page.evaluate(async () => {
+    const d = window.__doctor;
+    const p = d.worm.position.clone();
+    await new Promise(r => setTimeout(r, 900));
+    return +d.worm.position.distanceTo(p).toFixed(3);
+  });
+  check('the worm comes after you', chased > .01, String(chased));
+
+  const lured = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.locked = false;
+    d.setFeet(d.DISK.y);
+    d.camera.position.set((d.CH.x0 + d.CH.x1) / 2, d.DISK.y + d.P.eye, (d.CH.z0 + d.CH.z1) / 2);
+    const doorX = (d.DOOR.x0 + d.DOOR.x1) / 2;
+    d.worm.position.set(doorX - .06, d.DISK.y + .02, d.CH.z1 + .13);   // outside, just short of the door
+    const t0 = performance.now();
+    while (performance.now() - t0 < 6000 && !d.wormInChamber(d.worm.position.x, d.worm.position.z)) {
+      await new Promise(r => setTimeout(r, 80));
+    }
+    return { inChamber: d.wormInChamber(d.worm.position.x, d.worm.position.z) };
+  });
+  check('it follows you into the chamber through the door', lured.inChamber === true, JSON.stringify(lured));
+
+  const noFloat = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.locked = false;
+    d.setFeet(d.DISK.y);
+    d.camera.position.set(-1.02, d.DISK.y + d.P.eye, -1.90);      // across the hole at cell 6,6
+    d.worm.position.set(-1.02, d.DISK.y + .02, -2.22);
+    let floats = 0;
+    for (let i = 0; i < 24; i++) {
+      await new Promise(r => setTimeout(r, 80));
+      if (d.state.disk.inside && !d.blockAt(d.worm.position.x, d.worm.position.z)) floats++;
+    }
+    return { floats };
+  });
+  check('it never crawls out over a missing sector', noFloat.floats === 0, JSON.stringify(noFloat));
+
+  const sealed = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.locked = false;
+    d.worm.position.set((d.CH.x0 + d.CH.x1) / 2, d.DISK.y + .02, (d.CH.z0 + d.CH.z1) / 2);
+    d.aimAt('wormLever', 0.05, d.DISK.y);
+    d.use();
+    await new Promise(r => setTimeout(r, 250));
+    return { sealed: d.state.disk.sealed, codes: d.state.codes.slice(), note: d.state.notes.SSD,
+      readme: d.readmePanel.visible,
+      door: +d.chDoor.position.y.toFixed(3), hatch: +d.hatchDoor.position.y.toFixed(3),
+      shut: +d.DOOR_SHUT_Y.toFixed(3) };
+  });
+  check('the lever drops the door on it', sealed.sealed === true);
+  check('b7 clears', !sealed.codes.includes('b7'), sealed.codes.join(','));
+  check('and the drive gives up a B', sealed.note === 'B', String(sealed.note));
+  check('the README is there to read', sealed.readme === true);
+  check('both doors come down: the room is shut, front and back',
+    Math.abs(sealed.door - sealed.shut) < .02 && Math.abs(sealed.hatch - sealed.shut) < .02,
+    JSON.stringify({ door: sealed.door, hatch: sealed.hatch, shut: sealed.shut }));
+  check('and the LED on the drive goes green', await page.evaluate(async () => {
+    await new Promise(r => setTimeout(r, 220));
+    return window.__doctor.ssdLed.material.emissive.getHex() === 0x36d08a;
+  }));
+  check('the lever with an empty chamber does nothing', await page.evaluate(async () => {
+    const d = window.__doctor;
+    return d.state.disk.sealed === true;      // sealed stays sealed; the guard is the flag
+  }));
+
+  check('a missing sector is a hole you fall into', await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.locked = true;
+    d.setFeet(d.DISK.y);
+    d.camera.position.set(d.DISK.x0 + 4.5 * d.DISK.cell, d.DISK.y + d.P.eye, d.DISK.z0 + 2.5 * d.DISK.cell);
+    await new Promise(r => setTimeout(r, 1200));
+    d.state.locked = false;
+    return d.state.disk.inside === false;
+  }));
+
+  const outAgain = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.aimAt('ssdPort', 0.05, 0.95);
+    d.use();
+    await new Promise(r => setTimeout(r, 250));
+    const inside = d.state.disk.inside;
+    d.aimAt('diskExit', 0.05, d.DISK.y);
+    d.use();
+    await new Promise(r => setTimeout(r, 200));
+    return { inside, out: !d.state.disk.inside, y: +d.camera.position.y.toFixed(2) };
+  });
+  check('you can walk back out at the port mouth',
+    outAgain.inside === true && outAgain.out === true && outAgain.y > .9, JSON.stringify(outAgain));
+  check('every fault is clear now', (await st()).codes.length === 0,
+    (await st()).codes.join(','));
+
+  const fell = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.camera.position.set(1.5, 0.95 + d.P.eye, -1.2);   // over the gap: no floor under you
+    d.state.locked = true;
+    await new Promise(r => setTimeout(r, 2600));
+    d.state.locked = false;
+    return { y: +d.camera.position.y.toFixed(2), x: +d.camera.position.x.toFixed(2) };
+  });
+  check('step into the gap and the bench lip catches you', fell.y > .9 && fell.x < 1, JSON.stringify(fell));
+
+  /* --- slice 5: the login, the mouse and the keyboard -------------------- */
+  const loginUp = await page.evaluate(async () => {
+    const d = window.__doctor;
+    await new Promise(r => setTimeout(r, 1000));     // the login opens 700 ms after the last code clears
+    const before = { ...d.state.login.cursor };
+    d.loginMove(300, 600);
+    d.loginMove(60, 80);
+    const after = { ...d.state.login.cursor };
+    d.loginClick();
+    return { active: d.state.login.active, before, after, focus: d.state.login.focus,
+      screen: d.screenLive.image.width > 0 };
+  });
+  check('the last fault brings up the customer login', loginUp.active === true && loginUp.screen === true);
+  check('dragging the plastic mouse moves the cursor on the screen',
+    loginUp.after.x > loginUp.before.x + .1 && loginUp.after.y > loginUp.before.y + .1, JSON.stringify(loginUp));
+  check('clicking the field gives it focus', loginUp.focus === true);
+
+  const mouseGate = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.grab = null;
+    const plug = d.state.usb.mouse, clean = d.state.usb.clean;
+    d.state.usb.mouse = false;
+    d.THINGS.mouse.act();
+    const noPlug = !!d.state.grab;
+    d.state.usb.mouse = true; d.state.usb.clean = false;
+    d.THINGS.mouse.act();
+    const dirty = !!d.state.grab;
+    d.state.usb.clean = true;
+    d.THINGS.mouse.act();
+    const took = d.state.grab && d.state.grab.id === 'loginMouse';
+    // E while holding it should click what the pointer is on
+    d.state.login.focus = false;
+    d.state.login.cursor = { x: .5, y: .82 };
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' }));
+    await new Promise(r => setTimeout(r, 120));
+    const clicked = d.state.login.focus;
+    d.state.grab = null;
+    d.state.usb.mouse = plug; d.state.usb.clean = clean;
+    d.state.login.focus = true;
+    return { noPlug, dirty, took, clicked };
+  });
+  check('the cursor will not move if the mouse is not plugged in', mouseGate.noPlug === false);
+  const tipAtLogin = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.grab = null;
+    const clean = d.state.usb.clean;
+    d.state.usb.clean = false;                     // still filthy, and the login is up
+    d.state.usb.tipped = false;
+    d.THINGS.mouse.act();
+    await new Promise(r => setTimeout(r, 80));
+    const tipped = d.state.usb.tipped;
+    const grabbing = !!(d.state.grab && d.state.grab.id === 'loginMouse');
+    d.state.usb.clean = clean;
+    d.state.usb.tipped = false;
+    d.THINGS.mouse.act();                          // clean again: now it takes hold
+    const took = !!(d.state.grab && d.state.grab.id === 'loginMouse');
+    d.state.grab = null;
+    return { tipped, grabbing, took };
+  });
+  check('a mouse that cannot drive the cursor can still be tipped over',
+    tipAtLogin.tipped === true && tipAtLogin.grabbing === false, JSON.stringify(tipAtLogin));
+  check('and once it is clean it takes hold again', tipAtLogin.took === true);
+
+  check('nor if its sensor is filthy', mouseGate.dirty === false);
+  check('plugged and clean, the mouse takes hold', mouseGate.took === true);
+  check('E while you hold it clicks what the pointer is on', mouseGate.clicked === true, JSON.stringify(mouseGate));
+
+  await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.zip.seconds = 0.35;
+    d.aimAt('zipBench', 0.05, 0.95);
+    d.use();
+    await new Promise(r => setTimeout(r, 700));
+  });
+  const typedIn = await page.evaluate(async () => {
+    const d = window.__doctor;
+    const hits = [];
+    for (const ch of ['B', 'R', 'O', 'K', 'E', 'N']) {
+      const k = d.kbKeyMap.find(k => k.ch === ch);
+      d.state.locked = false;
+      d.setFeet(0.76);
+      d.camera.position.set(k.wx, 0.76 + d.P.eye + 0.02, k.wz + 0.006);
+      d.look(0, -1.45);
+      d.camera.updateMatrixWorld(true);
+      const h = d.currentTarget();
+      d.state.hovered = h;
+      hits.push(h ? h.id : null);
+      d.use();
+      await new Promise(r => setTimeout(r, 70));
+    }
+    await new Promise(r => setTimeout(r, 400));
+    return { hits, ok: d.state.login.ok, typed: d.state.login.typed };
+  });
+  check('the keys of the keyboard type the six characters',
+    typedIn.hits.every((h, i) => h === 'key_' + 'BROKEN'[i]), JSON.stringify(typedIn.hits));
+  check('B R O K E N logs in', typedIn.ok === true, String(typedIn.typed));
+
+  const won = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.login.cursor = { x: .5, y: .68 };        // over the un-shrink button
+    const before = d.P.eye;
+    d.loginClick();
+    await new Promise(r => setTimeout(r, 1600));
+    return { before, eye: d.P.eye, phase: d.state.phase, won: d.state.won,
+      banner: !document.getElementById('banner').hidden };
+  });
+  check('the button on the screen puts you back on the floor',
+    won.won === true && Math.abs(won.eye - 1.62) < .01 && won.phase === 'human', JSON.stringify(won));
+  check('and the shop sign comes on', won.banner === true);
+  const padAfter = await page.evaluate(() => document.getElementById('pad').textContent.replace(/\s+/g, ' '));
+  check('the letters never spell the password in the notepad',
+    !/BROKEN/i.test(padAfter) && !/NK?O?E?R?B?/.test('') , padAfter.match(/[NK OER]{4,}/) ? padAfter : 'clean');
+  check('six letters found, in the order they were found',
+    (await page.evaluate(() => Object.keys(window.__doctor.state.notes).join(','))) === 'RAM,PSU,fans,GPU,monitor,SSD',
+    await page.evaluate(() => Object.keys(window.__doctor.state.notes).join(',')));
+  const pw = await page.evaluate(() => {
+    const n = window.__doctor.state.notes;
+    return [n.SSD, n.monitor, n.fans, n.PSU, n.GPU, n.RAM].join('');   // the login order
+  });
+  check('read in the login order the six characters spell BROKEN', pw === 'BROKEN', pw);
 
   check('no console errors', logs.length === 0, logs.join(' | '));
 

@@ -66,7 +66,9 @@
     font-family:var(--mono);font-size:.74rem;line-height:22px;color:#dfe7ea}
   #pad h2{margin:0 0 6px;font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:#7f8d94;font-weight:600}
   #pad .items{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 10px;min-height:22px}
-  #pad .items span{border:1px solid rgba(89,211,255,.35);color:#cbeefb;padding:0 .4em;font-size:.68rem}
+  #pad .items button{font:inherit;font-size:.68rem;border:1px solid rgba(89,211,255,.35);color:#cbeefb;
+    background:transparent;padding:.1em .45em;cursor:pointer}
+  #pad .items button:hover{background:rgba(89,211,255,.16);border-color:rgba(89,211,255,.75)}
   #pad .items em{color:#5c6a71;font-style:normal;font-size:.68rem}
   #pad ul{list-style:none;margin:0;padding:0}
   #pad li{display:flex;justify-content:space-between;gap:.6em}
@@ -80,6 +82,23 @@
     text-transform:uppercase;color:#7f8d94;line-height:1.6;pointer-events:none;backdrop-filter:blur(3px)}
   #legend b{color:#cfe3ea;font-weight:600;letter-spacing:.06em}
   @media (max-width:820px){ #legend{font-size:.5rem;max-width:62vw;gap:.2em .7em} }
+
+  /* ---------- the start card: one decision, then the room ---------- */
+  #start{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:6vh 5vw;
+    background:radial-gradient(1200px 700px at 50% 0%,#132430 0%,#06080a 62%)}
+  #start .card{width:min(560px,100%);text-align:center}
+  #start h1{margin:0 0 .35em;font-family:var(--mono);font-size:1.7rem;letter-spacing:.34em;
+    text-transform:uppercase;color:#eaf6fa}
+  #start p{margin:0 0 2em;color:#9aa9b1;font-size:.95rem;line-height:1.7}
+  #start button{font-family:var(--mono);font-size:.9rem;letter-spacing:.22em;text-transform:uppercase;
+    padding:.9em 2.4em;color:#04141a;background:var(--accent);border:0;border-radius:2px;cursor:pointer;
+    box-shadow:0 0 0 1px rgba(89,211,255,.5),0 14px 40px rgba(0,0,0,.6)}
+  #start button:hover{background:#7ee2ff}
+  #start small{display:block;margin-top:1.6em;font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;
+    text-transform:uppercase;color:#5c6a71}
+
+  #pad.pulse{animation:pulsePad .9s ease-out 2}
+  @keyframes pulsePad{0%{box-shadow:0 0 0 0 rgba(89,211,255,.55)}100%{box-shadow:0 0 0 18px rgba(89,211,255,0)}}
 
   #banner{position:fixed;left:50%;top:56px;transform:translateX(-50%);z-index:9;text-align:center;
     padding:9px 20px;background:rgba(8,12,14,.86);border:1px solid rgba(89,211,255,.45);color:#e7f8ff;
@@ -121,7 +140,7 @@
 <aside id="tray" hidden><div class="head"><span id="kicker"></span><b id="title"></b></div>
   <div id="body"></div><div class="keys" id="keys"></div></aside>
 
-<aside id="pad" hidden><h2>workshop notepad</h2>
+<aside id="pad"><h2>inventory &amp; notepad</h2>
   <div class="items" id="padItems"></div>
   <h2>fault codes</h2>
   <ul id="padCodes"></ul>
@@ -134,7 +153,7 @@
   <span><b>Shift</b> hurry</span>
   <span><b>Space</b> jump</span>
   <span><b>E</b> use</span>
-  <span><b>Q</b> let go</span>
+  <span><b>Q</b> / <b>RMB</b> let go</span>
   <span><b>I</b> notepad</span>
   <span><b>H</b> hint</span>
   <span><b>M</b> music</span>
@@ -143,9 +162,19 @@
   <span><b>click</b> look</span>
 </aside>
 
+<div id="start">
+  <div class="card">
+    <h1>PC Doctor</h1>
+    <p>Gerrit is at the wholesaler. His answering machine has a message for you, the meter is dead, and the
+       customer's tower on the bench is in a bad way.</p>
+    <button id="startBtn">Start the shift</button>
+    <small>W A S D walk · E use · I inventory · H hint · click to look</small>
+  </div>
+</div>
+
 <div id="banner" hidden></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
-<div id="unlockHint">Click to look around</div>
+<div id="unlockHint" hidden>Click to look around</div>
 <div id="bloom"></div>
 
 <script type="module">
@@ -171,8 +200,8 @@ const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 6
 camera.rotation.order = 'YXZ';
 
 /* two scales, four numbers (see PC-DOCTOR.md §2) */
-const HUMAN  = { eye: 1.62, speed: 2.45, jump: 3.1, near: 0.05, reach: 2.3, step: 0.34, foot: 2.6 };
-const SHRUNK = { eye: 0.017, speed: 0.105, jump: 0.36, near: 0.0004, reach: 0.13, step: 0.004, foot: 0.055 };
+const HUMAN  = { eye: 1.62, speed: 2.45, jump: 3.1, near: 0.05, reach: 2.3, step: 0.34, foot: 2.6, stepUp: 0.25 };
+const SHRUNK = { eye: 0.017, speed: 0.105, jump: 0.36, near: 0.0004, reach: 0.13, step: 0.004, foot: 0.055, stepUp: 0.022 };
 let P = HUMAN;
 
 /* -------------------------------------------------------------- textures */
@@ -345,7 +374,7 @@ const M = {
   pcb: new THREE.MeshStandardMaterial({ map: pcbTex, roughness: .72, metalness: .12 }),
   paper: new THREE.MeshStandardMaterial({ map: paperTex, roughness: .95 }),
   white: new THREE.MeshStandardMaterial({ color: 0xd9d5c8, roughness: .8 }),
-  clip: new THREE.MeshStandardMaterial({ color: 0x8f948f, roughness: .75 }),
+  clip: new THREE.MeshStandardMaterial({ color: 0x2f353a, roughness: .85 }),
   gold: new THREE.MeshStandardMaterial({ color: 0xb99545, roughness: .35, metalness: .8 }),
   plastic: new THREE.MeshStandardMaterial({ color: 0x2a3033, roughness: .55 }),
   red: new THREE.MeshStandardMaterial({ color: 0x8c2f24, roughness: .6 }),
@@ -380,6 +409,7 @@ function decal(w, h, t, x, y, z, ry = 0, parent) {
   m.rotation.y = ry;
   return m;
 }
+const S = (x0, x1, y0, y1, z0, z1) => ({ x0, x1, y0, y1, z0, z1 });
 function shadow(x, z, size = 1, y = 0.008, opacity = .55) {
   const m = plane(size, size, new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity, depthWrite: false }), x, y, z);
   m.rotation.x = -Math.PI / 2;
@@ -553,6 +583,11 @@ const sfx = {
   pop() {
     hiss({ dur: .05, vol: .11, f: 3600, q: 1.8 });
     tone({ f: 900, f2: 320, type: 'square', dur: .07, vol: .07, filter: 2400 });
+  },
+  slam() {                                                 // a quarantine door, and its latch
+    hiss({ dur: .20, vol: .18, f: 700, q: .5, f2: 120 });
+    tone({ f: 74, f2: 36, type: 'sawtooth', dur: .38, vol: .19, filter: 240 });
+    tone({ f: 210, f2: 120, type: 'square', dur: .12, vol: .08, at: .16 });
   },
 };
 
@@ -765,9 +800,6 @@ const brandTex = stickerTex([
 ], { bg: '#101416', ink: '#8fe6ff', h: 260, align: 'center', top: 92 });
 decal(.34, .16, brandTex, TOWER.w / 2 + .003, TOWER.y0 + .55, 0, Math.PI / 2, tg);
 // power button and the front fan grille
-const pwrLed = sphere(.006, new THREE.MeshStandardMaterial({ color: 0x331a10, emissive: 0x000000, roughness: .4 }), .17, TOWER.y0 + .018, TOWER.d / 2 + .004, tg, 8);
-const pwrBtn = cyl(.013, .013, .01, 12, M.metalDark, .21, TOWER.y0 + .018, TOWER.d / 2 + .004, tg);
-pwrBtn.rotation.x = Math.PI / 2;
 register(tg, 'tower', 'The customer\'s tower');
 
 /* the side panel, lying flat on the bench: the wiring diagram is printed inside it */
@@ -793,30 +825,64 @@ scene.add(board);
 
 // four memory slots, cut as long trenches in the board
 const SLOTS = [-0.19, -0.13, -0.07, -0.01];
+const SOLID_LATE = [];      // colliders built before SOLID_S is declared
+const SLOT_LEN = .16;
 SLOTS.forEach((dx, i) => {
-  box(.030, .008, .34, i % 2 ? slotMatBlue : slotMatGrey, TOWER.x + dx, boardY + .004, TOWER.z - .02, board);
-  const clip = box(.036, .010, .012, M.clip, TOWER.x + dx, boardY + .005, TOWER.z + .15, board);
-  box(.034, .006, .008, M.clip, TOWER.x + dx, boardY + .003, TOWER.z - .19, board);
-  if (i === 1) register(clip, 'slotA2', 'the clip on slot A2');
+  const rail = box(.030, .008, SLOT_LEN, i % 2 ? slotMatBlue : slotMatGrey,
+    TOWER.x + dx, boardY + .004, TOWER.z - .01, board);
+  const clipF = box(.026, .006, .008, M.clip, TOWER.x + dx, boardY + .004, TOWER.z - .01 + SLOT_LEN / 2, board);
+  const clipB = box(.026, .006, .008, M.clip, TOWER.x + dx, boardY + .004, TOWER.z - .01 - SLOT_LEN / 2, board);
+  const id = i === 1 ? 'slotA2' : i === 3 ? 'slotB2' : 'slotEmpty';
+  const lbl = i === 1 ? 'slot A2' : i === 3 ? 'slot B2' : 'an empty slot';
+  register(rail, id, lbl);
+  register(clipF, id, lbl);
+  register(clipB, id, lbl);
+  SOLID_LATE.push(S(TOWER.x + dx - .015, TOWER.x + dx + .015, .90, boardY + .006,
+    TOWER.z - .01 - SLOT_LEN / 2 - .006, TOWER.z - .01 + SLOT_LEN / 2 + .006));
 });
 // A2: a module half out, leaning like a tower
-const stickIn = box(.026, .26, .012, new THREE.MeshStandardMaterial({ color: 0x22593f, roughness: .7 }),
-  TOWER.x + SLOTS[1], boardY + .125, TOWER.z - .06, board);
-stickIn.rotation.z = .38;
+const DIMM = { t: .008, h: .032, l: .14 };      // thin plate, 3 cm proud, 14 cm along the slot
+function makeDimm(x, z, hue, opts = {}) {
+  const g = new THREE.Group();
+  g.position.set(x, boardY + DIMM.h / 2 + .004, z);
+  board.add(g);
+  box(DIMM.t, DIMM.h, DIMM.l, new THREE.MeshStandardMaterial({ color: hue, roughness: .78 }), 0, 0, 0, g);
+  box(DIMM.t + .002, .005, DIMM.l - .006, M.gold, 0, -DIMM.h / 2 + .0025, 0, g);         // contact edge
+  for (let i = 0; i < 4; i++) {                       // four packages a side, the way a DIMM looks
+    const zz = -.045 + i * .030;
+    box(.003, .015, .019, M.black, DIMM.t / 2 + .0012, .002, zz, g);
+    box(.003, .015, .019, M.black, -DIMM.t / 2 - .0012, .002, zz, g);
+  }
+  return g;
+}
+const stickIn = makeDimm(TOWER.x + SLOTS[1], TOWER.z - .03, 0x1d5c3a);
+stickIn.position.y = boardY + DIMM.h / 2 + .012;
+stickIn.rotation.x = .30;                      // half out of the slot, leaning back
 register(stickIn, 'slotA2', 'the module in slot A2');
+const a2Solid = S(TOWER.x + SLOTS[1] - .007, TOWER.x + SLOTS[1] + .007, .90, boardY + DIMM.h + .014, TOWER.z - .098, TOWER.z + .046);
+SOLID_LATE.push(a2Solid);
 // B2: the scorched one, standing in its slot with a burnt chip
-const stickS = box(.026, .26, .012, new THREE.MeshStandardMaterial({ color: 0x4a3a24, roughness: .8 }),
-  TOWER.x + SLOTS[3], boardY + .13, TOWER.z - .02, board);
-box(.027, .03, .013, new THREE.MeshStandardMaterial({ color: 0x120c08, roughness: .95 }), TOWER.x + SLOTS[3], boardY + .20, TOWER.z - .02, board);
+const stickS = makeDimm(TOWER.x + SLOTS[3], TOWER.z - .01, 0x4a3a24);
 register(stickS, 'slotB2', 'the module in slot B2');
+const SEATED_Z0 = TOWER.z - .01 - DIMM.l / 2;      // where a module that is all the way in sits
+const SEATED_Z1 = TOWER.z - .01 + DIMM.l / 2;
+const b2Solid = S(TOWER.x + SLOTS[3] - .007, TOWER.x + SLOTS[3] + .007, .90, boardY + DIMM.h + .012, SEATED_Z0, SEATED_Z1);
+SOLID_LATE.push(b2Solid);
+/* A collider is only right while the thing it stands for is standing there.
+   Seating or pulling a module moves the box with it. */
+function seatA2Collider() {
+  a2Solid.y1 = boardY + DIMM.h + .012;
+  a2Solid.z0 = SEATED_Z0;
+  a2Solid.z1 = SEATED_Z1;
+}
 
 // the CPU cooler: a building with fins
-box(.16, .21, .14, M.metal, TOWER.x - .06, boardY + .105, TOWER.z - .215, board);
-for (let i = 0; i < 5; i++) box(.17, .006, .15, M.metalDark, TOWER.x - .06, boardY + .03 + i * .042, TOWER.z - .215, board);
+box(.16, .21, .13, M.metal, TOWER.x - .06, boardY + .105, TOWER.z - .262, board);
+for (let i = 0; i < 5; i++) box(.17, .006, .14, M.metalDark, TOWER.x - .06, boardY + .03 + i * .042, TOWER.z - .262, board);
 
 // the PCIe slot: a rail across the floor, and a hook above it holding nothing yet
-box(.34, .010, .030, new THREE.MeshStandardMaterial({ color: 0x1b1f22, roughness: .7 }), TOWER.x, boardY + .005, TOWER.z - .235, board);
-cyl(.003, .003, .62, 6, M.metal, TOWER.x + .10, TOWER.y0 + .78, TOWER.z - .235, board);
+box(.34, .010, .030, new THREE.MeshStandardMaterial({ color: 0x1b1f22, roughness: .7 }), TOWER.x, boardY + .005, TOWER.z - .13, board);
+SOLID_LATE.push(S(TOWER.x - .17, TOWER.x + .17, .90, boardY + .012, TOWER.z - .145, TOWER.z - .115));   // the slot itself
 
 /* the POST display: two digits, seven-segment red, cycling the faults */
 const ledCanvas = document.createElement('canvas');
@@ -828,8 +894,8 @@ const ledMat = new THREE.MeshStandardMaterial({ map: ledTexture, emissive: 0xff2
 // It used to sit on the back wall, exactly behind the CPU cooler. It is on the right-hand wall now,
 // at eye height, angled at the open front so it is the first thing you see walking in.
 const ledGroup = new THREE.Group();
-ledGroup.position.set(TOWER.x + TOWER.w / 2 - .042, boardY + .092, TOWER.z - .06);
-ledGroup.rotation.y = -Math.PI / 2 + .45;
+ledGroup.position.set(TOWER.x + TOWER.w / 2 - .022, boardY + .092, TOWER.z - .06);
+ledGroup.rotation.y = -Math.PI / 2;   // flat on the wall, no angle
 scene.add(ledGroup);
 box(.145, .070, .014, M.black, 0, 0, 0, ledGroup);
 const led = plane(.11, .048, ledMat, 0, 0, .009, ledGroup);
@@ -840,15 +906,27 @@ register(led, 'led', 'the debug display');
 
 /* the anti-static bag, lying on the case floor next to the slots */
 const bagGroup = new THREE.Group();
-bagGroup.position.set(-2.155, boardY + .010, TOWER.z + .09);      // right beside slot A2
+bagGroup.position.set(-1.90, boardY + .026, -2.03);              // standing on the bench, clear of the edge
+bagGroup.rotation.y = .22;
 scene.add(bagGroup);
-box(.075, .012, .10, new THREE.MeshStandardMaterial({ color: 0x3b4650, roughness: .5, metalness: .35 }), 0, 0, 0, bagGroup);
-box(.026, .014, .030, new THREE.MeshStandardMaterial({ color: 0x9fb0bb, roughness: .8 }), 0, .006, -.01, bagGroup);
-const bagLabel = plane(.070, .092, new THREE.MeshStandardMaterial({
-  map: stickerTex([['SPARE', 40, true], ['> B2', 34, true]], { bg: '#e8e2cf', ink: '#1b2328', h: 320, top: 120, align: 'center' }),
-  roughness: .9,
-}), 0, .009, 0, bagGroup);
-bagLabel.rotation.x = -Math.PI / 2;
+box(.090, .050, .024, new THREE.MeshStandardMaterial({ color: 0x3b4650, roughness: .5, metalness: .3 }), 0, 0, 0, bagGroup);
+const bagFace = tex(256, 160, (g, w, h) => {
+  g.fillStyle = '#e8e2cf'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = '#1b2328'; g.lineWidth = 5; g.strokeRect(6, 6, w - 12, h - 12);
+  // a memory module, drawn on the bag, because it is a bag with a memory module in it
+  g.fillStyle = '#1d5c3a'; g.fillRect(34, 28, 118, 44);
+  g.fillStyle = '#0d2a18';
+  for (let i = 0; i < 4; i++) g.fillRect(42 + i * 27, 38, 20, 24);
+  g.fillStyle = '#c9a227';
+  for (let i = 0; i < 15; i++) g.fillRect(38 + i * 7.4, 72, 4, 9);
+  g.fillStyle = '#1b2328'; g.font = '700 26px ui-monospace,monospace';
+  g.fillText('SPARE', 34, 122);
+  g.font = '700 30px ui-monospace,monospace';
+  g.fillText('> B2', 34, 150);
+});
+const bagLabel = plane(.078, .048, new THREE.MeshStandardMaterial({ map: bagFace, roughness: .9 }),
+  0, .002, .013, bagGroup);
+bagLabel.rotation.y = 0;
 register(bagGroup, 'bag', 'an anti-static bag');
 
 /* ---------------------------------------------------------- desk, monitor */
@@ -868,24 +946,98 @@ const screenTex = tex(512, 320, (g, w, h) => {
   g.fillStyle = 'rgba(90,220,255,.12)';
   for (let y = 0; y < h; y += 4) g.fillRect(0, y, w, 1);
 });
+const screenCanvas = document.createElement('canvas');
+screenCanvas.width = 640; screenCanvas.height = 400;
+const screenCtx = screenCanvas.getContext('2d');
+const screenLive = new THREE.CanvasTexture(screenCanvas);
+screenLive.colorSpace = THREE.SRGBColorSpace;
 const monitorScreen = plane(.60, .34, new THREE.MeshStandardMaterial({ map: screenTex, emissive: 0x2a3d4a, emissiveMap: screenTex, emissiveIntensity: .35, roughness: .5 }),
   2.7, DESK.top + .50, -1.416);
 register(monitor, 'monitor', 'the monitor');
 
 /* the keyboard and the mouse, where the customer left them */
-const kb = box(.44, .022, .16, M.plastic, 2.42, DESK.top + .011, -0.66);
-const kbKeys = plane(.42, .14, new THREE.MeshStandardMaterial({ color: 0x121618, roughness: .75 }), 2.42, DESK.top + .023, -0.66);
-kbKeys.rotation.x = -Math.PI / 2;
-register(kb, 'keyboard', 'a giant keyboard');
+const kbG = new THREE.Group();
+kbG.position.set(2.42, DESK.top, -0.66);
+scene.add(kbG);
+const kbBody = box(.44, .016, .16, M.plastic, 0, .008, 0, kbG);
+const kbDeckG = new THREE.Group();
+kbDeckG.position.set(0, .016, 0);
+kbDeckG.rotation.x = .055;                 // the back edge sits up: a ramp, not a tile
+kbG.add(kbDeckG);
+box(.44, .008, .16, new THREE.MeshStandardMaterial({ color: 0x191e21, roughness: .6 }), 0, .004, 0, kbDeckG);
+const kbKeyMat = new THREE.MeshStandardMaterial({ color: 0x1f262a, roughness: .5, emissive: 0x000000 });
+
+/* the legends: one atlas, one material, a UV window per key */
+const KEY_ROWS = ['1234567890-= ', 'QWERTYUIOP[] ', "ASDFGHJKL;'  ", 'ZXCVBNM,./   '];
+const keyAtlas = (() => {
+  const glyphs = [...new Set(KEY_ROWS.join('').split('').filter(ch => ch !== ' '))];
+  const CELL = 128, COLS = 8, rows = Math.ceil(glyphs.length / COLS);
+  const c = document.createElement('canvas');
+  c.width = COLS * CELL; c.height = rows * CELL;
+  const g = c.getContext('2d');
+  g.fillStyle = '#e2edf1';
+  g.font = '700 86px ui-monospace,Menlo,Consolas,monospace';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  glyphs.forEach((ch, i) => {
+    g.fillText(ch, (i % COLS) * CELL + CELL / 2, Math.floor(i / COLS) * CELL + CELL / 2 + 4);
+  });
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return { tex: t, index: Object.fromEntries(glyphs.map((ch, i) => [ch, i])), rows };
+})();
+const kbLegendMat = new THREE.MeshStandardMaterial({
+  map: keyAtlas.tex, transparent: true, roughness: .55, emissive: 0x000000, emissiveMap: keyAtlas.tex,
+});
+const KEY_GEO = new THREE.PlaneGeometry(.017, .014);
+const kbKeyMap = [];
+KEY_ROWS.forEach((row, r) => row.split('').forEach((ch, c) => {
+  const x = -.180 + c * .030, z = -.052 + r * .026;
+  const cap = box(.027, .009, .023, kbKeyMat, x, .0125, z, kbDeckG);
+  if (ch === ' ') return;
+  const g2 = KEY_GEO.clone();
+  const i = keyAtlas.index[ch];
+  const u0 = (i % 8) / 8, v0 = 1 - (Math.floor(i / 8) + 1) / keyAtlas.rows;
+  const uv = g2.attributes.uv;
+  for (let k = 0; k < uv.count; k++) uv.setXY(k, u0 + uv.getX(k) / 8, v0 + uv.getY(k) / keyAtlas.rows);
+  uv.needsUpdate = true;
+  const m = new THREE.Mesh(g2, kbLegendMat);
+  m.rotation.x = -Math.PI / 2;
+  m.position.set(x, .0172, z);          // just clear of the keycap top
+  kbDeckG.add(m);
+  kbKeyMap.push({ ch, x, z, cap, mesh: m, wx: 0, wz: 0, wy: 0 });
+}));
+// the bottom row: three modifiers, a spacebar, three more
+[-.180, -.150, -.120, .120, .150, .180].forEach(x => box(.027, .009, .023, kbKeyMat, x, .0125, .050, kbDeckG));
+box(.150, .009, .023, kbKeyMat, .015, .0125, .050, kbDeckG);
+// a strip of backlight along the front lip, and the cable leaving the back
+const kbGlow = box(.40, .0025, .003, new THREE.MeshStandardMaterial({ color: 0x0b0f11, roughness: .5, emissive: 0x000000 }),
+  0, .010, .078, kbDeckG);
+register(kbBody, 'keyboard', 'a giant keyboard');
 const mpad = plane(.24, .18, new THREE.MeshStandardMaterial({ color: 0x141a1d, roughness: .9 }), 3.05, DESK.top + .003, -0.66);
 mpad.rotation.x = -Math.PI / 2;
+
+/* the mouse: a low shell with two buttons, a wheel and a rubber band */
 const mouse = new THREE.Group();
 mouse.position.set(3.05, DESK.top + .02, -0.66);
 scene.add(mouse);
-const mBody = sphere(.028, M.plastic, 0, 0, 0, mouse, 16);
+const mShellMat = new THREE.MeshStandardMaterial({ color: 0x262c30, roughness: .45 });
+const mBody = sphere(.028, mShellMat, 0, 0, 0, mouse, 20);
 mBody.scale.set(1, .62, 1.5);
-const mBtn = box(.024, .008, .05, M.plastic, -.006, .016, -.02, mouse);
+const mBand = new THREE.Mesh(new THREE.TorusGeometry(.0282, .0016, 5, 22),
+  new THREE.MeshStandardMaterial({ color: 0x111518, roughness: .85 }));
+mBand.rotation.x = Math.PI / 2;
+mBand.scale.set(1, 1.5, 1);
+mBand.position.y = -.002;
+mouse.add(mBand);
+// its front faces the desk edge: two buttons either side of a scroll wheel
+const mBtnL = box(.0195, .006, .026, new THREE.MeshStandardMaterial({ color: 0x2b3236, roughness: .4 }), -.011, .0128, .021, mouse);
+box(.0195, .006, .026, new THREE.MeshStandardMaterial({ color: 0x2b3236, roughness: .4 }), .011, .0128, .021, mouse);
+const mWheel = cyl(.0068, .0068, .007, 10, new THREE.MeshStandardMaterial({ color: 0x14181b, roughness: .8 }), 0, .0158, .0295, mouse);
+mWheel.rotation.z = Math.PI / 2;
+// the seam down the middle of the buttons, and a shade over the hump
+box(.0018, .002, .026, new THREE.MeshStandardMaterial({ color: 0x12171a, roughness: .9 }), 0, .0156, .021, mouse);
 register(mouse, 'mouse', 'a giant mouse');
+// the cables: each device runs its own off the back of the desk, clear of the stand
 
 /* --------------------------------------------------------------- counter */
 box(COUNTER.x1 - COUNTER.x0, .05, COUNTER.z1 - COUNTER.z0, M.bench, (COUNTER.x0 + COUNTER.x1) / 2, COUNTER.top - .025, (COUNTER.z0 + COUNTER.z1) / 2);
@@ -911,7 +1063,7 @@ const werkbonTex = tex(512, 640, (g, w, h) => {
   for (let y = 470; y < h - 30; y += 28) g.fillRect(30, y, w - 60, 1);
   grain(g, w, h, .05);
 });
-const werkbon = plane(.21, .28, new THREE.MeshStandardMaterial({ map: werkbonTex, roughness: .95 }), -1.15, COUNTER.top + .002, 1.34);
+const werkbon = plane(.21, .28, new THREE.MeshStandardMaterial({ map: werkbonTex, roughness: .95 }), -3.05, BENCH.top + .002, -2.72);
 werkbon.rotation.x = -Math.PI / 2;
 werkbon.rotation.z = .18;
 register(werkbon, 'werkbon', 'the intake form');
@@ -932,10 +1084,11 @@ const logTex = tex(512, 384, (g, w, h) => {
     .forEach((l, i) => g.fillText(l, 28, 96 + i * 30));
   grain(g, w, h, .05);
 });
-const logbook = box(.19, .045, .26, M.dark, -2.3, COUNTER.top + .022, 1.36);
+const logbook = box(.19, .045, .26, M.dark, -2.98, BENCH.top + .022, -2.30);
 logbook.rotation.y = -.3;
 decal(.18, .135, logTex, 0, .024, 0, 0, logbook).rotation.x = -Math.PI / 2;
 register(logbook, 'logbook', 'the service log');
+SOLID_LATE.push(S(-3.075, -2.885, BENCH.top, BENCH.top + .046, -2.43, -2.17));   // a book is a thing, not air
 
 /* --------------------------------------------------------------- the shelf */
 box(1.0, .035, .26, M.bench, -2.9, 1.86, -3.02);
@@ -1102,8 +1255,23 @@ register(genGroup, 'gen', 'the generator');
 const fuelLever = box(.02, .10, .02, M.gold, -.24, .33, .255, genGroup);
 const chokeLever = box(.02, .08, .02, M.metalDark, -.12, .34, .255, genGroup);
 const primer = sphere(.028, new THREE.MeshStandardMaterial({ color: 0x8a6a22, roughness: .6 }), .02, .33, .255, genGroup, 10);
-const cordHandle = box(.06, .03, .03, M.black, .26, .40, .26, genGroup);
-const cordLine = cyl(.004, .004, .22, 6, M.black, .26, .30, .26, genGroup);
+// the pull cord: a rope from the casing to a T-handle that actually comes out when you drag
+const CORD = { anchor: new THREE.Vector3(.26, .50, .24), rest: new THREE.Vector3(.26, .40, .28) };
+const cordHandle = box(.060, .030, .030, M.black, CORD.rest.x, CORD.rest.y, CORD.rest.z, genGroup);
+const cordGrip = box(.090, .016, .016, new THREE.MeshStandardMaterial({ color: 0x14181a, roughness: .8 }),
+  CORD.rest.x, CORD.rest.y, CORD.rest.z, genGroup);
+const cordLine = cyl(.0045, .0045, 1, 6, M.black, CORD.rest.x, (CORD.anchor.y + CORD.rest.y) / 2, (CORD.anchor.z + CORD.rest.z) / 2, genGroup);
+let cordVis = 0;
+function updateCord(t) {
+  const h = new THREE.Vector3(CORD.rest.x, CORD.rest.y - .075 * t, CORD.rest.z + .20 * t);
+  cordHandle.position.copy(h);
+  cordGrip.position.copy(h);
+  const dir = h.clone().sub(CORD.anchor);
+  cordLine.position.copy(CORD.anchor).add(h).multiplyScalar(.5);
+  cordLine.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+  cordLine.scale.set(1, Math.max(.01, dir.length()), 1);
+}
+updateCord(0);
 const genSticker = decal(.14, .10, stickerTex([
   ['COLD START', 26, true],
   ['1 fuel OPEN', 17, false],
@@ -1163,14 +1331,14 @@ decal(.42, .58, posterTex, 3.44, 1.62, 1.6, -Math.PI / 2);
 /* --------------------------------------------------------------- state */
 const state = {
   phase: 'dark',            // dark | lit | shrinking | shrunk
-  locked: false, running: true, elapsed: 0, won: false,
+  locked: false, running: false, elapsed: 0, won: false, started: false,
   torch: false, casePower: false,
   gen: { fuel: false, choke: 'closed', pulls: 0, flooded: 0, running: false },
   ram: { a2: false, b2Out: false, spare: false, seated: false },
   codes: ['C1', 'd4', 'A2', 'F1', 'b7'],
   codeIndex: 0, codeT: 0,
   reads: {}, notes: {}, items: [],
-  hovered: null, trayTarget: null, grab: null,
+  hovered: null, trayTarget: null, grab: null, invPending: null,
 };
 
 const padEl = $('#pad'), trayEl = $('#tray'), bodyEl = $('#body'), titleEl = $('#title'),
@@ -1183,27 +1351,60 @@ function toast(msg, kind = '') {
   el.className = 'toast ' + kind;
   el.textContent = msg;
   toasts.appendChild(el);
-  setTimeout(() => { el.style.transition = 'opacity .35s'; el.style.opacity = '0'; }, 2400);
-  setTimeout(() => el.remove(), 2850);
+  while (toasts.children.length > 8) toasts.firstElementChild.remove();
+  // a line is only useful if it is on screen long enough to read: ~40 ms a letter
+  const life = Math.min(9000, 2600 + msg.length * 42);
+  setTimeout(() => { el.style.transition = 'opacity .5s'; el.style.opacity = '0'; }, life);
+  setTimeout(() => el.remove(), life + 560);
 }
 function banner(html) { bannerEl.innerHTML = html; bannerEl.hidden = false; }
 
 /* --------------------------------------------------------------- notepad */
 const CODE_MEANING = { C1: 'memory', d4: 'no adapter', A2: 'no monitor', F1: 'fans', b7: 'boot sector' };
 function renderPad() {
+  padEl.classList.toggle('waiting', !!state.invPending);
   $('#padItems').innerHTML = state.items.length
-    ? state.items.map(i => `<span>${i}</span>`).join('')
+    ? state.items.map(i => `<button class="item" data-item="${i}">${i}</button>`).join('')
     : '<em>empty</em>';
   $('#padCodes').innerHTML = ['C1', 'd4', 'A2', 'F1', 'b7'].map(c =>
     `<li><span>${c} <i>${CODE_MEANING[c]}</i></span><b>${state.codes.includes(c) ? 'fault' : 'clear'}</b></li>`).join('');
-  const n = Object.entries(state.notes);
+  const n = Object.entries(state.notes);            // insertion order = the order you found them
   $('#padNotes').innerHTML = n.length
     ? n.map(([k, v]) => `<li><span>${k}</span><b>${v}</b></li>`).join('')
     : '<li><i>nothing yet</i></li>';
 }
+$('#padItems').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-item]');
+  if (!btn) return;
+  const item = btn.dataset.item;
+  if (state.invPending === 'air' && item === 'compressed air') { cleanLens(); sfx.click(); return; }
+  if (state.invPending === 'air') { sfx.buzz(); toast('Not that one. The window wants the compressed air.'); return; }
+  if (state.invPending === 'ram' && item === 'ddr4 module') { seatRam(); sfx.click(); return; }
+  if (state.invPending === 'ram') { sfx.buzz(); toast('Not that one. The board wants the memory module.'); return; }
+  if (item === 'ddr4 module' && state.ram.b2Out && !state.ram.seated) {
+    toast('Seat it in B2 — look at the empty slot and press E, or click it here.', '');
+    return;
+  }
+  sfx.click();
+  toast(item === 'compressed air' ? 'A can of compressed air, a straw on the nozzle.'
+    : item === 'ddr4 module' ? 'A known-good 8 GB module. Look at empty slot B2 and press E.'
+    : item === 'torch' ? 'A rubber torch.'
+    : item === 'screwdriver' ? 'A cross-head. Gerrit has eleven.'
+    : item === 'burnt DDR4 (RMA)' ? 'Scorched. Someone wrote RMA on it. Scrap, but worth showing the customer.'
+    : item, '');
+});
+function pulsePad() {
+  padEl.classList.remove('pulse');
+  void padEl.offsetWidth;
+  padEl.classList.add('pulse');
+}
 function togglePad() {
   padEl.hidden = !padEl.hidden;
-  if (!padEl.hidden) { renderPad(); sfx.paper(); }
+  if (!padEl.hidden) {
+    renderPad();
+    sfx.paper();
+    if (document.pointerLockElement) document.exitPointerLock();   // the cursor is needed to click an item
+  }
 }
 
 /* ------------------------------------------------------------------- LED */
@@ -1221,14 +1422,26 @@ function drawLed(v) {
   }
   ledTexture.needsUpdate = true;
 }
+function powerCaseOff() {
+  if (!state.casePower) return;
+  state.casePower = false;
+  ledOn = false;
+  drawLed(null);
+  ledMat.emissiveIntensity = 0;
+  ledLight.intensity = 0;
+  darkUsb();
+  sfx.click();
+}
 function powerCase() {
   if (state.casePower) return;
+  if (!(state.psu && state.psu.rocker && state.psu.atx)) return;   // mains, then 24-pin: then it talks
   state.casePower = true;
   ledOn = true;
   ledLight.intensity = state.phase === 'shrunk' ? .02 : .5;
   ledMat.emissiveIntensity = 1.9;
   drawLed(state.codes[0]);
   sfx.relay();
+  setTimeout(checkUsbPower, 160);
 }
 
 function inRing() {
@@ -1241,10 +1454,12 @@ const THINGS = {
     kicker: 'counter', title: 'A rubber torch',
     text: () => state.torch
       ? 'You are holding it. The beam is the only light in the shop.'
-      : 'A rubber torch, still warm from Gerrit\'s hand. The little battery LED blinks: it is the only thing in here that works.',
-    keys: () => state.torch ? '' : '<kbd>E</kbd>pick it up',
+      : state.gen.running
+        ? 'Back on the counter where it lives, its battery LED a steady green dot. The shop has mains now; a torch is one job behind you.'
+        : 'A rubber torch, still warm from Gerrit\'s hand. The little battery LED blinks: it is the only thing in here that works.',
+    keys: () => state.torch || state.gen.running ? '' : '<kbd>E</kbd>pick it up',
     act() {
-      if (state.torch) return;
+      if (state.torch || state.gen.running) return;
       state.torch = true; state.items.push('torch');
       torchLight.intensity = 26;
       torchLens.material.emissive.setHex(0xffe9b0); torchLens.material.emissiveIntensity = 2;
@@ -1306,16 +1521,14 @@ const THINGS = {
   },
   tower: {
     kicker: 'bench', title: 'The customer\'s tower',
-    text: () => `<p>Side panel off, screws in a cup. From here it is just a black box with a bad attitude.</p>
-      <p class="sub">The shrink ray would let you walk in through that open side.</p>`,
+    text: () => `<p>Side panel off, screws in a cup. A black box with a bad attitude.</p>`,
     keys: () => '', act() { },
   },
   led: {
     kicker: 'inside the case', title: 'Debug display',
     text: () => state.casePower
-      ? `<p>The two-digit display is cycling through every fault it knows about.</p>
-         <p class="got">current: ${state.codes.length ? state.codes[state.codeIndex % state.codes.length] : '--'}</p>
-         <p class="sub">${state.codes.length} faults live. The manual on the bench names them.</p>`
+      ? `<p>Cycling every fault it knows about.</p>
+         <p class="got">current: ${state.codes.length ? state.codes[state.codeIndex % state.codes.length] : '--'}</p>`
       : '<p>Dark. No standby power yet.</p>',
     keys: () => '', act() { },
   },
@@ -1323,78 +1536,68 @@ const THINGS = {
     kicker: 'case floor', title: 'Anti-static bag',
     text: () => state.ram.spare
       ? '<p>Empty. The spare module is in your pocket.</p>'
-      : `<p>A sealed bag with one memory module inside. The sticker on it says <b>SPARE &gt; B2</b> — Gerrit labelled
-         it for exactly this job.</p>
-         <p class="sub">${state.ram.b2Out ? 'B2 is empty and open. Take the module and put it there.'
-           : 'B2 still has the burnt module in it. Pull that one out first.'}</p>`,
+      : '<p>A sealed bag, one module inside. The sticker says <b>SPARE &gt; B2</b>.</p>',
     keys: () => state.ram.spare ? '' : '<kbd>E</kbd>take the module',
     act() {
       if (state.ram.spare) return;
       state.ram.spare = true; state.items.push('ddr4 module');
       bagGroup.visible = false;
-      sfx.pickup(); toast('A good 8 GB module. Slot B2 is right there — E to seat it.', 'good');
+      const bagSolid = SOLID_S.find(b => Math.abs(b.x0 + 1.955) < .01 && Math.abs(b.z0 + 2.05) < .01);
+      if (bagSolid) SOLID_S.splice(SOLID_S.indexOf(bagSolid), 1);
+      sfx.pickup(); toast('A good 8 GB module.');
       renderPad();
     },
   },
   slotA2: {
     kicker: 'memory', title: 'Slot A2',
-    text: () => !state.casePower
-      ? '<p>A memory module, half out of its slot. In this light it looks like a leaning tower.</p>'
-      : state.ram.a2
-        ? '<p>Home, both clips down. This one was never the problem.</p>'
-        : '<p>One module is barely in its slot — leaning out, one clip open. It looks clean; it has simply worked loose.</p>',
-    keys: () => !state.casePower || state.ram.a2 ? '' : '<kbd>E</kbd>push it home',
+    text: () => state.ram.a2
+      ? '<p>Home, both clips down. This one was never the problem.</p>'
+      : '<p>Half out of its slot, one clip open. It looks clean.</p>',
+    keys: () => state.ram.a2 ? '' : '<kbd>E</kbd>push it home',
     act() {
-      if (!state.casePower || state.ram.a2) return;
+      if (state.ram.a2) return;
       state.ram.a2 = true;
-      stickIn.rotation.z = .02;
-      stickIn.position.x = TOWER.x + SLOTS[1];
-      stickIn.position.z = TOWER.z - .02;
+      stickIn.rotation.x = 0;
+      stickIn.position.y = boardY + DIMM.h / 2 + .004;
+      stickIn.position.z = TOWER.z - .01;
+      seatA2Collider();
       sfx.snap(); setTimeout(() => sfx.clack(), 90);
-      toast('It slides home and both clips snap down.', 'good');
-      setTimeout(() => toast(state.ram.seated ? 'Both modules seated.' : 'C1 is still up — so the fault is the other module.', ''), 1500);
+      toast('Home. Both clips snap down.', 'good');
+      setTimeout(() => toast(state.ram.seated ? 'Both modules seated.' : 'C1 is still up. The other module, then.', ''), 1500);
       checkRam();
     },
   },
   slotB2: {
     kicker: 'memory', title: 'Slot B2',
-    text: () => !state.casePower
-      ? '<p>A module in the second pair of slots, dark and quiet.</p>'
-      : state.ram.seated
-        ? `<p>The replacement is seated. The sticker on it gave up a <b>${state.notes.RAM || 'B'}</b>.</p>`
+    text: () => state.ram.seated
+        ? `<p>Seated, clips down. The notepad has <b>${state.notes.RAM || 'N'}</b>.</p>`
         : state.ram.b2Out
-          ? `<p>Empty, clips open. The scorched module lies where you dropped it. ${state.ram.spare
-              ? 'The spare is in your pocket — <b>E</b> seats it.'
-              : 'You need a replacement: the sealed bag beside the slots says <b>SPARE &gt; B2</b>.'}</p>`
-          : `<p>A module with a scorched edge and a burnt chip above the third memory package. Someone wrote <b>RMA</b>
-             on it in marker.</p>
-             <p class="sub">The intake form said "it beeps". This is the beep.</p>`,
-    keys: () => !state.casePower || state.ram.seated ? '' : state.ram.b2Out
+          ? '<p>Empty, clips open.</p>'
+          : '<p>Scorched edge, a burnt chip, and <b>RMA</b> in marker.</p>',
+    keys: () => state.ram.seated ? '' : state.ram.b2Out
       ? (state.ram.spare ? '<kbd>E</kbd>seat the spare' : 'empty hands')
       : '<kbd>E</kbd>pull the burnt module out',
     act() {
-      if (!state.casePower || state.ram.seated) return;
+      if (state.ram.seated) return;
       if (!state.ram.b2Out) {
-        if (!state.ram.a2) { sfx.buzz(); toast('One at a time: A2 has to be home before the board will talk about B2.'); return; }
         state.ram.b2Out = true;
-        stickS.rotation.z = 1.25;
-        stickS.position.x = TOWER.x + SLOTS[3] + .11;
-        stickS.position.y = boardY + .012;
+        stickS.visible = false;                       // it is scrap; it does not lie around in the machine
+        b2Solid.y1 = .90;                             // and neither does its collider
+        state.items.push('burnt DDR4 (RMA)');
+        renderPad();
         sfx.snap();
-        toast('Out. Burnt chip, scorched edge — that is the beep in the intake form.', 'good');
-        setTimeout(() => toast('A sealed spare sits beside the slots: SPARE > B2.', ''), 1400);
+        toast('Out. Scorched edge, burnt chip — the beep in the intake form.', 'good');
         return;
       }
-      if (!state.ram.spare) { sfx.buzz(); toast('You need a module — the sealed bag beside the slots is labelled SPARE > B2.'); return; }
-      state.ram.spare = false;
-      state.ram.seated = true;
-      state.items = state.items.filter(i => i !== 'ddr4 module');
-      const good = box(.026, .26, .012, new THREE.MeshStandardMaterial({ color: 0x22593f, roughness: .7 }),
-        TOWER.x + SLOTS[3], boardY + .13, TOWER.z - .02, board);
-      register(good, 'slotB2', 'slot B2');
-      SOLID_S.push(S(TOWER.x + SLOTS[3] - .014, TOWER.x + SLOTS[3] + .014, .90, B2 + .26, TOWER.z - .026, TOWER.z - .014));
-      sfx.snap(); setTimeout(() => sfx.clack(), 90);
-      checkRam();
+      // the replacement goes in from the inventory, never straight from your pocket.
+      // The cursor has to come back for that, so the pointer lock is released.
+      state.invPending = 'ram';
+      padEl.hidden = false;
+      renderPad();
+      pulsePad();
+      if (document.pointerLockElement) document.exitPointerLock();
+      sfx.click();
+      toast('Slot B2 is empty. The inventory has the module.', '');
     },
   },
   gen: {
@@ -1493,13 +1696,22 @@ const THINGS = {
   },
   keyboard: {
     kicker: 'desk', title: 'Keyboard',
-    text: () => '<p>Big, heavy, and unplugged. From where you are standing it looks like a runway.</p>',
+    text: () => state.usb && state.usb.kbd
+      ? '<p>Backlit now, keys lit like a runway at night. Every one of them is a step.</p>'
+      : '<p>Big, heavy, and unplugged. From where you are standing it looks like a runway.</p>',
     keys: () => '', act() { },
   },
   mouse: {
     kicker: 'desk', title: 'Mouse',
-    text: () => '<p>On a mousepad, cable coiled. The intake form was right about this one.</p>',
-    keys: () => '', act() { },
+    text: () => state.usb.tipped
+      ? '<p>Over on its side, feet in the air.</p>'
+      : !state.usb.mouse
+        ? '<p>On its pad, cable running off. Not plugged in.</p>'
+        : '<p>On its pad, logo lit. The intake form was right about this one.</p>',
+    keys: () => state.phase === 'shrunk'
+      ? (state.usb.tipped ? '<kbd>E</kbd>put it back on its pad' : '<kbd>E</kbd>tip it onto its side')
+      : '',
+    act() { tipMouse(!state.usb.tipped); },
   },
 };
 
@@ -1659,6 +1871,7 @@ function doShrink() {
   ledLight.intensity = .5;
   ledLight.decay = 0;
   caseGlow.intensity = .5;
+  caseGlow.distance = 2.4;
   sfx.whoom();
   setTimeout(() => { shrinking = false; }, 600);
   toast('The bench is a country. The tower is a building.', 'good');
@@ -1669,7 +1882,9 @@ function doShrink() {
 /* Things a 1.6 m person cannot fiddle with. The crosshair ignores them until you are inside the case. */
 const SMALL_ONLY = new Set(['led', 'bag', 'slotA2', 'slotB2', 'psuLabel', 'psuRocker', 'padlock', 'gpu', 'hpcie',
   'h24', 'hcpu', 'hfan', 'plugRear', 'chaFan1', 'sysFan3', 'cpuFanHdr', 'screwdriver', 'gpuDrum',
-  'cable_atx', 'cable_eps', 'cable_pcie', 'cable_sata']);
+  'cable_atx', 'cable_eps', 'cable_pcie', 'cable_sata', 'cable_hdmi', 'ioHdmi',
+  'zipBench', 'zipDesk', 'usbKbd', 'usbMouse', 'usbPortA', 'usbPortB', 'airCan', 'mouseLens', 'usbNote',
+  'ssdPort', 'ssdBody', 'ssdPlug', 'ssdSocket', 'diskExit', 'wormLever', 'readme']);
 
 function transcriptHTML() {
   if (!voice.lines.length) return '<p class="sub">a message is playing</p>';
@@ -1681,7 +1896,8 @@ function transcriptHTML() {
 }
 
 function renderTray() {
-  if (speaking) {                       // the machine owns the tray while it talks
+  // the machine owns the tray while it talks — unless you are looking at something else
+  if (speaking && (!state.hovered || state.hovered.id === 'answer')) {
     trayEl.hidden = false;
     kickerEl.textContent = 'answering machine';
     titleEl.textContent = 'One new message';
@@ -1696,6 +1912,18 @@ function renderTray() {
     titleEl.textContent = 'Padlock';
     bodyEl.innerHTML = comboBody();
     keysEl.innerHTML = '<kbd>↑↓</kbd>digit · <kbd>←→</kbd>wheel · <kbd>E</kbd>try it · <kbd>Q</kbd>let go';
+    return;
+  }
+  if (state.grab && state.grab.id === 'loginMouse') {
+    trayEl.hidden = false;
+    kickerEl.textContent = 'the mouse';
+    titleEl.textContent = 'The cursor';
+    const t = loginTargetAt();
+    bodyEl.innerHTML = `<p>Drag: the pointer on the screen follows you.</p>
+      <p class="sub">${t === 'field' ? 'Over the password field. <b>E</b> to click it.'
+        : t === 'button' ? 'Over the button. <b>E</b> to click it.'
+        : 'Move it onto the password field, then <b>E</b> to click.'}</p>`;
+    keysEl.innerHTML = '<kbd>E</kbd>click · <kbd>Q</kbd>let go';
     return;
   }
   if (state.grab) {
@@ -1727,6 +1955,9 @@ function currentTarget() {
   raycaster.setFromCamera({ x: 0, y: 0 }, camera);
   const hits = raycaster.intersectObjects(interact, true);
   for (const h of hits) {
+    let hidden = false;
+    for (let q = h.object; q; q = q.parent) if (q.visible === false) { hidden = true; break; }
+    if (hidden) continue;
     let o = h.object, id = null;
     while (o) { if (o.userData && o.userData.interact) { id = o.userData.interact; break; } o = o.parent; }
     if (id && SMALL_ONLY.has(id) && state.phase !== 'shrunk') continue;
@@ -1752,7 +1983,6 @@ const keys = new Set();
 let yaw = 0, pitch = 0, feet = 0, vy = 0, grounded = true, stepAcc = 0;
 HUMAN.r = 0.3; SHRUNK.r = 0.007;
 
-const S = (x0, x1, y0, y1, z0, z1) => ({ x0, x1, y0, y1, z0, z1 });
 const SOLID_H = [
   S(BENCH.x0, BENCH.x1, 0, BENCH.top, BENCH.z0, BENCH.z1),
   S(DESK.x0, DESK.x1, 0, DESK.top, DESK.z0, DESK.z1),
@@ -1768,20 +1998,53 @@ const SOLID_H = [
   S(YARD.x1, YARD.x1 + .5, 0, YARD.h, -6.2, YARD.z1),
   S(.9, 3.6, 0, YARD.h, YARD.z0 - .5, YARD.z0),
 ];
-const SOLID_S = [
+const SOLID_S = [...SOLID_LATE,
   S(TOWER.x - TOWER.w / 2 - .02, TOWER.x - TOWER.w / 2 + .02, .90, 1.95, TOWER.z - TOWER.d / 2, TOWER.z + TOWER.d / 2),
   S(TOWER.x + TOWER.w / 2 - .02, TOWER.x + TOWER.w / 2 + .02, .90, 1.95, TOWER.z - TOWER.d / 2, TOWER.z + TOWER.d / 2),
   S(TOWER.x - TOWER.w / 2, TOWER.x + TOWER.w / 2, .90, 1.95, TOWER.z - TOWER.d / 2 - .02, TOWER.z - TOWER.d / 2 + .02),
-  S(TOWER.x - .14, TOWER.x + .02, .90, 1.20, TOWER.z - .31, TOWER.z - .16),
+  S(TOWER.x - .14, TOWER.x + .02, .90, 1.20, TOWER.z - .327, TOWER.z - .197),
   S(BENCH.x0, BENCH.x0 + .02, .90, 1.60, BENCH.z0, BENCH.z1),
   S(BENCH.x1 - .02, BENCH.x1, .90, 1.60, BENCH.z0, BENCH.z1),
   S(BENCH.x0, BENCH.x1, .90, 1.60, BENCH.z0, BENCH.z0 + .02),
   S(BENCH.x0, BENCH.x1, .90, 1.60, BENCH.z1 - .02, BENCH.z1),
 ];
 
-function resolve(pos, r, fY, h, list) {
+/* The two surfaces a 17 mm person can stand on. Everything else is the drop to
+   the shop floor, eight storeys down. */
+const SHRUNK_FLOORS = [
+  { x0: BENCH.x0, x1: BENCH.x1, z0: BENCH.z0, z1: BENCH.z1, y: BENCH.top },
+  { x0: DESK.x0, x1: DESK.x1, z0: DESK.z0, z1: DESK.z1, y: DESK.top },
+];
+function shrunkGroundAt(x, z) {
+  let g = -1;
+  for (const f of SHRUNK_FLOORS) {
+    if (x > f.x0 && x < f.x1 && z > f.z0 && z < f.z1 && f.y > g) g = f.y;
+  }
+  return g;
+}
+/* No fail states: you go over an edge, the lip catches you and puts you back. */
+function catchFall() {
+  const land = camera.position.x > 1.5 ? ZIP.desk : ZIP.bench;
+  camera.position.set(land.x, land.y + P.eye, land.z);
+  feet = land.y; vy = 0;
+  sfx.nope();
+  toast('You went over the edge. The lip caught you on the way down.', 'bad');
+}
+
+function groundAt(x, z, r, feet, stepUp, list, base) {
+  let g = base;
+  for (const s of list) {
+    if (s.y1 > feet + stepUp) continue;                  // too tall to step onto
+    if (x < s.x0 - r || x > s.x1 + r || z < s.z0 - r || z > s.z1 + r) continue;
+    if (s.y1 > g) g = s.y1;
+  }
+  return g;
+}
+
+function resolve(pos, r, fY, h, list, stepUp) {
   for (const s of list) {
     if (fY >= s.y1 - .002 || fY + h <= s.y0 + .002) continue;
+    if (stepUp && s.y1 - fY <= stepUp) continue;         // low enough to walk onto
     const cx = clamp(pos.x, s.x0, s.x1), cz = clamp(pos.z, s.z0, s.z1);
     const dx = pos.x - cx, dz = pos.z - cz;
     const d = Math.hypot(dx, dz);
@@ -1814,18 +2077,24 @@ function move(dt) {
     nx += (-sin * -fz + cos * fx) * speed * dt;
     nz += (-cos * -fz - sin * fx) * speed * dt;
   }
-  const list = state.phase === 'shrunk' ? SOLID_S : SOLID_H;
+  const inDisk = state.disk.inside;
+  const list = inDisk ? SOLID_D : state.phase === 'shrunk' ? SOLID_S : SOLID_H;
   const pos = { x: nx, z: nz };
-  resolve(pos, P.r, feet, P.eye * 1.06, list);
+  resolve(pos, P.r, feet, P.eye * 1.06, list, P.stepUp);
   const moved = Math.hypot(pos.x - camera.position.x, pos.z - camera.position.z);
   camera.position.x = pos.x;
   camera.position.z = pos.z;
 
-  // gravity and a ground plane per scale
-  const ground = state.phase === 'shrunk' ? BENCH.top : 0;
-  vy -= (state.phase === 'shrunk' ? 1.8 : 9.8) * dt;
+  // gravity, over whatever is actually under you. Shrunk, there are two floors
+  // worth standing on — the bench and the desk — and between them, air.
+  const baseGround = inDisk ? DISK.y - .50
+    : state.phase === 'shrunk' ? shrunkGroundAt(pos.x, pos.z) : 0;
+  const ground = groundAt(pos.x, pos.z, P.r, feet, P.stepUp, list, baseGround);
+  vy -= (inDisk || state.phase === 'shrunk' ? 1.8 : 9.8) * dt;
   feet += vy * dt;
   if (feet <= ground) { feet = ground; vy = 0; grounded = true; } else grounded = false;
+  if (inDisk) { if (feet < DISK.y - .08) ejectFromDisk(); }
+  else if (state.phase === 'shrunk' && feet < .12) catchFall();
   camera.position.y = feet + P.eye + (state.phase === 'shrunk' ? Math.sin(clock.elapsedTime * 6) * .00025 * (moved > 0 ? 1 : 0) : 0);
 
   if (moved > 1e-6) {
@@ -1840,20 +2109,33 @@ addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('mousedown', e => {
+  if (e.button === 2) {                 // right button: let go of whatever is in your hands
+    e.preventDefault();
+    audioInit();
+    let did = false;
+    if (dropHeld()) did = true;
+    if (state.grab) { state.grab = null; did = true; }
+    if (state.gpu && state.gpu.trying) { state.gpu.trying = false; did = true; }
+    if (did) { sfx.click(); renderTray(); }
+    return;
+  }
   if (e.button !== 0) return;
   audioInit();
   if (!state.locked) { canvas.requestPointerLock?.(); return; }
+  if (state.grab && state.grab.id === 'loginMouse') { loginClick(); renderTray(); return; }
   if (state.grab) { state.grab = null; renderTray(); return; }
   use();
 });
 document.addEventListener('pointerlockchange', () => {
   state.locked = document.pointerLockElement === canvas;
-  unlockHint.hidden = state.locked || state.won;
+  unlockHint.hidden = state.locked || state.won || !state.started;
 });
 document.addEventListener('mousemove', e => {
   if (!state.locked) return;
   if (state.grab) {
+    if (state.grab.id === 'loginMouse') { loginMove(e.movementX, e.movementY); return; }
     state.grab.p = clamp(state.grab.p + Math.max(0, e.movementY) + Math.max(0, e.movementX) * .4, 0, state.grab.need);
     if (state.grab.id === 'gpuDrum') {
       state.gpu.drop = clamp(state.grab.p / state.grab.need, 0, 1);
@@ -1871,7 +2153,6 @@ document.addEventListener('mousemove', e => {
   const s = state.phase === 'shrunk' ? .0026 : .0021;
   yaw -= e.movementX * s;
   pitch = clamp(pitch - e.movementY * s, -1.35, 1.35);
-  if (Math.abs(e.movementX) + Math.abs(e.movementY) > 6 && state.phase === 'shrunk') sfx.scratch();
 });
 addEventListener('keydown', e => {
   audioInit();
@@ -1907,7 +2188,9 @@ addEventListener('keydown', e => {
     return;
   }
   if (e.code === 'KeyH') { giveHint(); return; }
+  if (e.code === 'KeyR' && state.won) { location.reload(); return; }
   if (e.code === 'KeyQ') {
+    if (dropHeld()) return;
     if (state.grab) { state.grab = null; renderTray(); }
     if (state.gpu && state.gpu.trying) { state.gpu.trying = false; renderTray(); }
     return;
@@ -1917,7 +2200,10 @@ addEventListener('keydown', e => {
     if (state.gpu && state.gpu.trying) { state.gpu.trying = false; renderTray(); }
     return;
   }
-  if (e.code === 'KeyE') { use(); return; }
+  if (e.code === 'KeyE') {
+    if (state.grab && state.grab.id === 'loginMouse') { loginClick(); renderTray(); return; }
+    use(); return;
+  }
   if (e.code === 'Space') {
     e.preventDefault();
     if (grounded && !shrinking && state.phase !== 'shrinking') { vy = P.jump; grounded = false; sfx.step(false); }
@@ -1940,8 +2226,6 @@ function genPull() {
   }
   g.pulls++;
   sfx.cough();
-  cordHandle.position.y = .46;
-  setTimeout(() => { cordHandle.position.y = .40; }, 160);
   if (g.pulls >= 3) startGenerator();
   else toast(`Pull ${g.pulls} of 3.`);
 }
@@ -1961,6 +2245,20 @@ function startGenerator() {
   lens.material.emissiveIntensity = 1.6;
   padRing.material.opacity = .45;
   powerCase();
+  // the shop is lit now: the torch goes back on the counter, lit no more, and
+  // never comes off it again — it had one job and the mains took it over
+  setTimeout(() => {
+    if (state.torch) {
+      state.torch = false;
+      torchLight.intensity = 0;
+      state.items = state.items.filter(i => i !== 'torch');
+      renderPad();
+      toast('Shop lights are on. The torch goes back on the counter.', '');
+    }
+    torch.visible = torchLens.visible = torchPin.visible = true;
+    torchLens.material.emissive.setHex(0x000000);          // the lens is dark: it is switched off
+    torchLens.material.emissiveIntensity = 1;
+  }, 2200);
   setTimeout(() => toast('Lights, relay, and the case is already complaining.', 'good'), 700);
 }
 
@@ -1968,6 +2266,7 @@ function startGenerator() {
 function giveHint() {
   if (!state.gen.running && !state.torch) return toast('Hint · it is dark. The torch is on the counter, blinking green.', '');
   if (!state.gen.running) return toast('Hint · the generator, back yard. Fuel open, choke closed, three pulls on the cord.', '');
+  if (state.disk.inside && !state.disk.sealed) return toast('Hint · it only follows. Get it inside the chamber, leave by the hatch, pull the lever.', '');
   if (state.phase !== 'shrunk') return toast('Hint · stand in the ring on the floor and pull the shrink ray lever.', '');
   if (!state.ram.a2) return toast('Hint · slot A2: that module is leaning out of the socket. Push it home.', '');
   if (!state.ram.seated) {
@@ -1978,15 +2277,32 @@ function giveHint() {
   if (!state.psu.rocker) return toast('Hint · the PSU rocker, on the power unit by the case opening.', '');
   if (!state.psu.atx || !state.psu.cpu) return toast('Hint · 24-pin to the board, then the EPS 8-pin. Pick a cable end up first, then the socket.', '');
   if (!fanDone()) {
-    if (state.fans.rear !== true && state.held !== 'fan4') return toast('Hint · the rear fan plug is lying by the back wall. Pick it up, then CHA_FAN1.', '');
+    if (state.fans.rear !== true && state.held !== 'fanRear') return toast('Hint · the rear fan plug is lying by the back wall. Pick it up, then CHA_FAN1.', '');
     if (!state.fans.cpu) return toast('Hint · the CPU fan cable is in SYS_FAN3. Pull it and move it to CPU_FAN.', '');
     return toast('Hint · a screwdriver is jammed in the intake fan.', '');
   }
   if (!state.gpu.unlocked) return toast('Hint · the padlock takes the last three digits of the shop number on the side panel.', '');
   if (state.gpu.drop < .92) return toast('Hint · grab the winch drum and drag back.', '');
   if (!state.gpu.seated) return toast('Hint · the card is at the rail. Push it in.', '');
-  if (!state.gpu.powered) return toast('Hint · the card wants its own 8-pin. The PCIe one.', '');
-  return toast('Hint · C1, F1 and d4 are clear. Slices 3-5 build the rest.', 'good');
+  if (!state.gpu.powered) return toast('Hint · the card wants its own 8-pin. Pick up the PCIe cable, then look at the card.', '');
+  if (!state.mon.plugged) return toast('Hint · the HDMI cable: one end is in the monitor, the loose end is coiled on the bench. The rear panel is around the back of the case.', '');
+  if (!railLive()) return toast('Hint · the card is fine, but the board has no 12 V: mains switch on, 24-pin, CPU 8-pin.', '');
+  if (!state.usb.kbd) return toast("Hint · the keyboard's connector is on the desk by the monitor. Ride the cable down, pick it up, and ride back with it to the rear panel.", '');
+  if (!state.usb.mouse) return toast("Hint · the mouse's connector is on the desk too. Same trip, one hand at a time.", '');
+  if (!state.usb.clean) return toast(!state.usb.tipped
+    ? 'Hint · the mouse is on the desk, and so is the only way down there: the taped grip on the HDMI cable at the bench edge.'
+    : 'Hint · the window under the mouse is filthy. The can of air is standing on the bench, left of the case.', '');
+  if (!state.ssd.plugged) return toast("Hint · the drive on the bench in front of the case has a loose cable end. The rear panel has the only SATA socket.", '');
+  if (state.codes.includes('b7')) return toast('Hint · the drive is lit red. Its port is a doorway.', '');
+  if (state.login.active && !state.login.ok) {
+    if (!state.usb.mouse) return toast('Hint · the login needs a working mouse. Plug it in at the rear panel.', '');
+    if (!state.usb.clean) return toast('Hint · the pointer jumps because the sensor is filthy. Tip the mouse and blow the window out.', '');
+    return !state.login.focus
+      ? toast('Hint · E the mouse, drag the cursor onto ENTER PASSWORD, then E to click.', '')
+      : toast('Hint · the pictograms are the order: SSD, monitor, fans, PSU, GPU, RAM. Six letters.', '');
+  }
+  if (state.login.ok) return toast('Hint · the button on the screen. Push the cursor onto it and click.', '');
+  return toast('Hint · every fault is clear. The monitor wants a password.', 'good');
 }
 
 /* ==================================================================== slice 2
@@ -2032,38 +2348,137 @@ function plate(x, z, w, d, mat, y = B2 + .004) {
 const PSU = { x: -1.87, z: -2.24, w: .18, d: .12 };
 box(PSU.w, .060, PSU.d, M.metalDark, PSU.x, B2 + .030, PSU.z);
 box(PSU.w - .02, .004, PSU.d - .02, M.metal, PSU.x, B2 + .062, PSU.z);
-const psuLabel = decal(.11, .03, stickerTex([['CORSAIR 550 · 12V', 20, true]], { bg: '#14181a', ink: '#8fe6ff', h: 140, top: 82 }),
-  PSU.x - .03, B2 + .065, PSU.z);
-psuLabel.rotation.x = -Math.PI / 2;
+const psuLabel = decal(.086, .044, stickerTex([
+  ['PC DOKTER', 22, true],
+  ['0545-123456', 26, true],
+  ['+12V 45A', 18, false],
+], { bg: '#14181a', ink: '#8fe6ff', h: 210, top: 50 }),
+  PSU.x - .040, B2 + .032, PSU.z + PSU.d / 2 + .002);
 register(psuLabel, 'psuLabel', 'the PSU');
-const rocker = box(.020, .014, .012, M.red, PSU.x + .05, B2 + .070, PSU.z + PSU.d / 2 - .016);
-register(rocker, 'psuRocker', 'the PSU rocker switch');
+// the mains switch: on the front face, big, and it tips over when you use it
+const rockerG = new THREE.Group();
+rockerG.position.set(PSU.x + .052, B2 + .036, PSU.z + PSU.d / 2 + .004);
+scene.add(rockerG);
+box(.040, .026, .012, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }), 0, 0, 0, rockerG);
+const rocker = box(.032, .020, .010, M.red, 0, 0, .009, rockerG);
+rocker.rotation.x = -.38;      // mains off until you touch it
+register(rocker, 'psuRocker', 'the PSU mains switch');
+register(rockerG, 'psuRocker', 'the PSU mains switch');
+const rockerLabel = decal(.056, .016, stickerTex([['MAINS I/O', 26, true]], { bg: '#14181a', ink: '#ff5a4a', h: 120, top: 80, align: 'center' }),
+  PSU.x + .052, B2 + .012, PSU.z + PSU.d / 2 + .002);
+// a lamp beside the switch — green when the mains is on, dark when it is not
+const psuLed = sphere(.0060, new THREE.MeshStandardMaterial({ color: 0x0d2413, emissive: 0x000000, roughness: .3 }),
+  PSU.x + .018, B2 + .036, PSU.z + PSU.d / 2 + .004, scene, 10);
+rockerLabel.rotation.y = 0;
+
 
 /* --- four cables, two of the plugs identical --------------------------- */
 const CABLE = {
-  atx:  { x: -1.83, z: -2.44, w: .030, d: .012, col: 0x2a2f33, name: '24-pin ATX', to: 'h24' },
-  eps:  { x: -1.89, z: -2.44, w: .018, d: .012, col: 0x2a2f33, name: '8-pin, label says EPS', to: 'hcpu' },
-  pcie: { x: -1.95, z: -2.44, w: .018, d: .012, col: 0x2a2f33, name: '8-pin, label says PCIe', to: 'hpcie' },
-  sata: { x: -1.83, z: -2.50, w: .022, d: .010, col: 0x22262a, name: 'SATA power', to: 'hfan' },
+  atx:  { x: -1.83, z: -2.32, w: .030, d: .012, col: 0x2a2f33, name: '24-pin ATX', to: 'h24' },
+  eps:  { x: -1.89, z: -2.32, w: .018, d: .012, col: 0x2a2f33, name: '8-pin, label says EPS', to: 'hcpu' },
+  pcie: { x: -1.95, z: -2.32, w: .018, d: .012, col: 0x2a2f33, name: '8-pin, label says PCIe', to: 'hpcie' },
+  sata: { x: -1.83, z: -2.36, w: .022, d: .010, col: 0x22262a, name: 'SATA power', to: 'hfan' },
 };
-const cableMesh = {};
+const cableMesh = {}, cableWire = {};
 for (const [k, c] of Object.entries(CABLE)) {
   const m = box(c.w, .010, c.d, new THREE.MeshStandardMaterial({ color: c.col, roughness: .7 }), c.x, B2 + .006, c.z);
   cableMesh[k] = m;
   register(m, 'cable_' + k, 'a ' + c.name + ' cable end');
-  tube(V3(PSU.x + PSU.w / 2, B2 + .03, PSU.z + .04), V3(c.x, B2 + .006, c.z), .0025, M.black);
+  cableWire[k] = tube(V3(PSU.x + PSU.w / 2, B2 + .03, PSU.z + .04), V3(c.x, B2 + .006, c.z), .0025, M.black);
+}
+// one live wire that runs from the PSU to whatever you are carrying
+const dragWire = cyl(.0018, .0018, 1, 6, M.black, 0, 0, 0);
+dragWire.visible = false;
+function updateDragWire() {
+  if (state.held === 'fanRear') {
+    const hand = new THREE.Vector3();
+    heldPlug.getWorldPosition(hand);
+    hand.lerp(camera.position, .32);
+    stretchCyl(wireRear, REAR_FAN_P, hand);
+    wireRear.visible = true;
+    dragWire.visible = false;
+    return;
+  }
+  if (state.held === 'fanCpu') {
+    const hand = new THREE.Vector3();
+    heldPlug.getWorldPosition(hand);
+    hand.lerp(camera.position, .32);
+    stretchCyl(wireCpu, CPU_FAN_P, hand);
+    wireCpu.visible = true;
+    dragWire.visible = false;
+    return;
+  }
+  if (!state.held || !CABLE[state.held]) { dragWire.visible = false; return; }
+  const from = V3(PSU.x + PSU.w / 2, B2 + .030, PSU.z + .04);
+  const to = new THREE.Vector3();
+  heldPlug.getWorldPosition(to);
+  to.lerp(camera.position, .32);
+  const dir = to.clone().sub(from);
+  dragWire.visible = true;
+  dragWire.position.copy(from).add(to).multiplyScalar(.5);
+  dragWire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+  dragWire.scale.set(1, Math.max(.01, dir.length()), 1);
 }
 const cableOf = id => id.startsWith('cable_') ? id.slice(6) : null;
+// floor stencils, so the pile of cable ends is a wiring diagram and not a pile
+const CABLE_LABEL = { atx: '24-PIN', eps: 'EPS 8-PIN', pcie: 'PCIe 8-PIN', sata: 'SATA' };
+const cableLabel = {};
+for (const [k, c] of Object.entries(CABLE)) {
+  const lab = cableLabel[k] = plane(.085, .018, new THREE.MeshStandardMaterial({
+    map: stickerTex([[CABLE_LABEL[k], 26, true]], { bg: 'rgba(0,0,0,0)', ink: k === 'pcie' ? '#8fe6ff' : '#d8e2e6', h: 110, top: 74, border: false }),
+    transparent: true, roughness: .9,
+  }), c.x, B2 + .0015, c.z + .020);
+  lab.rotation.x = -Math.PI / 2;
+}
+
+/* --- what you are carrying, in front of the camera --------------------- */
+const HELD_SCALE = 1 / 1.62;
+const heldPlug = new THREE.Group();
+heldPlug.position.set(0.10, -0.09, -0.42);
+heldPlug.visible = false;
+camera.add(heldPlug);
+const heldBody = box(.052, .036, .042, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }), 0, 0, 0, heldPlug);
+box(.040, .012, .012, M.gold, 0, -.022, 0, heldPlug);
+box(.020, .014, .046, M.black, 0, .014, -.010, heldPlug);   // the wire leaving the back of it
+function showHeld(kind) {
+  const s = P.eye / 1.62;
+  heldPlug.scale.setScalar(s * 0.95);
+  heldPlug.position.set(0.115 * s, -0.105 * s, -0.36 * s);
+  heldBody.material = new THREE.MeshStandardMaterial({
+    color: kind === 'atx' ? 0x33393d : kind === 'sata' ? 0x22262a : 0x2a2f33, roughness: .7,
+  });
+  heldBody.visible = true;
+  heldPlug.visible = true;
+}
+function hideHeld() { heldPlug.visible = false; }
 
 /* --- the destinations --------------------------------------------------- */
-function header(x, z, w, d, label, col = 0x1b1f22) {
-  const g = box(w, .012, d, new THREE.MeshStandardMaterial({ color: col, roughness: .7 }), x, B2 + .006, z);
-  box(w * .8, .004, d * .5, M.gold, x, B2 + .013, z);
+const HEADER_SIZE = {};
+function header(x, z, w, d, label, col = 0x1b1f22, pins = [4, 2]) {
+  const g = new THREE.Group();
+  g.position.set(x, B2 + .008, z);
+  scene.add(g);
+  box(w, .016, d, new THREE.MeshStandardMaterial({ color: col, roughness: .75 }), 0, 0, 0, g);
+  box(w - .003, .002, d - .003, new THREE.MeshStandardMaterial({ color: 0x0a0d0f, roughness: .9 }), 0, .0085, 0, g);
+  const cols = pins[0], rows = pins[1];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const px = -w / 2 + .0035 + c * ((w - .007) / Math.max(1, cols - 1));
+    const pz = -d / 2 + .0030 + r * ((d - .006) / Math.max(1, rows - 1));
+    box(.0022, .0025, .0022, M.gold, px, .0098, pz, g);
+  }
+  box(.0035, .0025, .0035, new THREE.MeshStandardMaterial({ color: 0x9aa0a3, roughness: .6 }), w / 2 - .004, .0098, d / 2 - .0035, g);
+  HEADER_SIZE[x.toFixed(3) + ',' + z.toFixed(3)] = { w, d };
+  SOLID_S.push(S(x - w / 2, x + w / 2, .90, B2 + .010, z - d / 2, z + d / 2));   // low enough to step onto
   return g;
 }
-const h24 = header(-1.82, -2.36, .036, .016, '24-pin');
-const hcpu = header(-2.06, -2.42, .016, .012, 'EPS');
-const hfan = header(-1.92, -2.56, .018, .012, 'SATA', 0x2b2f33);
+const h24 = header(-1.80, -2.46, .030, .014, '24-pin', 0x1b1f22, [8, 2]);
+const hcpu = header(-1.88, -2.46, .016, .012, 'EPS', 0x1b1f22, [4, 2]);
+const hfan = header(-1.98, -2.48, .018, .012, 'SATA', 0x2b2f33, [5, 2]);
+const DEST_POS = {
+  h24:  { x: -1.80, z: -2.46 },
+  hcpu: { x: -1.88, z: -2.46 },
+  hfan: { x: -1.98, z: -2.48 },
+};
 register(h24, 'h24', 'the 24-pin socket on the board');
 register(hcpu, 'hcpu', 'the CPU power socket');
 register(hfan, 'hfan', 'the fan hub SATA socket');
@@ -2078,11 +2493,15 @@ function makeFan(x, y, z, r, facing) {
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * .22, r * .22, .008, 10), M.plastic);
   hub.rotation.x = Math.PI / 2;
   g.add(hub);
+  // blades live in the fan's own plane (XY), each pitched about its radial axis
   const blades = new THREE.Group();
   for (let i = 0; i < 5; i++) {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(r * .78, .002, r * .28), new THREE.MeshStandardMaterial({ color: 0x1a1e21, roughness: .8 }));
-    b.position.set(Math.cos(i / 5 * 6.283) * r * .45, 0, Math.sin(i / 5 * 6.283) * r * .45);
-    b.rotation.y = -i / 5 * 6.283;
+    const a = i / 5 * Math.PI * 2;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(r * .66, r * .26, .0015),
+      new THREE.MeshStandardMaterial({ color: 0x1a1e21, roughness: .8 }));
+    b.position.set(Math.cos(a) * r * .52, Math.sin(a) * r * .52, 0);
+    b.rotateZ(a);        // point outward from the hub
+    b.rotateX(.42);      // pitch, so it moves air instead of being a flat disc
     blades.add(b);
   }
   // a square shroud, so a fan reads as a fan and not as a loose hoop
@@ -2098,38 +2517,66 @@ function makeFan(x, y, z, r, facing) {
   return { g, blades };
 }
 // rear exhaust: low on the back wall, its 4-pin lying loose beside it
-const fanRear = makeFan(-1.86, B2 + .072, -2.758, .048, 'front');
-box(.115, .115, .006, M.metalDark, -1.86, B2 + .072, -2.763);   // the mount it is bolted to
-const chaFan1 = header(-1.80, -2.62, .016, .012, 'CHA_FAN1', 0x2b2f33);
+const fanRear = makeFan(-1.86, B2 + .072, -2.722, .048, 'front');
+box(.115, .115, .006, M.metalDark, -1.86, B2 + .072, -2.728);   // the mount it is bolted to
+const chaFan1 = header(-1.82, -2.50, .016, .012, 'CHA_FAN1', 0x2b2f33, [2, 2]);
 const plugRear = box(.014, .010, .008, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }), -1.80, B2 + .006, -2.68);
-tube(V3(-1.80, B2 + .006, -2.68), V3(-1.86, B2 + .03, -2.72), .0022, M.black);
 register(plugRear, 'plugRear', 'a loose 4-pin fan plug');
 register(chaFan1, 'chaFan1', 'the CHA_FAN1 header');
 
 // the CPU fan sits on the front of the heatsink; its cable is in the wrong header
-const fanCpu = makeFan(-2.02, B2 + .09, -2.590, .034, 'front');
-const sysFan3 = header(-2.09, -2.50, .014, .010, 'SYS_FAN3', 0x2b2f33);
-const cpuFanHdr = header(-2.03, -2.47, .014, .010, 'CPU_FAN', 0x2b2f33);
-const cpuPlug = box(.012, .009, .007, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }), -2.09, B2 + .012, -2.50);
-register(sysFan3, 'sysFan3', 'SYS_FAN3 (occupied)');
+const fanCpu = makeFan(-2.06, B2 + .105, -2.640, .034, 'front');
+const sysFan3 = header(-1.86, -2.62, .014, .010, 'SYS_FAN3', 0x2b2f33, [2, 2]);
+const cpuFanHdr = header(-1.92, -2.62, .014, .010, 'CPU_FAN', 0x2b2f33, [2, 2]);
+const cpuPlug = box(.016, .012, .012, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }), -1.86, B2 + .019, -2.62);
+// the two fan cables: one from each fan to its plug, drawn every frame
+const REAR_FAN_P = V3(-1.86, B2 + .020, -2.716);      // bottom of the rear fan's frame
+const CPU_FAN_P = V3(-2.06, B2 + .070, -2.634);        // bottom of the cooler fan's frame
+tube(V3(-1.86, B2 + .072, -2.720), REAR_FAN_P, .0018, M.black);   // the short lead inside the frame
+tube(V3(-2.06, B2 + .105, -2.638), CPU_FAN_P, .0018, M.black);
+const CHA_FAN1_P = V3(-1.82, B2 + .014, -2.50);
+const CPU_FAN_P2 = V3(-1.92, B2 + .014, -2.62);
+const wireRear = cyl(.0022, .0022, 1, 6, M.black, -1.86, B2 + .04, -2.70);
+const wireCpu = cyl(.0022, .0022, 1, 6, M.black, -1.95, B2 + .06, -2.58);
+const wireHdmi = cyl(.0022, .0022, 1, 6, M.black, -2.0, B2 + .03, -2.4);   // monitor → bench edge
+const wireHdmiB = cyl(.0022, .0022, 1, 6, M.black, -1.8, B2 + .02, -2.2);  // bench edge → the end
+wireHdmi.visible = false;
+function stretchCyl(m, a, b) {
+  const dir = new THREE.Vector3().subVectors(b, a);
+  m.position.copy(a).add(b).multiplyScalar(.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+  m.scale.set(1, Math.max(.01, dir.length()), 1);
+}
+register(cpuPlug, 'sysFan3', 'the CPU fan plug in SYS_FAN3');
+register(sysFan3, 'fanHeader', 'SYS_FAN3');
 register(cpuFanHdr, 'cpuFanHdr', 'the CPU_FAN header');
 
 // front intake, lying on the board with a screwdriver jammed in the blades
-const fanIn = makeFan(-2.19, B2 + .014, -2.24, .046, 'up');
+const fanIn = makeFan(-2.230, B2 + .055, -2.30, .046, 'side');
+box(.006, .105, .105, M.metalDark, -2.243, B2 + .055, -2.30);
 const screwdriver = new THREE.Group();
 scene.add(screwdriver);
-const sdShaft = cyl(.004, .004, .12, 6, M.metal, -2.16, B2 + .028, -2.24, screwdriver);
-sdShaft.rotation.z = Math.PI / 2;
-const sdHandle = box(.03, .022, .022, new THREE.MeshStandardMaterial({ color: 0xb03a2a, roughness: .6 }), -2.10, B2 + .028, -2.24, screwdriver);
+// a screwdriver worth looking at: tapered handle, ferrule, shaft, flat tip
+const sdG = new THREE.Group();
+sdG.position.set(-2.21, B2 + .055, -2.245);
+sdG.rotation.x = Math.PI / 2 - .18;
+screwdriver.add(sdG);
+const sdHandle = cyl(.013, .010, .052, 12, new THREE.MeshStandardMaterial({ color: 0xb03a2a, roughness: .55 }), 0, .034, 0, sdG);
+cyl(.011, .011, .004, 12, M.metalDark, 0, .006, 0, sdG);            // ferrule
+cyl(.0035, .0035, .085, 8, M.metal, 0, -.038, 0, sdG);              // shaft
+box(.007, .0015, .014, M.metal, 0, -.081, 0, sdG);                  // flat tip
+box(.014, .0025, .004, new THREE.MeshStandardMaterial({ color: 0xd8d2c0, roughness: .8 }), 0, .030, .011, sdG);
 screwdriver.position.set(0, 0, 0);
 register(sdHandle, 'screwdriver', 'a screwdriver, jammed in the fan');
 
 /* --- the hoist, the padlock, and the card ------------------------------ */
-const HOIST = { x: -1.97, z: -2.70, high: .40, low: .026 };
+const HOIST = { x: -1.97, z: TOWER.z - .13, high: .15, low: .054 };
 box(TOWER.w - .06, .012, .020, M.metalDark, CX, B2 + .95, HOIST.z);         // the beam
 cyl(.012, .012, .05, 10, M.metal, -1.80, B2 + .026, -2.66).rotation.z = Math.PI / 2;  // the drum
 const drum = cyl(.018, .018, .05, 12, M.metalDark, -1.78, B2 + .030, -2.66);
 drum.rotation.z = Math.PI / 2;
+SOLID_S.push(S(-1.802, -1.758, .90, B2 + .049, -2.680, -2.640));   // the drum is a thing, not air
+SOLID_S.push(S(-1.812, -1.748, .90, B2 + .062, -2.654, -2.586));   // and so is the bracket, post, padlock and all
 // the bracket the padlock actually hangs from: base plate, post, eye, and an arm to the drum
 box(.06, .008, .06, M.metalDark, -1.78, B2 + .004, -2.62);
 box(.012, .046, .012, M.metal, -1.78, B2 + .027, -2.62);
@@ -2138,6 +2585,14 @@ const eyelet = new THREE.Mesh(new THREE.TorusGeometry(.009, .0022, 6, 12), M.met
 eyelet.position.set(-1.78, B2 + .058, -2.62);
 eyelet.rotation.y = Math.PI / 2;
 scene.add(eyelet);
+// a note lying on the board beside the padlock — and the number it points at is on the PSU label
+const lockTag = plane(.090, .030, new THREE.MeshStandardMaterial({
+  map: stickerTex([['LAST 3 OF THE', 26, true], ['SHOP NUMBER', 26, true]], { bg: '#e8e2cf', ink: '#1b2328', h: 170, top: 56, align: 'center' }),
+  roughness: .9,
+}), -1.85, B2 + .003, -2.69);
+lockTag.rotation.x = -Math.PI / 2;
+lockTag.rotation.z = .12;
+register(lockTag, 'padlock', 'a three-digit padlock');
 const padlock = new THREE.Group();
 padlock.position.set(-1.78, B2 + .046, -2.62);
 scene.add(padlock);
@@ -2150,7 +2605,7 @@ register(padlock, 'padlock', 'a three-digit padlock');
 
 const gpuGroup = new THREE.Group();
 scene.add(gpuGroup);
-const GPU = { hangY: B2 + .21, seatY: B2 + .054, h: .088, w: .22 };
+const GPU = { hangY: B2 + .15, seatY: B2 + .054, h: .088, w: .22 };
 // on edge: x is its length, y its height, z its thickness. The gold finger points down at the rail.
 const cardMat = new THREE.MeshStandardMaterial({ color: 0x14181b, roughness: .6 });
 const gpuCard = box(GPU.w, GPU.h, .018, cardMat, 0, 0, 0, gpuGroup);
@@ -2161,13 +2616,34 @@ const gpuPcb = box(.21, .076, .004, new THREE.MeshStandardMaterial({ color: 0x1d
   f.rotation.x = Math.PI / 2;
 });
 box(.09, .010, .012, M.gold, 0, -GPU.h / 2 - .004, 0, gpuGroup);       // the finger that goes in the slot
+// a hook on the card's top edge, two pulleys, and rope that actually runs to the drum
+box(.014, .010, .008, M.metal, 0, GPU.h / 2 + .004, 0, gpuGroup);
+const pulleyA = new THREE.Mesh(new THREE.TorusGeometry(.013, .0035, 6, 12), M.metal);
+pulleyA.position.set(HOIST.x, B2 + .936, HOIST.z);
+scene.add(pulleyA);
+const pulleyB = new THREE.Mesh(new THREE.TorusGeometry(.013, .0035, 6, 12), M.metal);
+pulleyB.position.set(-1.78, B2 + .936, -2.66);
+scene.add(pulleyB);
+tube(V3(HOIST.x, B2 + .936, HOIST.z), V3(-1.78, B2 + .936, -2.66), .0018, M.black);      // across the beam
+tube(V3(-1.78, B2 + .936, -2.66), V3(-1.78, B2 + .030, -2.66), .0018, M.black);          // down to the drum
 const gpuRope = cyl(.0018, .0018, 1, 6, M.black, HOIST.x, B2 + .5, HOIST.z);
 register(gpuCard, 'gpu', 'the graphics card');
 gpuGroup.visible = true;
 
 /* the PCIe power socket lives on the card, close to the slot, so you can reach it */
-const pcieSock = box(.016, .010, .012, new THREE.MeshStandardMaterial({ color: 0x1b1f22, roughness: .7 }), .078, -.030, .013, gpuGroup);
+// an 8-pin connector: black housing on the card, recessed face, two rows of gold pins, a key
+const pcieSock = new THREE.Group();
+pcieSock.position.set(.078, -.028, .014);
+gpuGroup.add(pcieSock);
+box(.030, .020, .014, new THREE.MeshStandardMaterial({ color: 0x151a1d, roughness: .75 }), 0, 0, 0, pcieSock);
+box(.026, .015, .002, new THREE.MeshStandardMaterial({ color: 0x0a0d0f, roughness: .9 }), 0, 0, .0075, pcieSock);
+for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) {
+  box(.0035, .0040, .0025, M.gold, -.0082 + c * .0055, -.0032 + r * .0064, .0088, pcieSock);
+}
+box(.005, .004, .0025, new THREE.MeshStandardMaterial({ color: 0x9aa0a3, roughness: .6 }), .0125, 0, .0088, pcieSock);
+const pcieHit = box(.044, .038, .032, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }), .078, -.028, .016, gpuGroup);
 register(pcieSock, 'hpcie', 'the PCIe power socket');
+register(pcieHit, 'hpcie', 'the PCIe power socket');
 
 /* --- the model --------------------------------------------------------- */
 const railLive = () => state.psu.rocker && state.psu.atx && state.psu.cpu;
@@ -2179,24 +2655,39 @@ function clearCode(c, note, key, msg) {
   if (note) state.notes[key] = note;
   renderPad();
   toast(msg, 'good');
+  drawLogin();                                           // the screen lists what is left
+  if (!state.codes.length) setTimeout(openLogin, 700);   // the last fault: the screen asks for a password
+}
+function seatRam() {
+  if (state.ram.seated || !state.ram.spare) return;
+  state.invPending = null;
+  state.ram.spare = false;
+  state.ram.seated = true;
+  state.items = state.items.filter(i => i !== 'ddr4 module');
+  const good = makeDimm(TOWER.x + SLOTS[3], TOWER.z - .01, 0x1d5c3a);
+  register(good, 'slotB2', 'slot B2');
+  SOLID_S.push(S(TOWER.x + SLOTS[3] - .007, TOWER.x + SLOTS[3] + .007, .90, boardY + DIMM.h + .012, SEATED_Z0, SEATED_Z1));
+  sfx.snap(); setTimeout(() => sfx.clack(), 90);
+  renderPad();
+  checkRam();
 }
 function checkRam() {
   if (!state.ram.a2 || !state.ram.seated) return;
   if (!state.codes.includes('C1')) return;
   state.codes = state.codes.filter(c => c !== 'C1');
-  state.notes.RAM = 'B';
+  state.notes.RAM = 'N';
   renderPad();
-  toast('Both modules home. C1 drops out of the cycle, and the sticker gives up a B.', 'good');
+  toast('C1 clears. The module gives up an N.', 'good');
 }
 function checkFans() {
   if (!fanDone() || !railLive() || state.fans.spinning) return;
   state.fans.spinning = true;
   sfx.spin();
-  clearCode('F1', 'O', 'fans', 'All three spin. F1 drops out of the cycle.');
+  clearCode('F1', 'O', 'fans', 'All three spin. F1 clears.');
 }
 function checkGpu() {
   if (state.gpu.seated && state.gpu.powered && railLive()) {
-    clearCode('d4', 'K', 'GPU', 'The card posts. d4 is gone.');
+    clearCode('d4', 'E', 'GPU', 'The card posts. d4 is gone.');
   }
 }
 
@@ -2208,45 +2699,70 @@ function plug(dest) {
   if (dest === 'hcpu' && state.psu.cpu) { toast('Already in.'); return; }
   if (dest === 'hfan' && state.psu.sata) { toast('Already in.'); return; }
   if (dest === 'hpcie' && state.psu.pcie) { toast('Already in.'); return; }
+  if (dest === 'hpcie' && !state.gpu.seated) {
+    sfx.buzz(); toast('The card is still hanging. Lower it into the rail first.', 'bad'); return;
+  }
   if (!state.held) {
     sfx.nope();
-    toast('Your hands are empty. Pick up a cable end first.');
+    toast('Empty hands. A cable end first.');
     return;
   }
   if (state.held !== need) {
     sfx.buzz();
-    const wrong = CABLE[state.held].name;
+    const wrong = CABLE[state.held] ? CABLE[state.held].name : 'That connector';
     if ((state.held === 'eps' && dest === 'hpcie') || (state.held === 'pcie' && dest === 'hcpu')) {
-      toast('Those two 8-pins are the same plug. This one goes in the other socket — read the label.', 'bad');
+      toast('Same plug, wrong socket. Read the label.', 'bad');
     } else {
       toast(`A ${wrong} will not go into ${label}.`, 'bad');
     }
     return;
   }
-  if (dest === 'hcpu' && !state.psu.atx) {
-    sfx.buzz(); toast('Nothing there yet — the board is not even on 24-pin.', 'bad'); return;
-  }
-  if (!state.psu.rocker) {
-    sfx.buzz(); toast('Dead. The rocker on the PSU is still off.', 'bad'); return;
-  }
+  // cables go in whether or not the mains is on: you connect, then you switch on
   state.psu[need === 'atx' ? 'atx' : need === 'eps' ? 'cpu' : need] = true;
   state.held = null;
+  hideHeld();
   cableMesh[need].visible = false;
-  box(need === 'atx' ? .030 : .018, .012, .012,
-    new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }),
-    dest === 'h24' ? -1.82 : dest === 'hcpu' ? -2.06 : dest === 'hfan' ? -1.92 : -.07,
-    B2 + .014, dest === 'h24' ? -2.36 : dest === 'hcpu' ? -2.42 : dest === 'hfan' ? -2.56 : 0);
+  if (cableWire[need]) cableWire[need].visible = false;
+  if (cableLabel[need]) cableLabel[need].visible = false;      // the stencil goes with the cable
+  dragWire.visible = false;
+  wireTo(dest, need);
+  if (dest === 'hpcie') {
+    // the card's own connector gets a plug over it, same as the board headers
+    const pPlug = new THREE.Group();
+    pPlug.position.set(.078, -.028, .014);
+    gpuGroup.add(pPlug);
+    box(.034, .024, .016, new THREE.MeshStandardMaterial({ color: 0x151a1d, roughness: .75 }), 0, 0, .005, pPlug);
+    box(.020, .014, .006, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }), 0, 0, .0145, pPlug);
+    box(.008, .006, .006, new THREE.MeshStandardMaterial({ color: 0x0a0d0f, roughness: .9 }), 0, 0, .018, pPlug);
+  }
+  {
+    const p = DEST_POS[dest];
+    if (p) {
+      const hs = HEADER_SIZE[p.x.toFixed(3) + ',' + p.z.toFixed(3)] || { w: .02, d: .012 };
+      box(hs.w + .006, .012, hs.d + .006, new THREE.MeshStandardMaterial({ color: 0x151a1d, roughness: .75 }),
+        p.x, B2 + .0145, p.z);                                  // the plug shell, over the pins
+      box(hs.w + .003, .004, hs.d + .003,
+        new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }), p.x, B2 + .0225, p.z);
+      box(.006, .004, .008, new THREE.MeshStandardMaterial({ color: 0x0a0d0f, roughness: .9 }),
+        p.x, B2 + .0245, p.z + hs.d / 2 + .004);                // where the cable goes in
+      // a plugged connector is a solid lump; the loose socket underneath is not
+      SOLID_S.push(S(p.x - hs.w / 2 - .003, p.x + hs.w / 2 + .003, .90, B2 + .027,
+        p.z - hs.d / 2 - .003, p.z + hs.d / 2 + .003));
+    }
+  }
   sfx.snap();
   if (need === 'atx' || need === 'eps') {
     setTimeout(() => sfx.relay(), 120);
     if (railLive() && !state.notes.PSU) {
-      state.notes.PSU = 'R';
+      state.notes.PSU = 'K';
       renderPad();
       setTimeout(() => toast('12 V on the board. The fans have power to waste.', 'good'), 260);
     }
   }
-  if (need === 'pcie') { state.gpu.powered = true; checkGpu(); }
-  if (need === 'sata') checkFans();
+  if (need === 'atx') setTimeout(powerCase, 400);
+  if (need === 'pcie') state.gpu.powered = true;
+  checkFans();
+  checkGpu();
   renderPad();
 }
 
@@ -2291,9 +2807,14 @@ Object.assign(THINGS, {
     keys: () => `<kbd>E</kbd>${state.psu.rocker ? 'switch it off' : 'switch it on'}`,
     act() {
       state.psu.rocker = !state.psu.rocker;
-      rocker.position.y = B2 + .070 + (state.psu.rocker ? -.004 : .004);
-      if (state.psu.rocker) { sfx.relay(); toast('Clunk. The PSU is live.'); }
-      else { sfx.click(); toast('Mains off.'); }
+      rocker.rotation.x = state.psu.rocker ? .38 : -.38;
+      psuLed.material.emissive.setHex(state.psu.rocker ? 0x46ff7a : 0x000000);
+      psuLed.material.emissiveIntensity = state.psu.rocker ? 3 : 0;
+      if (state.psu.rocker) {
+        sfx.relay(); toast('Clunk. The PSU is live.'); powerCase();
+        checkFans(); checkGpu();
+      }
+      else { sfx.click(); toast('Mains off. The board has nothing to say.'); powerCaseOff(); }
       checkFans();
     },
   },
@@ -2307,21 +2828,27 @@ Object.assign(THINGS, {
   },
   gpu: {
     kicker: 'the hoist', title: 'Graphics card',
-    text: () => !state.gpu.unlocked
-      ? '<p>It hangs over the slot, held by the winch and a padlock.</p>'
-      : state.gpu.seated
-        ? `<p>Seated in the PCIe rail. The serial plate says <b>K</b>.</p>`
-        : state.gpu.drop < .92
-          ? `<p>Hanging ${Math.round((1 - state.gpu.drop) * 100)}% of the way up. It has to come down to the rail.</p>`
-          : '<p>It is at the rail, rocking a little. One push and it will drop in.</p>',
+    text: () => {
+      if (!state.gpu.unlocked) return '<p>Over the slot, held by the winch and a padlock.</p>';
+      if (state.gpu.drop < .92) return `<p>Still ${Math.round((1 - state.gpu.drop) * 100)}% up.</p>`;
+      if (!state.gpu.seated) return '<p>At the rail, rocking a little.</p>';
+      const wants = [];
+      if (!state.gpu.powered) wants.push('an 8-pin');
+      if (!state.psu.rocker || !state.psu.atx || !state.psu.cpu) wants.push('12 V');
+      return wants.length
+        ? `<p>Seated, but <b>d4</b> is still up: it wants ${wants.join(' and ')}.</p>`
+        : '<p>Seated and fed. The serial plate says <b>E</b>.</p>';
+    },
     keys: () => state.gpu.unlocked && !state.gpu.seated && state.gpu.drop > .92 ? '<kbd>E</kbd>seat it' : '',
     act() {
       if (state.gpu.seated || !state.gpu.unlocked) return;
       if (state.gpu.drop < .92) { sfx.buzz(); toast('It is still hanging too high.'); return; }
       state.gpu.seated = true;
+      SOLID_S.push(S(HOIST.x - .11, HOIST.x + .11, .90, GPU.seatY + GPU.h / 2, HOIST.z - .012, HOIST.z + .012));
+      SOLID_S.push(S(HOIST.x + .062, HOIST.x + .094, .90, B2 + .040, HOIST.z + .004, HOIST.z + .026));  // the connector on it
       sfx.chunk();
       setTimeout(() => sfx.snap(), 140);
-      toast('It drops into the rail and clicks. Now it wants power.', 'good');
+      toast('It drops into the rail and clicks.', 'good');
       pcieSock.visible = true;
       checkGpu();
     },
@@ -2333,13 +2860,20 @@ Object.assign(THINGS, {
     act() { plug('hpcie'); },
   },
   h24: { kicker: 'the board', title: '24-pin socket', text: () => state.psu.atx ? '<p>In, clipped.</p>' : '<p>The big one. The board lives or dies here.</p>', keys: () => state.psu.atx ? '' : '<kbd>E</kbd>plug it', act() { plug('h24'); } },
-  hcpu: { kicker: 'the board', title: 'CPU power socket', text: () => state.psu.cpu ? '<p>In.</p>' : '<p>An 8-pin, just like the one for the card. The label on the plug is the only difference.</p>', keys: () => state.psu.cpu ? '' : '<kbd>E</kbd>plug it', act() { plug('hcpu'); } },
+  hcpu: { kicker: 'the board', title: 'CPU power socket', text: () => state.psu.cpu ? '<p>In.</p>' : '<p>An 8-pin. The label on the plug is the only difference.</p>', keys: () => state.psu.cpu ? '' : '<kbd>E</kbd>plug it', act() { plug('hcpu'); } },
   hfan: { kicker: 'the fans', title: 'Fan hub', text: () => state.psu.sata ? '<p>Powered. The hub has its 12 V.</p>' : '<p>A little hub with three empty ports and one SATA socket.</p>', keys: () => state.psu.sata ? '' : '<kbd>E</kbd>plug the SATA', act() { plug('hfan'); } },
   plugRear: {
     kicker: 'the fans', title: 'Loose 4-pin',
     text: () => '<p>The rear fan\'s plug, lying where Gerrit left it.</p>',
     keys: () => '<kbd>E</kbd>pick it up',
-    act() { state.held = 'fan4'; sfx.snap(); toast('A 4-pin fan plug. It goes to a header.'); },
+    act() {
+      if (state.fans.rear) return;
+      state.held = 'fanRear';
+      plugRear.visible = false;
+      showHeld('fanRear');
+      sfx.snap();
+      toast('A 4-pin fan plug on its cable. Take it to a header.');
+    },
   },
   chaFan1: {
     kicker: 'the fans', title: 'CHA_FAN1',
@@ -2347,19 +2881,26 @@ Object.assign(THINGS, {
     keys: () => state.fans.rear ? '' : '<kbd>E</kbd>plug the loose 4-pin in',
     act() {
       if (state.fans.rear) return;
-      if (state.held !== 'fan4') { sfx.buzz(); toast('Pick the loose plug up first.'); return; }
-      state.held = null; state.fans.rear = true; plugRear.visible = false;
+      if (state.held !== 'fanRear') { sfx.buzz(); toast('Pick the loose plug up first.'); return; }
+      state.held = null; hideHeld(); dragWire.visible = false; state.fans.rear = true; plugRear.visible = false;
+      box(.022, .012, .018, new THREE.MeshStandardMaterial({ color: 0x151a1d, roughness: .75 }), -1.82, B2 + .0145, -2.50);
+      SOLID_S.push(S(-1.834, -1.806, .90, B2 + .026, -2.512, -2.488));
       sfx.snap(); toast('Rear fan connected.');
       checkFans();
     },
   },
-  sysFan3: {
+  fanHeader: {
     kicker: 'the fans', title: 'SYS_FAN3',
-    text: () => state.fans.cpu ? '<p>Empty now.</p>' : '<p>The CPU fan\'s cable is plugged in here. It should not be.</p>',
+    text: () => '<p>A 4-pin header, stencilled.</p>',
+    keys: () => '', act() { },
+  },
+  sysFan3: {
+    kicker: 'the fans', title: 'CPU fan plug',
+    text: () => state.fans.cpu ? '<p>Empty. A spare header may sit empty.</p>' : '<p>The CPU fan\'s cable is plugged in here.</p>',
     keys: () => state.fans.cpu ? '' : '<kbd>E</kbd>pull the 4-pin out',
     act() {
       if (state.fans.cpu) return;
-      cpuPlug.visible = false; state.held = 'fan4';
+      cpuPlug.visible = false; state.held = 'fanCpu';
       sfx.pop(); toast('Out. The cable is in your hand.');
       renderTray();
     },
@@ -2371,8 +2912,10 @@ Object.assign(THINGS, {
     keys: () => state.fans.cpu ? '' : '<kbd>E</kbd>plug the cable in',
     act() {
       if (state.fans.cpu) return;
-      if (state.held !== 'fan4') { sfx.buzz(); toast('You are not holding the 4-pin.'); return; }
-      state.held = null; state.fans.cpu = true;
+      if (state.held !== 'fanCpu') { sfx.buzz(); toast('You are not holding the CPU fan cable.'); return; }
+      state.held = null; hideHeld(); dragWire.visible = false; state.fans.cpu = true;
+      box(.020, .012, .016, new THREE.MeshStandardMaterial({ color: 0x151a1d, roughness: .75 }), -1.92, B2 + .0145, -2.62);
+      SOLID_S.push(S(-1.932, -1.908, .90, B2 + .026, -2.630, -2.610));
       sfx.snap(); toast('CPU fan connected to the right header.');
       checkFans();
     },
@@ -2396,19 +2939,98 @@ Object.assign(THINGS, {
   cable_pcie: { kicker: 'cables', title: 'Cable end', text: () => `<p>An 8-pin. The moulded label says <b>PCIe</b>. It looks exactly like the other one.</p>`, keys: () => state.psu.pcie ? '' : '<kbd>E</kbd>pick it up', act() { take('pcie'); } },
   cable_sata: { kicker: 'cables', title: 'Cable end', text: () => `<p>A flat SATA power connector.</p>`, keys: () => state.psu.sata ? '' : '<kbd>E</kbd>pick it up', act() { take('sata'); } },
 });
-function take(k) {
-  if (state[`taken_${k}`]) { return; }
-  state.held = k;
-  sfx.pickup();
-  toast(`Holding the ${CABLE[k].name}.`);
+function releaseHeld() {
+  const h = state.held;
+  if (!h) return;
+  if (h === 'hdmi') {                  // the loose end goes back on the bench, coil and all
+    state.held = null;
+    hideHeld();
+    hdmiG.visible = true;
+    hdmiLabel.visible = true;
+    showPreCable(true, true);
+    wireHdmi.visible = false;
+    return;
+  }
+  if (h === 'ssdTail') {
+    state.held = null; hideHeld(); ssdPlugG.visible = true;
+    return;
+  }
+  if (h === 'usbKbd' || h === 'usbMouse' || h === 'air') {
+    if (h === 'usbKbd') kbdPlug.visible = true;
+    if (h === 'usbMouse') mousePlug.visible = true;
+    if (h === 'air') { }   // the can lives in the notepad now
+    state.held = null;
+    hideHeld();
+    dragWire.visible = false;
+    return;
+  }
+  if (h !== 'fanRear' && h !== 'fanCpu' && !CABLE[h]) return;
+  if (h === 'fanRear' && state.fans.rear) { state.held = null; hideHeld(); return; }
+  if (h === 'fanCpu' && state.fans.cpu) { state.held = null; hideHeld(); return; }
+  const plugged = (h === 'atx' && state.psu.atx) || (h === 'eps' && state.psu.cpu)
+    || (h === 'pcie' && state.psu.pcie) || (h === 'sata' && state.psu.sata);
+  if (h === 'fanRear') {
+    plugRear.visible = true;
+  } else if (h === 'fanCpu') {
+    cpuPlug.visible = true;
+  } else if (!plugged) {                 // put it back on the floor, cable and all
+    cableMesh[h].visible = true;
+    if (cableWire[h]) cableWire[h].visible = true;
+  }
+  state.held = null;
+  hideHeld();
+  dragWire.visible = false;
+}
+const DROP_SAYS = {
+  usbKbd: "You put the keyboard's plug down.",
+  usbMouse: "You put the mouse's plug down.",
+  hdmi: 'You put the monitor cable down on the bench.',
+  ssdTail: 'You put the drive\'s cable end down.',
+  fanRear: 'You let go of the fan plug.',
+  fanCpu: 'You let go of the fan plug.',
+};
+/* Letting go of what you carry, and saying the right thing about it. */
+function dropHeld() {
+  const h = state.held;
+  if (!h) return false;
+  releaseHeld();
   renderTray();
+  toast(DROP_SAYS[h] || 'You put the cable end down.');
+  return true;
+}
+function take(k) {
+  const plugged = (k === 'atx' && state.psu.atx) || (k === 'eps' && state.psu.cpu)
+    || (k === 'pcie' && state.psu.pcie) || (k === 'sata' && state.psu.sata);
+  if (plugged) { sfx.buzz(); toast('That one is already plugged in, at both ends.'); return; }
+  if (state.held === k) return;
+  releaseHeld();
+  state.held = k;
+  cableMesh[k].visible = false;          // it leaves the floor and comes with you
+  if (cableWire[k]) cableWire[k].visible = false;
+  showHeld(k);
+  sfx.pickup();
+  toast(`The ${CABLE[k].name}.`);
+  renderTray();
+}
+function wireTo(dest, k) {
+  const from = V3(PSU.x + PSU.w / 2 - .02, B2 + .050, PSU.z + .02);
+  let to;
+  if (dest === 'hpcie') { to = new THREE.Vector3(); pcieSock.getWorldPosition(to); to.y += .008; }
+  else {
+    const p = DEST_POS[dest];
+    to = V3(p.x, B2 + .011, p.z);
+  }
+  const mid = V3((from.x + to.x) / 2, Math.max(from.y, to.y) + .006, (from.z + to.z) / 2);
+  tube(from, mid, .0020, new THREE.MeshStandardMaterial({ color: 0x1d2124, roughness: .8 }));
+  tube(mid, to, .0020, new THREE.MeshStandardMaterial({ color: 0x1d2124, roughness: .8 }));
 }
 
 register(drum, 'gpuDrum', 'the winch drum');
 
 // the PSU and the standing memory module are buildings, not scenery
+SOLID_S.push(S(-1.955, -1.845, .90, boardY + .052, -2.05, -2.01));                       // the spare bag
 SOLID_S.push(S(PSU.x - PSU.w / 2, PSU.x + PSU.w / 2, .90, B2 + .062, PSU.z - PSU.d / 2, PSU.z + PSU.d / 2));
-SOLID_S.push(S(-2.114, -2.086, .90, B2 + .26, -2.476, -2.464));
+
 Object.assign(THINGS, {
   gpuDrum: {
     kicker: 'the hoist', title: 'Winch drum',
@@ -2428,21 +3050,1471 @@ Object.assign(THINGS, {
   },
 });
 
+
+/* ==================================================================== slice 3
+   The monitor cable: one end is already in the card, the other end has to
+   leave the case, go out the back, and find the monitor. That is what A2 is. */
+
+/* The rear panel is bolted flat to the outside of the back wall — its front face
+   touches the wall, no gap — and it sits to the left of the exhaust fan so the
+   fan is not behind it. */
+const IO = { x: TOWER.x - .10, y: B2 + .058, z: TOWER.z - TOWER.d / 2 - .022 };
+const ioMat = new THREE.MeshStandardMaterial({ color: 0x525d63, roughness: .58, metalness: .3 });
+
+// the rear panel, bolted to the case: HDMI, two USB-A, and a label
+const ioPlate = box(.26, .105, .014, ioMat, IO.x, IO.y, IO.z);
+box(.24, .014, .010, M.metal, IO.x, IO.y + .038, IO.z - .006);      // a bright lip, so it catches the eye
+[-.10, .10].forEach(dx => box(.014, .014, .010, ioMat, IO.x + dx, IO.y - .030, IO.z + .006));   // stand-offs against the wall
+// a bright edge all round, so the plate reads as a plate on a dark case
+[[IO.x, IO.y + .052, .26, .006], [IO.x, IO.y - .052, .26, .006]].forEach(([x, y, w, h]) =>
+  box(w, h, .016, M.metal, x, y, IO.z));
+[[IO.x - .130, IO.y, .006, .105], [IO.x + .130, IO.y, .006, .105]].forEach(([x, y, w, h]) =>
+  box(w, h, .016, M.metal, x, y, IO.z));
+const ioHdmi = box(.026, .013, .012, new THREE.MeshStandardMaterial({ color: 0x14181b, roughness: .8 }),
+  IO.x + .020, IO.y - .012, IO.z - .012);
+box(.020, .002, .003, M.gold, IO.x + .020, IO.y - .018, IO.z - .018);   // just the pin lip, not a gold slab
+const ioUsbA = box(.020, .009, .012, new THREE.MeshStandardMaterial({ color: 0x2f6fd0, roughness: .7 }),
+  IO.x - .020, IO.y - .012, IO.z - .012);
+const ioUsbB = box(.020, .009, .012, new THREE.MeshStandardMaterial({ color: 0x2f6fd0, roughness: .7 }),
+  IO.x - .055, IO.y - .012, IO.z - .012);
+[-.11, .11].forEach(dx => box(.008, .008, .004, M.metal, IO.x + dx, IO.y + .044, IO.z - .008));   // screws
+register(ioHdmi, 'ioHdmi', 'the HDMI port on the rear panel');
+register(ioUsbA, 'usbPortA', 'a USB port on the rear panel');
+register(ioUsbB, 'usbPortB', 'a USB port on the rear panel');
+
+// the cable: one end already sits in the monitor, the loose end is on the bench
+const HDMI_MON = V3(2.70, 1.090, -1.478);         // the monitor's HDMI port, on its back
+const HDMI_REST = V3(-0.30, B2 + .010, -2.050);   // where its loose end is coiled
+const HDMI_DESK = V3(2.40, .778, -1.330);         // where it comes over the desk edge
+const hdmiG = new THREE.Group();
+hdmiG.position.copy(HDMI_REST).setY(B2);
+scene.add(hdmiG);
+const hdmiEnd = box(.026, .012, .016, new THREE.MeshStandardMaterial({ color: 0x1b2024, roughness: .75 }), 0, .008, .012, hdmiG);
+box(.017, .005, .006, M.gold, 0, .014, .006, hdmiG);                    // the plug
+const hdmiCoil = new THREE.Mesh(new THREE.TorusGeometry(.020, .0042, 6, 18), new THREE.MeshStandardMaterial({ color: 0x1b2024, roughness: .85 }));
+hdmiCoil.rotation.x = -Math.PI / 2;
+hdmiCoil.position.set(-.012, .006, -.010);
+hdmiG.add(hdmiCoil);
+const hdmiCoil2 = hdmiCoil.clone();
+hdmiCoil2.scale.setScalar(.72);
+hdmiCoil2.position.set(.012, .008, -.012);
+hdmiG.add(hdmiCoil2);
+register(hdmiEnd, 'cable_hdmi', 'the free end of an HDMI cable');
+register(hdmiCoil, 'cable_hdmi', 'a coiled HDMI cable');
+register(hdmiCoil2, 'cable_hdmi', 'a coiled HDMI cable');
+const hdmiLabel = plane(.090, .026, new THREE.MeshStandardMaterial({
+  map: stickerTex([['HDMI', 34, true]], { bg: 'rgba(0,0,0,0)', ink: '#e6f2f6', h: 120, top: 84, border: false }),
+  transparent: true, roughness: .9,
+}), -0.30, BENCH.top + .0015, -1.965);
+hdmiLabel.rotation.x = -Math.PI / 2;
+
+
+// where it leaves the case: a grommet in the back panel
+const GROMMET = V3(TOWER.x + .01, B2 + .050, TOWER.z - TOWER.d / 2 + .004);
+const grommet = new THREE.Mesh(new THREE.TorusGeometry(.014, .004, 6, 14), M.metalDark);
+grommet.position.copy(GROMMET);
+scene.add(grommet);
+
+state.mon = { plugged: false };
+
+/* ------------------------------------------------------------------ the span
+   Once both ends are in, the monitor cable is the way between the bench and
+   the desk: a 17 mm person hangs from it and goes hand over hand. Two tape
+   servings are the grips. It works both ways, which is the whole point — the
+   desk has no other stair. */
+const ZIP_PATH = [
+  HDMI_MON,                                     // the monitor's port
+  V3(2.66, 1.010, -1.470),
+  V3(2.58, 0.830, -1.430),                      // down the back of the monitor
+  HDMI_DESK,                                    // onto the desk
+  V3(2.28, 0.774, -1.360),                      // the desk grip
+  V3(1.98, 0.800, -1.520),
+  V3(1.56, 0.860, -1.640),
+  V3(1.02, 0.930, -1.790),
+  V3(0.34, 0.974, -1.960),                      // the bench grip, over the lip
+  V3(-0.55, 0.966, -2.030),                     // along the bench, in front of the case
+  V3(-1.35, 0.966, -2.060),
+  V3(-1.62, 0.980, -2.420),                     // round the right side, clear of the case
+  V3(-1.68, 0.996, -2.900),                     // behind it
+  V3(IO.x + .020, IO.y - .012, IO.z - .020),    // the rear panel
+];
+const ZIP = {
+  ready: false, riding: false, dir: 1, u: 0, to: 'desk', seconds: 3.4, soundT: 0,
+  curve: new THREE.CatmullRomCurve3(ZIP_PATH.slice(4, 9).reverse()),
+  bench: V3(0.30, BENCH.top, -2.05),            // where you get off, bench end
+  desk: V3(2.28, DESK.top, -1.26),              // ...and desk end
+};
+state.zip = ZIP;
+
+const zipG = new THREE.Group();
+zipG.visible = false;
+scene.add(zipG);
+function zipGrip(p, id, label) {
+  const g = new THREE.Group();
+  g.position.copy(p);
+  zipG.add(g);
+  const wrap = cyl(.0062, .0062, .032, 8, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .8 }), 0, 0, 0, g);
+  wrap.rotation.z = Math.PI / 2;                // a serving of tape across the cable
+  box(.012, .009, .014, new THREE.MeshStandardMaterial({ color: 0xcfc7ae, roughness: .95 }), 0, 0, 0, g);
+  register(g, id, label);
+  return g;
+}
+zipGrip(ZIP_PATH[8], 'zipBench', 'the HDMI cable, taped into a grip');
+zipGrip(ZIP_PATH[4], 'zipDesk', 'the HDMI cable, taped into a grip');
+// Gerrit's note, on the bench beside the grip
+const zipNote = plane(.115, .036, new THREE.MeshStandardMaterial({
+  map: stickerTex([['HDMI', 30, true], ['HANG ON · IT HOLDS', 20, false]],
+    { bg: '#e8e2cf', ink: '#1b2328', h: 170, top: 54, align: 'center' }),
+  roughness: .92,
+}), 0.34, BENCH.top + .0015, -2.09);
+zipNote.rotation.x = -Math.PI / 2;
+zipNote.rotation.z = .1;
+zipG.add(zipNote);
+
+/* Before it is plugged in the cable is a run that lies where it lies: down the
+   monitor, over the desk, across the gap, along the bench, and coiled where the
+   loose end waits. Nothing crosses anything. */
+const preCabMat = new THREE.MeshStandardMaterial({ color: 0x1b2024, roughness: .8 });
+const preRun = [], preSlack = [];
+for (let i = 1; i <= 8; i++) preRun.push(tube(ZIP_PATH[i - 1], ZIP_PATH[i], .0022, preCabMat));
+preSlack.push(tube(ZIP_PATH[8], HDMI_REST, .0022, preCabMat));
+function showPreCable(run, slack) {
+  preRun.forEach(m => { m.visible = run; });
+  preSlack.forEach(m => { m.visible = slack; });
+}
+showPreCable(true, true);
+
+const monitorOnTex = tex(512, 320, (g, w, h) => {
+  const grd = g.createLinearGradient(0, 0, w, h);
+  grd.addColorStop(0, '#061018'); grd.addColorStop(1, '#0d2030');
+  g.fillStyle = grd; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(140,230,255,.92)';
+  g.font = '700 30px ui-monospace,monospace';
+  g.fillText('PC DOKTER', 34, 62);
+  g.font = '400 20px ui-monospace,monospace';
+  g.fillStyle = 'rgba(140,230,255,.7)';
+  g.fillText('HDMI 1 · 1920x1080', 34, 100);
+  g.fillStyle = 'rgba(140,230,255,.14)';
+  for (let y = 0; y < h; y += 4) g.fillRect(0, y, w, 1);
+  g.fillStyle = 'rgba(120,220,160,.85)';
+  g.font = '600 22px ui-monospace,monospace';
+  g.fillText('waiting for the operator', 34, h - 44);
+});
+
+Object.assign(THINGS, {
+  cable_hdmi: {
+    kicker: 'cables', title: 'HDMI cable',
+    text: () => state.mon.plugged
+      ? '<p>Both ends are in: the monitor, round the back, into the case.</p>'
+      : `<p>The monitor's cable, coiled on the bench where Gerrit dumped it.</p>`,
+    keys: () => state.mon.plugged || state.held === 'hdmi' ? '' : '<kbd>E</kbd>pick up the loose end',
+    act() {
+      if (state.mon.plugged) return;
+      releaseHeld();
+      state.held = 'hdmi';
+      hdmiG.visible = false;
+      hdmiLabel.visible = false;
+      showPreCable(true, false);          // the loose end comes with you, the rest stays put
+      showHeld('hdmi');
+      sfx.pickup();
+      toast('The monitor\'s cable end.');
+    },
+  },
+  ioHdmi: {
+    kicker: 'the back of the case', title: 'HDMI port',
+    text: () => state.mon.plugged
+      ? '<p>In. The monitor has a picture now, which means A2 is gone.</p>'
+      : '<p>The rear panel: an empty HDMI port, two USB-A ports, dust.</p>',
+    keys: () => state.mon.plugged ? '' : '<kbd>E</kbd>plug the cable in',
+    act() { plugHdmi(); },
+  },
+
+});
+
+function plugHdmi() {
+  if (state.mon.plugged) return;
+  if (state.held && state.held !== 'hdmi') {
+    sfx.buzz();
+    toast(state.held === 'usbKbd' || state.held === 'usbMouse'
+      ? 'That is a USB connector. This port is HDMI.' : 'That will not go into an HDMI port.', 'bad');
+    return;
+  }
+  if (state.held !== 'hdmi') {
+    sfx.buzz();
+    toast('Pick the HDMI cable up first — its end is coiled on the bench in front of the case.');
+    return;
+  }
+  state.mon.plugged = true;
+  state.held = null;
+  hideHeld();
+  dragWire.visible = false;
+  wireHdmi.visible = false; wireHdmiB.visible = false;
+  if (cableLabel.hdmi) cableLabel.hdmi.visible = false;
+
+  // one cable, from the monitor's port, down the back, across the gap, over the
+  // bench lip and back along the bench into the rear panel
+  const cabMat = new THREE.MeshStandardMaterial({ color: 0x1b2024, roughness: .8 });
+  for (let i = 1; i < ZIP_PATH.length; i++) tube(ZIP_PATH[i - 1], ZIP_PATH[i], .0022, cabMat);
+  showPreCable(false, false);            // the drape is one cable now, not two
+  wireHdmi.visible = wireHdmiB.visible = false;
+  zipG.visible = true;
+  ZIP.ready = true;
+
+  // the monitor wakes on a live canvas: no login yet, so it says what it is waiting for
+  monitorScreen.material.map = screenLive;
+  monitorScreen.material.emissiveMap = screenLive;
+  monitorScreen.material.emissiveIntensity = 1.15;
+  monitorScreen.material.needsUpdate = true;
+  drawLogin();
+
+  sfx.snap();
+  setTimeout(() => sfx.chime(), 220);
+  clearCode('A2', 'R', 'monitor', 'A2 clears. The panel gives up an R.');
+  setTimeout(() => toast('The cable is taut now. The grips will take your weight.', 'good'), 400);
+  renderPad();
+}
+
+/* --- riding the cable, both ways --------------------------------------- */
+function startRide(toDesk) {
+  if (!ZIP.ready) {
+    toast('The cable is still coiled on the bench, its far end loose. The rear panel is around the back of the case.');
+    return;
+  }
+  if (state.phase !== 'shrunk') {
+    sfx.nope();
+    toast('You would pull the monitor off the desk. At 17 mm it is a rope.');
+    return;
+  }
+  if (ZIP.riding) return;
+  ZIP.riding = true;
+  ZIP.dir = toDesk ? 1 : -1;
+  ZIP.u = toDesk ? 0 : 1;
+  ZIP.to = toDesk ? 'desk' : 'bench';
+  state.grab = null;
+  vy = 0;
+  // the ride moves you; where you are looking stays yours, at the start and at the end
+  sfx.scratch();
+  toast(toDesk ? 'Down the cable.' : 'Up the cable.');
+  renderTray();
+}
+function rideTick(dt) {
+  ZIP.u = clamp(ZIP.u + ZIP.dir * dt / ZIP.seconds, 0, 1);
+  const p = ZIP.curve.getPointAt(ZIP.u);
+  camera.position.set(p.x, p.y + .009, p.z);
+  feet = camera.position.y - P.eye;
+  vy = 0;
+  ZIP.soundT -= dt;
+  if (ZIP.soundT <= 0) { ZIP.soundT = .5; sfx.scratch(); }   // hand over hand
+  if (ZIP.dir > 0 ? ZIP.u >= 1 : ZIP.u <= 0) finishRide();
+}
+function finishRide() {
+  const desk = ZIP.to === 'desk';
+  const land = desk ? ZIP.desk : ZIP.bench;
+  ZIP.riding = false;
+  camera.position.set(land.x, land.y + P.eye, land.z);
+  feet = land.y;
+  vy = 0;
+  sfx.step(false);
+  toast(desk ? 'On the desk.' : 'Back on the bench.', 'good');
+  renderTray();
+}
+
+Object.assign(THINGS, {
+  zipBench: {
+    kicker: 'the bench edge', title: 'HDMI cable — the grip',
+    text: () => !ZIP.ready
+      ? '<p>The cable is coiled on the bench, one end loose.</p>'
+      : state.phase !== 'shrunk'
+        ? '<p>Tape wrapped round a monitor cable. At your size you would take the monitor with you.</p>'
+        : '<p>A serving of tape round the cable, where it leaves the bench.</p>',
+    keys: () => ZIP.ready && state.phase === 'shrunk' ? '<kbd>E</kbd>ride it down to the desk' : '',
+    act() { startRide(true); },
+  },
+  zipDesk: {
+    kicker: 'the desk', title: 'HDMI cable — the grip',
+    text: () => state.phase !== 'shrunk'
+      ? '<p>The monitor\'s cable comes over the desk edge, taped where it turns.</p>'
+      : '<p>The way back up. Two hands and a slow haul gets you to the bench.</p>',
+    keys: () => ZIP.ready && state.phase === 'shrunk' ? '<kbd>E</kbd>ride it back to the bench' : '',
+    act() { startRide(false); },
+  },
+});
+
+/* ==================================================================== slice 3b
+   The two blue ports on the rear panel, the keyboard and the mouse that belong
+   in them, and the actual fault the customer described: "and the mouse is
+   being weird" — a hair across an optical window.                              */
+
+state.usb = { kbd: false, mouse: false, tipped: false, clean: false, kbdLit: false, mouseLit: false };
+
+Object.assign(sfx, {
+  air() {
+    hiss({ dur: .8, vol: .13, f: 4400, q: .4, f2: 1100 });
+    tone({ f: 2400, f2: 700, dur: .75, vol: .014, type: 'triangle' });
+  },
+});
+
+/* The two connectors live with the devices they belong to: on the desk beside the
+   monitor, at the end of the keyboard's and the mouse's own cables. Their cable
+   is redrawn every frame from the device to the connector, so it follows the
+   connector into your hands — and up the zipline, and into the rear panel. */
+const usbMat = () => new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 });
+const usbG = new THREE.Group();
+scene.add(usbG);
+const USB = {
+  usbKbd: { device: V3(2.42, DESK.top + .012, -0.742), routed: false },
+  usbMouse: { device: V3(3.05, DESK.top + .016, -0.706), routed: false },
+};
+function usbPlug(x, z, id, label, rot) {
+  const g = new THREE.Group();
+  g.position.set(x, DESK.top + .001, z);
+  g.rotation.y = rot;
+  usbG.add(g);
+  box(.026, .011, .016, usbMat(), 0, .0055, 0, g);                                        // the shell
+  box(.021, .004, .005, M.metal, 0, .0055, .011, g);                                      // the tongue
+  box(.026, .003, .015, new THREE.MeshStandardMaterial({ color: 0xdfe6e8, roughness: .85 }), 0, .0125, 0, g);  // pale top: it reads on dark wood
+  box(.015, .010, .010, new THREE.MeshStandardMaterial({ color: 0x2f6fd0, roughness: .7 }), 0, .0055, -.013, g); // the blue collar, like the ports
+  register(g, id, label);
+  return g;
+}
+const kbdPlug = usbPlug(2.30, -1.40, 'usbKbd', "the keyboard's USB plug", .35);
+const mousePlug = usbPlug(3.20, -1.30, 'usbMouse', "the mouse's USB plug", -.6);
+const usbWire = {
+  usbKbd: cyl(.0022, .0022, 1, 6, M.black, 2.9, DESK.top + .01, -1.2),
+  usbMouse: cyl(.0022, .0022, 1, 6, M.black, 3.1, DESK.top + .01, -1.1),
+};
+for (const k of ['usbKbd', 'usbMouse']) {
+  usbWire[k].visible = false;
+  register(usbWire[k], k, k === 'usbKbd' ? "the keyboard's cable" : "the mouse's cable");
+}
+// the note from Gerrit, beside the two cable ends on the desk
+const usbNote = plane(.120, .040, new THREE.MeshStandardMaterial({
+  map: stickerTex([['KEYBOARD + MOUSE', 24, true], ['rear panel · across the gap', 17, false]],
+    { bg: '#e8e2cf', ink: '#1b2328', h: 130, top: 46, align: 'center' }),
+  roughness: .92,
+}), 2.74, DESK.top + .0015, -1.16);
+usbNote.rotation.x = -Math.PI / 2;
+usbNote.rotation.z = .1;
+
+/* Once a connector is in the rear panel the loose cable would cut straight
+   through the bench, so it gets laid along the route you carried it: down the
+   zipline and round the back of the case. */
+function routeUsb(k) {
+  const u = USB[k];
+  if (u.routed) return;
+  u.routed = true;
+  const lift = k === 'usbKbd' ? .004 : .010;
+  const portP = k === 'usbKbd' ? ioUsbA.position : ioUsbB.position;
+  const path = [
+    u.device,
+    V3(2.32, DESK.top + .014 + lift, -1.30),
+    V3(ZIP_PATH[4].x, ZIP_PATH[4].y + lift, ZIP_PATH[4].z),
+    ...ZIP_PATH.slice(5, 13).map(p => V3(p.x, p.y + lift, p.z)),
+    V3(portP.x, portP.y, IO.z - .022),
+  ];
+  for (let i = 1; i < path.length; i++) tube(path[i - 1], path[i], .0022, M.black);
+}
+register(usbNote, 'usbNote', 'a note about the cables');
+
+/* the can of compressed air, standing on the bench left of the case */
+const CAN = { x: -2.55, z: -2.30 };
+const airCan = new THREE.Group();
+airCan.position.set(CAN.x, BENCH.top + .001, CAN.z);
+scene.add(airCan);
+cyl(.019, .019, .056, 14, new THREE.MeshStandardMaterial({ color: 0x2b6fb5, roughness: .5 }), 0, .028, 0, airCan);
+cyl(.006, .006, .012, 8, M.red, 0, .060, 0, airCan);
+box(.011, .004, .008, M.metalDark, 0, .066, .004, airCan);
+register(airCan, 'airCan', 'a can of compressed air');
+// the note stays on the bench, but the can itself carries no label
+
+const airNote = plane(.092, .030, new THREE.MeshStandardMaterial({
+  map: stickerTex([['LUCHT', 26, true], ['eerst schoonmaken', 18, false]],
+    { bg: '#e8e2cf', ink: '#1b2328', h: 130, top: 48, align: 'center' }),
+  roughness: .92,
+}), CAN.x + .062, BENCH.top + .0015, CAN.z + .022);
+airNote.rotation.x = -Math.PI / 2;
+airNote.rotation.z = .08;
+
+/* the mouse gets a logo LED, a sensor window, and a hair in it */
+const mLed = box(.010, .0015, .006, new THREE.MeshStandardMaterial({ color: 0x1a2024, emissive: 0x000000, roughness: .4 }),
+  0, .0171, -.008, mouse);
+const mSensor = cyl(.0055, .0055, .0016, 14, new THREE.MeshStandardMaterial({ color: 0x0b1012, emissive: 0x000000, roughness: .25 }),
+  0, -.0177, -.014, mouse);
+mSensor.rotation.x = Math.PI / 2;
+register(mSensor, 'mouseLens', "the mouse's optical window");
+const mHair = box(.0008, .0005, .0022, new THREE.MeshStandardMaterial({ color: 0x6b5a44, roughness: .95 }),
+  .0012, -.0186, -.014, mouse);
+
+/* the monitor and its stand are places and obstacles, not scenery */
+SOLID_S.push(S(2.37, 3.03, DESK.top + .30, DESK.top + .70, -1.4625, -1.4175));   // the panel
+SOLID_S.push(S(2.67, 2.73, DESK.top + .02, DESK.top + .30, -1.385, -1.335));     // the post
+SOLID_S.push(S(2.57, 2.83, DESK.top, DESK.top + .02, -1.44, -1.24));             // the base
+
+/* the case's side panel lies on the bench as 1.4 cm of steel: you step onto it */
+SOLID_S.push(S(-1.36, -0.74, BENCH.top, BENCH.top + .014, -2.62, -2.28));
+
+/* the keyboard, the mouse and the can are objects you bump into, not air */
+SOLID_S.push(S(2.20, 2.64, DESK.top, DESK.top + .034, -.74, -.58));             // the keyboard
+const mouseSolid = S(3.022, 3.078, DESK.top, DESK.top + .034, -.702, -.618);   // the mouse, upright
+SOLID_S.push(mouseSolid);
+const airSolid = S(CAN.x - .019, CAN.x + .019, BENCH.top, BENCH.top + .062, CAN.z - .019, CAN.z + .019);
+SOLID_S.push(airSolid);
+function syncMouseSolid() {
+  const t = state.usb.tipped;
+  mouseSolid.x0 = 3.05 - (t ? .0175 : .028);
+  mouseSolid.x1 = 3.05 + (t ? .0175 : .028);
+  mouseSolid.y1 = DESK.top + (t ? .057 : .034);
+  mouseSolid.z0 = -0.66 - (t ? .042 : .042);
+  mouseSolid.z1 = -0.66 + (t ? .042 : .042);
+}
+
+/* --- the mouse and its window ------------------------------------------ */
+function tipMouse(over) {
+  if (state.phase !== 'shrunk') return;
+  state.usb.tipped = over;
+  mouse.rotation.z = over ? -Math.PI / 2 : 0;
+  mouse.position.y = DESK.top + (over ? .0285 : .020);
+  syncMouseSolid();
+  sfx.clack();
+  toast(over ? 'Over with a rattle.' : 'Back on its pad.', '');
+  renderTray();
+}
+function cleanLens() {
+  if (!state.usb.tipped) {
+    sfx.nope(); toast('It is underneath, where you cannot get at it. Tip the mouse over first.');
+    return;
+  }
+  if (state.usb.clean) return;
+  if (!state.items.includes('compressed air')) {
+    sfx.buzz();
+    toast('The hair is still there. You need air.', 'bad');
+    return;
+  }
+  state.invPending = null;
+  state.usb.clean = true;
+  mHair.visible = false;
+  if (railLive()) lightMouse();          // clean glass, and a steady green read
+  sfx.air();
+  sfx.pop();
+  toast('The hair lifts off. Clean glass.', 'good');
+  renderTray();
+  // clean it and it goes back on its pad by itself: a mouse on its side is odd to leave lying
+  setTimeout(() => { if (state.usb.clean && state.usb.tipped) tipMouse(false); }, 700);
+}
+
+/* --- the lights, and what wakes them up -------------------------------- */
+function lightKeyboard() {
+  kbKeyMat.emissive = new THREE.Color(0x1d6f8c);
+  kbKeyMat.emissiveIntensity = .30;
+  kbKeyMat.needsUpdate = true;
+  kbLegendMat.emissive = new THREE.Color(0x9fe6ff);
+  kbLegendMat.emissiveIntensity = .85;
+  kbLegendMat.needsUpdate = true;
+  kbGlow.material.emissive = new THREE.Color(0x59d3ff);
+  kbGlow.material.emissiveIntensity = 1.1;
+}
+function lightMouse() {
+  mLed.material.emissive = new THREE.Color(0x63d68b);
+  mLed.material.emissiveIntensity = 1.7;
+  mLed.material.needsUpdate = true;
+  mSensor.material.emissive = new THREE.Color(state.usb.clean ? 0x63d68b : 0xff3a2a);
+  mSensor.material.emissiveIntensity = state.usb.clean ? 1.5 : 1.3;
+  mSensor.material.needsUpdate = true;
+}
+/* 12 V is what makes them do anything; the connector can go in without it. */
+function checkUsbPower() {
+  if (!railLive()) return;
+  if (state.usb.kbd && !state.usb.kbdLit) {
+    state.usb.kbdLit = true;
+    lightKeyboard();
+    setTimeout(() => toast('The keyboard lights up.', 'good'), 140);
+  }
+  if (state.usb.mouse && !state.usb.mouseLit) {
+    state.usb.mouseLit = true;
+    lightMouse();
+    setTimeout(() => toast('The mouse lights up. Its sensor reads red.', 'good'), 140);
+  }
+}
+function darkUsb() {
+  kbKeyMat.emissiveIntensity = 0;
+  kbLegendMat.emissiveIntensity = 0;
+  kbGlow.material.emissiveIntensity = 0;
+  mLed.material.emissiveIntensity = 0;
+  mSensor.material.emissiveIntensity = 0;
+  state.usb.kbdLit = false;
+  state.usb.mouseLit = false;
+}
+
+/* --- carrying and plugging the two devices ----------------------------- */
+function takeUsb(kind) {
+  if (state.usb[kind === 'usbKbd' ? 'kbd' : 'mouse']) return;
+  if (state.held === kind) return;
+  releaseHeld();
+  state.held = kind;
+  (kind === 'usbKbd' ? kbdPlug : mousePlug).visible = false;
+  showHeld(kind);
+  sfx.pickup();
+  toast('A connector in both arms, its cable trailing.');
+  renderTray();
+}
+function plugUsb() {
+  const held = state.held;
+  if (held !== 'usbKbd' && held !== 'usbMouse') {
+    if (!held) { sfx.nope(); toast('Your hands are empty. Both connectors are on the desk by the monitor.'); return; }
+    sfx.buzz();
+    toast(held === 'hdmi' ? 'That is the monitor cable. This is a USB port.'
+      : 'That will not go into a USB port.', 'bad');
+    return;
+  }
+  const kbd = held === 'usbKbd';
+  state.usb[kbd ? 'kbd' : 'mouse'] = true;
+  state.held = null;
+  hideHeld();
+  const socket = kbd ? ioUsbA : ioUsbB;
+  box(.014, .008, .010, usbMat(), socket.position.x, socket.position.y, IO.z - .020);   // the plug, seated
+  routeUsb(kbd ? 'usbKbd' : 'usbMouse');
+  sfx.snap();
+  if (!railLive()) {
+    setTimeout(() => toast('In. No 12 V, so it stays dark.', ''), 140);
+  } else {
+    checkUsbPower();
+  }
+  renderTray();
+}
+
+Object.assign(THINGS, {
+  ssdBody: {
+    kicker: 'the bench', title: 'The customer\'s SSD',
+    text: () => !state.ssd.plugged
+      ? '<p>A 240 GB drive with a label: <i>the customer\'s photos</i>. Its tail is lying loose beside it.</p>'
+      : state.codes.includes('b7')
+        ? '<p>The drive, plugged in, with a red LED blinking at the end of it.</p>'
+        : '<p>The drive, quiet at last, and a green LED to say so.</p>',
+    keys: () => '', act() { },
+  },
+  ssdPort: {
+    kicker: 'the bench', title: 'SATA port',
+    text: () => !state.ssd.plugged
+      ? '<p>An empty slot in the drive\'s edge. The drive is not connected to anything.</p>'
+      : !railLive()
+        ? '<p>The slot, and a drive that is plugged in but dark.</p>'
+        : state.codes.includes('b7')
+          ? '<p>A slot in the drive\'s edge, wider than it has any right to be from where you stand.</p>'
+          : '<p>The slot. Nothing in there now.</p>',
+    keys: () => state.ssd.plugged && railLive() ? '<kbd>E</kbd>step in' : '',
+    act() { enterDisk(); },
+  },
+  ssdPlug: {
+    kicker: 'the bench', title: 'The drive\'s cable end',
+    text: () => state.ssd.plugged
+      ? '<p>In. The drive is part of the machine now.</p>'
+      : '<p>A SATA plug on a short tail, lying beside the drive. Not much slack on it.</p>',
+    keys: () => state.ssd.plugged ? '' : '<kbd>E</kbd>take the cable end',
+    act() { takeSsdTail(); },
+  },
+  ssdSocket: {
+    kicker: 'the back of the case', title: 'SATA socket',
+    text: () => state.ssd.plugged
+      ? '<p>The drive is in. The little LED on it is doing the talking now.</p>'
+      : '<p>The one SATA socket in the room, on the rear panel. Something wants to be in it.</p>',
+    keys: () => state.held === 'ssdTail' ? '<kbd>E</kbd>plug the drive in' : '',
+    act() { plugSsd(); },
+  },
+  diskExit: {
+    kicker: 'the sector grid', title: 'The port mouth',
+    text: () => '<p>The way you came in. The shop is on the other side of it.</p>',
+    keys: () => '<kbd>E</kbd>step back out',
+    act() { leaveDisk(); },
+  },
+  wormLever: {
+    kicker: 'the quarantaine chamber', title: 'The lever',
+    text: () => state.disk.sealed
+      ? '<p>Pulled. The door is down and the chamber is a cell.</p>'
+      : '<p>A lever beside the chamber door. It drops the door, and it drops it on whatever is inside.</p>',
+    keys: () => state.disk.sealed ? '' : '<kbd>E</kbd>drop the door',
+    act() { pullWormLever(); },
+  },
+  readme: {
+    kicker: 'the quarantaine chamber', title: 'README.txt',
+    text: () => `<p><b>FIXMASTER PRO 2019</b> — free edition.</p>
+      <p>"Thank you for using our completely legal diagnostic tool."</p>
+      <p class="sub">Three extras installed. That is the whole repair, and it is what Gerrit keeps finding.</p>`,
+    keys: () => '', act() { state.reads.readme = true; sfx.paper(); },
+  },
+  usbNote: {
+    kicker: 'the bench, behind the case', title: 'A note in Gerrit\'s hand',
+    text: () => '<p><b>KEYBOARD + MOUSE</b> — cable ends · rear panel.</p>',
+    keys: () => '', act() { },
+  },
+  usbKbd: {
+    kicker: 'the desk', title: 'Keyboard connector',
+    text: () => state.usb.kbd
+      ? '<p>In. The keyboard is awake, backlit, and waiting to be walked on.</p>'
+      : '<p>A USB-A connector at the end of the keyboard\'s own cable. Gerrit left it here.</p>',
+    keys: () => state.usb.kbd ? '' : '<kbd>E</kbd>take the connector',
+    act() { takeUsb('usbKbd'); },
+  },
+  usbMouse: {
+    kicker: 'the desk', title: 'Mouse connector',
+    text: () => state.usb.mouse
+      ? '<p>In. And the mouse is already misbehaving, just as the intake form said.</p>'
+      : '<p>The mouse\'s connector, at the end of its cable.</p>',
+    keys: () => state.usb.mouse ? '' : '<kbd>E</kbd>take the connector',
+    act() { takeUsb('usbMouse'); },
+  },
+  usbPortA: {
+    kicker: 'the back of the case', title: 'USB port',
+    text: () => '<p>A blue USB-A port. Either connector fits.</p>',
+    keys: () => state.held === 'usbKbd' || state.held === 'usbMouse' ? '<kbd>E</kbd>plug it in' : '',
+    act() { plugUsb(); },
+  },
+  usbPortB: {
+    kicker: 'the back of the case', title: 'USB port',
+    text: () => '<p>The second blue port.</p>',
+    keys: () => state.held === 'usbKbd' || state.held === 'usbMouse' ? '<kbd>E</kbd>plug it in' : '',
+    act() { plugUsb(); },
+  },
+  airCan: {
+    kicker: 'the bench', title: 'Compressed air',
+    text: () => state.items.includes('compressed air')
+      ? '<p>In the notepad: a blue can with a straw.</p>'
+      : '<p>A can of air, and a note: <b>clean it first, then complain that it is broken</b>.</p>',
+    keys: () => state.items.includes('compressed air') ? '' : '<kbd>E</kbd>take the can',
+    act() { takeAir(); },
+  },
+  mouseLens: {
+    kicker: 'the desk', title: "The mouse's optical window",
+    text: () => !state.usb.tipped
+      ? '<p>Underneath, where you cannot reach it. The mouse would have to go over onto its side first.</p>'
+      : state.usb.clean
+        ? '<p>Clean glass.</p>'
+        : '<p>A hair across the window, and a felt of dust. There is the "weird" in the intake form.</p>',
+    keys: () => state.usb.tipped && !state.usb.clean ? '<kbd>E</kbd>the window is filthy' : '',
+    act() {
+      if (!state.usb.tipped) {
+        sfx.nope(); toast('It is underneath, where you cannot get at it. Tip the mouse over first.');
+        return;
+      }
+      if (state.usb.clean) return;
+      if (!state.items.includes('compressed air')) {
+        sfx.buzz();
+        toast('A hair across the window. You need air.', 'bad');
+        return;
+      }
+      // the can lives in the notepad now, so the notepad opens and you pick it
+      state.invPending = 'air';
+      padEl.hidden = false;
+      renderPad();
+      pulsePad();
+      if (document.pointerLockElement) document.exitPointerLock();
+      sfx.click();
+      toast('Pick the air out of the inventory.', '');
+    },
+  },
+});
+function takeAir() {
+  if (state.items.includes('compressed air')) return;
+  state.items.push('compressed air');
+  airCan.visible = false;
+  airSolid.y1 = BENCH.top;             // the can has left the bench
+  sfx.pickup();
+  renderPad();
+  toast('The can of air goes in the notepad.');
+  renderTray();
+}
+
+/* ==================================================================== slice 4
+   The SSD. b7 lives in here, and the drive is a doorway: its SATA port opens
+   into the sector grid. The inside is bigger than the outside — the room is
+   built on a shrink ray, and this is the one place it spends that.
+
+   The grid is a lattice of sector blocks over nothing. Some sectors are gone:
+   step into the hole and the drive spits you out. The worm follows you and eats
+   the block you leave behind. It is slower than you are; the trick is not to
+   outrun it, it is to get it into the quarantaine chamber and close the door. */
+
+const DISK = { x: -1.35, z: -2.30, y: -6.0, cell: .13, cols: 8, rows: 9 };
+DISK.x0 = DISK.x - DISK.cols * DISK.cell / 2;
+DISK.z0 = DISK.z - DISK.rows * DISK.cell / 2;
+DISK.w = DISK.cols * DISK.cell;
+DISK.d = DISK.rows * DISK.cell;
+const SOLID_D = [];
+const diskG = new THREE.Group();
+scene.add(diskG);
+const diskShellMat = new THREE.MeshStandardMaterial({ color: 0x05090b, roughness: .95 });
+const sectorMat = () => new THREE.MeshStandardMaterial({
+  color: 0x0d2a33, emissive: 0x1f7fa0, emissiveIntensity: .30, roughness: .45,
+});
+const HOLES = new Set(['1,6', '4,2', '5,2', '6,6']);
+const sectorBlocks = [];
+for (let c = 0; c < DISK.cols; c++) for (let r = 0; r < DISK.rows; r++) {
+  if (HOLES.has(c + ',' + r)) continue;
+  const x = DISK.x0 + c * DISK.cell, z = DISK.z0 + r * DISK.cell;
+  const mat = sectorMat();
+  box(DISK.cell - .020, .060, DISK.cell - .020, mat, x + DISK.cell / 2, DISK.y - .030, z + DISK.cell / 2, diskG);
+  sectorBlocks.push({ mat, c, r });
+  SOLID_D.push(S(x, x + DISK.cell, DISK.y - .060, DISK.y, z, z + DISK.cell));   // flush, so the seams are not holes
+}
+// the drive's shell: walls and a lid, so the shop is not visible from in here
+const shellH = .17, wallT = .03;
+box(DISK.w, .02, DISK.d, diskShellMat, DISK.x, DISK.y - .55, DISK.z, diskG);      // the floor of the void
+[[DISK.x0, DISK.z0 + DISK.d / 2, wallT, DISK.d, 'x'], [DISK.x0 + DISK.w, DISK.z0 + DISK.d / 2, wallT, DISK.d, 'x'],
+ [DISK.x0 + DISK.w / 2, DISK.z0, DISK.w, wallT, 'z'], [DISK.x0 + DISK.w / 2, DISK.z0 + DISK.d, DISK.w, wallT, 'z']]
+  .forEach(([x, z, w, d, axis]) => {
+    box(axis === 'x' ? w : w, shellH, axis === 'x' ? d : d, diskShellMat, x, DISK.y + shellH / 2, z, diskG);
+    const half = axis === 'x' ? [wallT / 2, d / 2] : [w / 2, wallT / 2];
+    SOLID_D.push(S(x - half[0], x + half[0], DISK.y - .2, DISK.y + shellH, z - half[1], z + half[1]));
+  });
+box(DISK.w + .06, .02, DISK.d + .06, diskShellMat, DISK.x, DISK.y + shellH, DISK.z, diskG);
+// the quarantaine chamber: three cells square, a door in the +z wall, a hatch
+// in the far one, and a floor of its own so it reads as a room and not a fence
+const CH = {
+  x0: DISK.x0 + 3 * DISK.cell, x1: DISK.x0 + 6 * DISK.cell,
+  z0: DISK.z0 + 3 * DISK.cell, z1: DISK.z0 + 6 * DISK.cell,
+};
+const CH_H = .13, CH_T = .02;
+const chMat = new THREE.MeshStandardMaterial({ color: 0x16282f, emissive: 0x0c2a36, emissiveIntensity: .45, roughness: .65 });
+const chTrim = new THREE.MeshStandardMaterial({ color: 0x2c3f46, emissive: 0x0f3a48, emissiveIntensity: .6, roughness: .5 });
+function chWall(x, z, w, d) {
+  box(w, CH_H, d, chMat, x, DISK.y + CH_H / 2, z, diskG);
+  box(w, .006, d + .004, chTrim, x, DISK.y + CH_H + .003, z, diskG);          // a rim on top of every wall
+  SOLID_D.push(S(x - w / 2, x + w / 2, DISK.y - .1, DISK.y + CH_H, z - d / 2, z + d / 2));
+}
+const DOOR = { x0: CH.x1 - DISK.cell * .9, x1: CH.x1 - DISK.cell * .1 };      // gap in the +z wall
+chWall((CH.x0 + DOOR.x0) / 2, CH.z1, DOOR.x0 - CH.x0, CH_T);
+chWall((DOOR.x1 + CH.x1) / 2, CH.z1, CH.x1 - DOOR.x1, CH_T);
+const HATCH = { x0: CH.x0 + DISK.cell * .1, x1: CH.x0 + DISK.cell * .9 };     // gap in the −z wall
+chWall((CH.x0 + HATCH.x0) / 2, CH.z0, HATCH.x0 - CH.x0, CH_T);
+chWall((HATCH.x1 + CH.x1) / 2, CH.z0, CH.x1 - HATCH.x1, CH_T);
+chWall(CH.x0, (CH.z0 + CH.z1) / 2, CH_T, CH.z1 - CH.z0);
+chWall(CH.x1, (CH.z0 + CH.z1) / 2, CH_T, CH.z1 - CH.z0);
+// ribs down the outside, and a floor plate inside
+for (let i = 0; i < 4; i++) {                                    // ribs on the back only
+  const t = (i + .5) / 4;
+  box(.008, CH_H - .02, .01, chTrim, CH.x0 + t * (CH.x1 - CH.x0), DISK.y + CH_H / 2, CH.z0 - CH_T / 2 - .006, diskG);
+}
+[.25, .75].forEach(t => {                                        // and two a side
+  box(.01, CH_H - .02, .008, chTrim, CH.x0 - CH_T / 2 - .006, DISK.y + CH_H / 2, CH.z0 + t * (CH.z1 - CH.z0), diskG);
+  box(.01, CH_H - .02, .008, chTrim, CH.x1 + CH_T / 2 + .006, DISK.y + CH_H / 2, CH.z0 + t * (CH.z1 - CH.z0), diskG);
+});
+box(CH.x1 - CH.x0 - .02, .006, CH.z1 - CH.z0 - .02, new THREE.MeshStandardMaterial({ color: 0x1d3a44, emissive: 0x0d3644, emissiveIntensity: .35, roughness: .7 }),
+  (CH.x0 + CH.x1) / 2, DISK.y + .004, (CH.z0 + CH.z1) / 2, diskG);
+// the door: a panel that sits up in its guides and drops when the lever is pulled
+const doorW = DOOR.x1 - DOOR.x0;
+const chDoor = box(doorW, CH_H, CH_T * .8, new THREE.MeshStandardMaterial({ color: 0x3a2028, emissive: 0x40151a, emissiveIntensity: .5, roughness: .55 }),
+  (DOOR.x0 + DOOR.x1) / 2, DISK.y + CH_H + .035, CH.z1, diskG);
+box(doorW * .9, .008, CH_T, chTrim, (DOOR.x0 + DOOR.x1) / 2, DISK.y + CH_H + .035 + CH_H / 2 - .01, CH.z1, diskG);
+[[DOOR.x0 - .012, .006], [DOOR.x1 + .012, .006]].forEach(([x]) => {           // the guides it runs in
+  box(.012, CH_H * 2, CH_T + .01, M.metalDark, x, DISK.y + CH_H, CH.z1, diskG);
+});
+const DOOR_OPEN_Y = DISK.y + CH_H + .035, DOOR_SHUT_Y = DISK.y + CH_H / 2;
+const doorMat = new THREE.MeshStandardMaterial({ color: 0x3a2028, emissive: 0x40151a, emissiveIntensity: .5, roughness: .55 });
+// the QUARANTINE plate is on the wall beside the door: it is a label, so it is
+// there before anyone pulls anything
+const chSign = plane(.070, .018, new THREE.MeshStandardMaterial({
+  map: stickerTex([['QUARANTINE', 20, true]], { bg: '#8c2f24', ink: '#f2e9d8', h: 100, top: 60, align: 'center' }),
+  emissive: 0x3a0f0a, emissiveIntensity: .6, roughness: .7,
+}), CH.x0 + .042, DISK.y + .086, CH.z1 + CH_T / 2 + .0016);
+diskG.add(chSign);
+// the hatch gets a door of its own: the room has to be shut, both ways
+const hatchDoor = box(HATCH.x1 - HATCH.x0, CH_H, CH_T * .8, doorMat,
+  (HATCH.x0 + HATCH.x1) / 2, DOOR_OPEN_Y, CH.z0, diskG);
+[[HATCH.x0 - .012], [HATCH.x1 + .012]].forEach(([x]) =>
+  box(.012, CH_H * 2, CH_T + .01, M.metalDark, x, DISK.y + CH_H, CH.z0, diskG));
+const chLamp = new THREE.PointLight(0x2f8faf, .40, 2.0, 1.6);
+chLamp.position.set(DISK.x, DISK.y + .22, DISK.z);
+scene.add(chLamp);
+// the lever, bolted to the outside of the chamber, with a rod running to the door
+const leverG = new THREE.Group();
+leverG.position.set(CH.x1 + .12, DISK.y, CH.z1 + .05);
+diskG.add(leverG);
+box(.05, .012, .05, chTrim, 0, .006, 0, leverG);
+box(.014, .07, .014, M.metalDark, 0, .045, 0, leverG);
+const leverArm = box(.012, .012, .075, M.red, 0, .075, .02, leverG);
+leverArm.rotation.x = -.5;
+box(.008, .008, .10, M.metalDark, CH.x1 + .07, DISK.y + .075, CH.z1 + .02, diskG);   // the rod to the door
+register(leverG, 'wormLever', 'the quarantine lever');
+SOLID_D.push(S(CH.x1 + .095, CH.x1 + .145, DISK.y - .1, DISK.y + .09, CH.z1 + .025, CH.z1 + .075));
+// the worm: a tapered, wobbling body with legs, two eyes and a light of its own
+const worm = new THREE.Group();
+worm.position.set(DISK.x0 + 1.1 * DISK.cell, DISK.y + .02, DISK.z0 + 7.4 * DISK.cell);
+diskG.add(worm);
+const wormMat = new THREE.MeshStandardMaterial({ color: 0x6e1c12, emissive: 0xff5a24, emissiveIntensity: .8, roughness: .5 });
+const wormMatDark = new THREE.MeshStandardMaterial({ color: 0x2a0b07, emissive: 0x6b1c10, emissiveIntensity: .35, roughness: .75 });
+const wormSegs = [];
+const WORM_N = 10;
+for (let i = 0; i < WORM_N; i++) {
+  const r = .024 - i * .0015;
+  const seg = sphere(r, i % 2 ? wormMatDark : wormMat, 0, 0, -i * .030, worm, 12);
+  if (i === 0) seg.scale.set(1.12, .82, 1.3);
+  wormSegs.push({ mesh: seg, r, i });
+}
+const wormLegs = [];
+for (let i = 1; i <= 4; i++) [-1, 1].forEach(side => {
+  const leg = box(.0035, .0025, .013, new THREE.MeshStandardMaterial({ color: 0x2a0e08, emissive: 0x7a2418, emissiveIntensity: .5, roughness: .6 }),
+    side * (.018 - i * .0015), -.014, -i * .019, worm);
+  wormLegs.push({ mesh: leg, i, side });
+});
+// the face is part of the head, so it moves with the head's wobble
+const head = wormSegs[0].mesh;
+const socketMat = new THREE.MeshStandardMaterial({ color: 0x150908, roughness: .9 });
+const irisMat = new THREE.MeshStandardMaterial({ color: 0xff9a2e, emissive: 0xffb347, emissiveIntensity: 1.5, roughness: .25 });
+const pupilMat = new THREE.MeshStandardMaterial({ color: 0x080403, roughness: .4 });
+[[-.010, .014], [.010, .014]].forEach(([x, z]) => {
+  sphere(.0062, socketMat, x, .005, z, head, 10);                       // the socket sits in the shell
+  sphere(.0044, irisMat, x, .005, z + .0026, head, 10);
+  sphere(.0018, pupilMat, x, .005, z + .0058, head, 8);
+});
+[[-.013, .020], [.0135, .020]].forEach(([x, z]) => {
+  const m = box(.004, .0035, .014, new THREE.MeshStandardMaterial({ color: 0x150908, emissive: 0x8c2a16, emissiveIntensity: .5, roughness: .7 }),
+    x, -.006, z, head);
+  m.rotation.y = x < 0 ? .3 : -.3;
+  m.rotation.x = -.25;
+});
+
+const wormLight = new THREE.PointLight(0xff4a20, .22, .40, 1.8);
+wormLight.position.set(0, .03, 0);
+worm.add(wormLight);
+worm.path = null; worm.wi = 0; worm.repath = 0;
+function wormInChamber(x, z) { return x > CH.x0 && x < CH.x1 && z > CH.z0 && z < CH.z1; }
+function blockAt(x, z) {
+  const c = Math.floor((x - DISK.x0) / DISK.cell), r = Math.floor((z - DISK.z0) / DISK.cell);
+  if (c < 0 || r < 0 || c >= DISK.cols || r >= DISK.rows) return false;
+  return !HOLES.has(c + ',' + r);
+}
+/* It knows the lattice: breadth-first over the cells, holes and walls and the
+   lever stand included, with the chamber reachable only through its two
+   openings. That is why it goes round things instead of leaning on them. */
+const cellOf = (x, z) => ({ c: Math.floor((x - DISK.x0) / DISK.cell), r: Math.floor((z - DISK.z0) / DISK.cell) });
+const cellCentre = (c, r) => ({ x: DISK.x0 + (c + .5) * DISK.cell, z: DISK.z0 + (r + .5) * DISK.cell });
+const inGrid = (c, r) => c >= 0 && r >= 0 && c < DISK.cols && r < DISK.rows;
+const inChCell = (c, r) => c >= 3 && c <= 5 && r >= 3 && r <= 5;
+const WORM_BLOCKED = new Set(['6,6']);                       // the lever and its stand
+function wormWalkable(c, r) {
+  return inGrid(c, r) && !HOLES.has(c + ',' + r) && !WORM_BLOCKED.has(c + ',' + r);
+}
+function wormCanStep(c, r, nc, nr) {
+  if (!wormWalkable(nc, nr)) return false;
+  if (inChCell(c, r) === inChCell(nc, nr)) return true;
+  return (c === 5 && r === 5 && nc === 5 && nr === 6) || (c === 5 && r === 6 && nc === 5 && nr === 5)
+    || (c === 3 && r === 3 && nc === 3 && nr === 2) || (c === 3 && r === 2 && nc === 3 && nr === 3);
+}
+function wormFindPath(from, to) {
+  const key = (c, r) => c + ',' + r;
+  const start = cellOf(from.x, from.z), goal = cellOf(to.x, to.z);
+  if (!wormWalkable(start.c, start.r) || !wormWalkable(goal.c, goal.r)) return null;
+  const prev = new Map(), seen = new Set([key(start.c, start.r)]);
+  const q = [[start.c, start.r]];
+  while (q.length) {
+    const [c, r] = q.shift();
+    if (c === goal.c && r === goal.r) {
+      const path = [];
+      let k = key(c, r);
+      while (k) { const [pc, pr] = k.split(',').map(Number); path.push(cellCentre(pc, pr)); k = prev.get(k); }
+      return path.reverse();
+    }
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nc = c + dc, nr = r + dr;
+      if (!wormCanStep(c, r, nc, nr)) continue;
+      const k = key(nc, nr);
+      if (seen.has(k)) continue;
+      seen.add(k); prev.set(k, key(c, r)); q.push([nc, nr]);
+    }
+  }
+  return null;
+}
+// the port mouth inside, where you came in and where you leave
+const mouth = new THREE.Group();
+mouth.position.set(DISK.x0 + 4.5 * DISK.cell, DISK.y + .004, DISK.z0 + 8.5 * DISK.cell);
+diskG.add(mouth);
+box(.12, .004, .05, new THREE.MeshStandardMaterial({ color: 0x1a2a30, emissive: 0x2f8faf, emissiveIntensity: .8, roughness: .5 }), 0, 0, 0, mouth);
+register(mouth, 'diskExit', 'the way out of the drive');
+// the paper: taped to the outside of the chamber wall, beside the door, at a
+// height where it is a paper and not a floor covering
+const readmeTex = tex(512, 640, (g, w, h) => {
+  g.fillStyle = '#e8e2cf'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = '#1b2328'; g.lineWidth = 6; g.strokeRect(10, 10, w - 20, h - 20);
+  g.fillStyle = '#1b2328';
+  g.font = '700 36px ui-monospace,monospace';
+  g.fillText('README.txt', 30, 62);
+  g.font = '400 22px ui-monospace,monospace';
+  ['FIXMASTER PRO 2019', 'free edition', '', '"Thank you for using our', 'completely legal diagnostic', 'tool."', '',
+   '3 extras installed.', '', 'We are happy to help.'].forEach((l, i) =>
+    g.fillText(l, 30, 126 + i * 36));
+  g.fillStyle = '#8c2f24';
+  g.font = '700 24px ui-monospace,monospace';
+  g.fillText('-- FIXMASTER SUPPORT', 30, h - 36);
+  grain(g, w, h, .05);
+});
+const readmePanel = plane(.098, .088, new THREE.MeshStandardMaterial({ map: readmeTex, emissive: 0x2a2a22, emissiveMap: readmeTex, emissiveIntensity: .45, roughness: .8 }),
+  (CH.x0 + DOOR.x0) / 2, DISK.y + .068, CH.z1 + CH_T / 2 + .0015);
+readmePanel.visible = false;
+diskG.add(readmePanel);
+register(readmePanel, 'readme', 'README.txt');
+// the drive's own label, on the side wall: the character that comes out of b7
+const ssdLabelTex = stickerTex([['SATA SSD', 26, true], ['240 GB', 22, false], ['B', 62, true]],
+  { bg: '#e8e2cf', ink: '#1b2328', h: 230, top: 54, align: 'center' });
+const ssdLabel = plane(.086, .044, new THREE.MeshStandardMaterial({ map: ssdLabelTex, roughness: .85 }),
+  CH.x0 - CH_T / 2 - .0015, DISK.y + .062, (CH.z0 + CH.z1) / 2);
+ssdLabel.rotation.y = -Math.PI / 2;         // on the far side of the chamber, out of the paper's way
+ssdLabel.visible = false;
+diskG.add(ssdLabel);
+
+/* the drive itself: on the bench in front of the case, unplugged, its tail
+   lying beside it. It wants a SATA socket, and the only one is on the back of
+   the case — so the tail goes round there before anything can happen. */
+state.ssd = { plugged: false };
+const SSD = { x: -1.15, z: -2.05 };
+const ssdBody = box(.10, .008, .07, new THREE.MeshStandardMaterial({ color: 0x2b3236, roughness: .6, metalness: .2 }),
+  SSD.x, BENCH.top + .004, SSD.z);
+box(.098, .002, .066, new THREE.MeshStandardMaterial({ color: 0x3d444a, roughness: .7 }), SSD.x, BENCH.top + .009, SSD.z);
+const ssdLed = sphere(.0022, new THREE.MeshStandardMaterial({ color: 0x10161a, emissive: 0x000000, roughness: .3 }),
+  SSD.x + .036, BENCH.top + .011, SSD.z + .020, scene, 8);
+const ssdPort = box(.026, .008, .012, new THREE.MeshStandardMaterial({ color: 0x14181b, roughness: .8 }),
+  SSD.x, BENCH.top + .004, SSD.z + .037);
+register(ssdPort, 'ssdPort', 'the SATA port on the drive');
+register(ssdBody, 'ssdBody', 'the customer\'s SSD');
+const ssdTop = decal(.08, .03, stickerTex([['SATA SSD · 240 GB', 26, true], ['b7 lives here', 20, false]],
+  { bg: '#dfe6e2', ink: '#1b2328', h: 150, top: 52, align: 'center' }),
+  SSD.x, BENCH.top + .0105, SSD.z, 0);
+ssdTop.rotation.x = -Math.PI / 2;
+SOLID_S.push(S(SSD.x - .05, SSD.x + .05, BENCH.top, BENCH.top + .01, SSD.z - .035, SSD.z + .035));   // the drive is a step, not air
+
+// its tail: a plug on a short cable, lying beside the drive
+const SSD_PORT_P = V3(SSD.x, BENCH.top + .006, SSD.z + .030);
+const ssdPlugG = new THREE.Group();
+ssdPlugG.position.set(SSD.x + .080, BENCH.top + .006, SSD.z + .055);
+scene.add(ssdPlugG);
+box(.028, .009, .014, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }), 0, .005, 0, ssdPlugG);
+box(.020, .002, .011, new THREE.MeshStandardMaterial({ color: 0xdfe6e8, roughness: .85 }), 0, .011, 0, ssdPlugG);
+box(.020, .004, .004, M.metal, 0, .005, -.010, ssdPlugG);
+register(ssdPlugG, 'ssdPlug', "the drive's cable end");
+const ssdWire = cyl(.0022, .0022, 1, 6, M.black, SSD.x, BENCH.top + .01, SSD.z - .05);
+ssdWire.visible = true;
+// the one SATA socket in the room: on the rear panel
+const ssdSocket = box(.030, .010, .014, new THREE.MeshStandardMaterial({ color: 0x1b1f22, roughness: .8 }),
+  IO.x + .075, IO.y - .014, IO.z - .012);
+box(.026, .004, .008, M.gold, IO.x + .075, IO.y - .018, IO.z - .018);
+register(ssdSocket, 'ssdSocket', 'the SATA socket on the rear panel');
+
+/* --- going in and coming out ------------------------------------------- */
+state.disk = { inside: false, sealed: false, sealing: false };
+function flash(ms = 200) {
+  bloom.style.opacity = '.92';
+  setTimeout(() => { bloom.style.opacity = '0'; }, ms);
+}
+function enterDisk() {
+  if (state.disk.inside) return;
+  if (!state.ssd.plugged) { sfx.buzz(); toast('The drive is not connected to anything.'); return; }
+  if (!railLive()) { sfx.buzz(); toast('The drive is dark. No 12 V.'); return; }
+  if (state.disk.sealed && state.codes.includes('b7')) return;
+  state.disk.inside = true;
+  flash(220);
+  sfx.whoom();
+  camera.position.set(DISK.x0 + 4.5 * DISK.cell, DISK.y + P.eye, DISK.z0 + 8.5 * DISK.cell);
+  feet = DISK.y; vy = 0;
+  yaw = 0; pitch = -.02;                       // facing into the grid
+  if (!state.disk.sealed) {
+    worm.position.set(DISK.x0 + 1.1 * DISK.cell, DISK.y + .02, DISK.z0 + 7.4 * DISK.cell);
+    worm.visible = true;
+    state.disk.sealing = false;
+  }
+  chDoor.position.y = state.disk.sealed ? DOOR_SHUT_Y : DOOR_OPEN_Y;
+  toast('Inside the drive. Sector grid, b7, and something moving.', '');
+  renderTray();
+}
+function leaveDisk(msg = true) {
+  state.disk.inside = false;
+  flash(200);
+  camera.position.set(SSD.x, BENCH.top + P.eye, SSD.z + .14);
+  feet = BENCH.top; vy = 0;
+  yaw = Math.PI; pitch = -.15;
+  if (msg) toast('Back at the port.');
+  renderTray();
+}
+function ejectFromDisk() {
+  state.disk.inside = false;
+  flash(260);
+  sfx.buzz();
+  camera.position.set(SSD.x, BENCH.top + P.eye, SSD.z + .14);
+  feet = BENCH.top; vy = 0;
+  yaw = Math.PI; pitch = -.15;
+  worm.position.set(DISK.x0 + 1.1 * DISK.cell, DISK.y + .02, DISK.z0 + 7.4 * DISK.cell);
+  for (const b of sectorBlocks) b.mat.emissiveIntensity = .30;      // the eaten sectors grow back
+  if (state.codes.includes('b7')) toast('It got you. The drive spat you out at the port.', 'bad');
+  renderTray();
+}
+function pullWormLever() {
+  if (state.disk.sealed) { toast('The chamber is sealed.'); return; }
+  if (state.disk.sealing) return;
+  if (!wormInChamber(worm.position.x, worm.position.z)) {
+    sfx.buzz();
+    toast('The door comes down on an empty chamber. Nothing in there.', 'bad');
+    return;
+  }
+  state.disk.sealed = true;
+  state.disk.sealing = true;          // diskTick drops the door and the lever arm
+  worm.visible = false;
+  for (const b of sectorBlocks) { b.mat.emissive = new THREE.Color(0x36d08a); b.mat.emissiveIntensity = .55; }
+  chLamp.color.setHex(0x36d08a);
+  readmePanel.visible = true;
+  ssdLabel.visible = true;
+  sfx.slam();
+  setTimeout(() => sfx.chime(), 220);
+  clearCode('b7', 'B', 'SSD', 'The door slams. The lattice goes green: b7 clears, and the drive gives up a B.');
+  toast('Quarantined. Whatever is left of b7 is inside that box now.', 'good');
+  renderTray();
+}
+function routeSsd() {
+  const cabMat = new THREE.MeshStandardMaterial({ color: 0x1b2024, roughness: .85 });
+  const path = [
+    SSD_PORT_P,
+    V3(SSD.x + .06, BENCH.top + .008, SSD.z + .07),
+    V3(-1.58, BENCH.top + .016, -2.10),
+    V3(-1.63, BENCH.top + .020, -2.46),
+    V3(-1.70, BENCH.top + .034, -2.90),
+    V3(IO.x + .075, IO.y - .014, IO.z - .020),
+  ];
+  for (let i = 1; i < path.length; i++) tube(path[i - 1], path[i], .0022, cabMat);
+}
+function takeSsdTail() {
+  if (state.ssd.plugged || state.held === 'ssdTail') return;
+  releaseHeld();
+  state.held = 'ssdTail';
+  ssdPlugG.visible = false;
+  showHeld('ssdTail');
+  sfx.pickup();
+  toast("The drive's cable end, and not much slack.");
+  renderTray();
+}
+function plugSsd() {
+  if (state.ssd.plugged) { toast('Already in.'); return; }
+  if (state.held !== 'ssdTail') {
+    sfx.nope(); toast('Your hands are empty. The drive\'s tail is on the bench with it.');
+    return;
+  }
+  state.ssd.plugged = true;
+  state.held = null;
+  hideHeld();
+  ssdWire.visible = false;
+  routeSsd();
+  box(.034, .012, .016, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }),
+    IO.x + .075, IO.y - .014, IO.z - .022);
+  sfx.snap();
+  renderTray();
+  setTimeout(() => toast(railLive()
+    ? 'In. The drive wakes up: a red LED and something moving inside it.'
+    : 'In. No 12 V yet, so the LED stays dark.', ''), 160);
+}
+function diskTick(dt) {
+  // the door and the lever move together: pull the lever and the panel comes down
+  const wantY = state.disk.sealed ? DOOR_SHUT_Y : DOOR_OPEN_Y;
+  const k = Math.min(1, dt * 9);
+  chDoor.position.y += (wantY - chDoor.position.y) * k;
+  hatchDoor.position.y += (wantY - hatchDoor.position.y) * k;
+  leverArm.rotation.x += ((state.disk.sealed ? .55 : -.5) - leverArm.rotation.x) * k;
+  if (worm.visible) {                    // it is alive even when it is standing still
+    const t = clock.elapsedTime;
+    for (const s2 of wormSegs) {
+      s2.mesh.position.y = Math.sin(t * 7 - s2.i * .55) * .005;
+      s2.mesh.position.x = Math.cos(t * 5 - s2.i * .35) * .0025;
+    }
+    for (const l of wormLegs) { l.mesh.rotation.z = Math.sin(t * 10 - l.i * .9) * .7 * l.side; }
+  }
+  // red while b7 is in there, green once it is quarantined, dark without 12 V
+  const live = state.ssd.plugged && railLive();
+  ssdLed.material.emissive.setHex(!live ? 0x000000 : state.codes.includes('b7') ? 0xff3a2a : 0x36d08a);
+  ssdLed.material.emissiveIntensity = live ? (state.codes.includes('b7') ? 1.5 : 1.2) : 0;
+  {
+    const hand = new THREE.Vector3();
+    heldPlug.getWorldPosition(hand);
+    hand.lerp(camera.position, .32);
+    if (state.ssd.plugged) ssdWire.visible = false;
+    else {
+      ssdWire.visible = true;
+      stretchCyl(ssdWire, SSD_PORT_P, state.held === 'ssdTail' ? hand : ssdPlugG.position);
+    }
+  }
+  if (!state.disk.inside || state.disk.sealed) return;
+  const p = camera.position;
+  const chase = Math.hypot(p.x - worm.position.x, p.z - worm.position.z);
+  // it plans a route over the lattice every half second, so a hole or a wall
+  // makes it turn a corner instead of stopping and leaning on it
+  worm.repath -= dt;
+  if (worm.repath <= 0 || !worm.path || worm.wi >= worm.path.length) {
+    worm.repath = .45;
+    const path = wormFindPath(worm.position, { x: p.x, z: p.z });
+    worm.path = !path || path.length < 2 ? [{ x: p.x, z: p.z }] : path.slice(1);
+    worm.wi = 0;
+  }
+  const wp = worm.path[Math.min(worm.wi, worm.path.length - 1)] || { x: p.x, z: p.z };
+  const dx = wp.x - worm.position.x, dz = wp.z - worm.position.z;
+  const d = Math.hypot(dx, dz) || 1e-6;
+  worm.rotation.y = Math.atan2(dx, dz);          // nose-first
+  const step = Math.min(.075 * dt, d);
+  if (d < .025 && worm.wi < worm.path.length - 1) worm.wi++;
+  const nx = worm.position.x + dx / d * step, nz = worm.position.z + dz / d * step;
+  const next = { x: worm.position.x, z: worm.position.z };
+  // it crawls the lattice: no sector, no step. If the way ahead is a hole it
+  // slides along the edge instead, and if both are holes it waits there.
+  if (blockAt(nx, nz)) { next.x = nx; next.z = nz; }
+  else if (blockAt(nx, worm.position.z)) next.x = nx;
+  else if (blockAt(worm.position.x, nz)) next.z = nz;
+  resolve(next, .020, DISK.y, .05, SOLID_D, 0);  // it slides along walls, it does not go through them
+  worm.position.x = next.x;
+  worm.position.z = next.z;
+  // the sector it is over goes dark: it eats what it crawls across
+  for (const b of sectorBlocks) {
+    const bx = DISK.x0 + b.c * DISK.cell, bz = DISK.z0 + b.r * DISK.cell;
+    if (worm.position.x > bx && worm.position.x < bx + DISK.cell
+      && worm.position.z > bz && worm.position.z < bz + DISK.cell) {
+      if (b.mat.emissiveIntensity > .2) { b.mat.emissiveIntensity = .05; sfx.tick(); }
+    }
+  }
+  if (chase < .050) ejectFromDisk();
+}
+
+/* ==================================================================== slice 5
+   The finale. With every code clear the monitor comes up on a customer login: a
+   row of six pictograms (the order) and a password field. The cursor is on the
+   screen but the mouse is on the desk — drag the plastic mouse to move it, press
+   its left button to click, then walk the keyboard and press the characters. */
+
+const FIELD = { x0: .05, y0: .74, x1: .95, y1: .91 };
+const UNSHRINK_BTN = { x0: .22, y0: .57, x1: .78, y1: .80 };
+const LOGIN_ICONS = ['ssd', 'mon', 'fan', 'psu', 'gpu', 'ram'];    // B R O K E N
+state.login = { active: false, ok: false, started: false, focus: false, typed: '', cursor: { x: .12, y: .06 } };
+
+function iconPaths(g, kind, x, y, s) {
+  g.save();
+  g.translate(x, y);
+  g.strokeStyle = '#8ff0ff';
+  g.fillStyle = 'rgba(140,230,255,.18)';
+  g.lineWidth = 3;
+  const box = (w, h, dy = 0) => { g.beginPath(); g.rect(0, dy, w, h); g.fill(); g.stroke(); };
+  if (kind === 'ssd') {
+    box(s, s * .66, s * .17);
+    g.beginPath(); g.moveTo(s * .12, s * .44); g.lineTo(s * .8, s * .44); g.stroke();
+    g.beginPath(); g.moveTo(s * .55, s * .66); g.lineTo(s * .72, s * .66); g.stroke();
+  } else if (kind === 'mon') {
+    box(s, s * .62, s * .1);
+    g.beginPath(); g.moveTo(s * .45, s * .72); g.lineTo(s * .55, s * .72); g.lineTo(s * .58, s * .9); g.lineTo(s * .42, s * .9); g.closePath(); g.fill(); g.stroke();
+  } else if (kind === 'fan') {
+    g.beginPath(); g.arc(s * .5, s * .5, s * .46, 0, Math.PI * 2); g.fill(); g.stroke();
+    for (let i = 0; i < 3; i++) {
+      g.beginPath(); g.arc(s * .5, s * .5, s * .3, i * 2.1, i * 2.1 + 1.2); g.stroke();
+    }
+    g.beginPath(); g.arc(s * .5, s * .5, s * .1, 0, Math.PI * 2); g.fill(); g.stroke();
+  } else if (kind === 'psu') {
+    box(s, s * .7, s * .15);
+    g.beginPath(); g.rect(s * .12, s * .3, s * .16, s * .24); g.fill(); g.stroke();
+    g.beginPath(); g.arc(s * .72, s * .42, s * .09, 0, Math.PI * 2); g.stroke();
+  } else if (kind === 'gpu') {
+    box(s, s * .5, s * .25);
+    g.beginPath(); g.arc(s * .32, s * .5, s * .16, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.arc(s * .66, s * .5, s * .12, 0, Math.PI * 2); g.stroke();
+  } else {
+    box(s, s * .34, s * .33);
+    for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(s * (.1 + i * .16), s * .67); g.lineTo(s * (.1 + i * .16), s * .78); g.stroke(); }
+    g.beginPath(); g.moveTo(s * .46, s * .33); g.lineTo(s * .5, s * .42); g.lineTo(s * .54, s * .33); g.stroke();
+  }
+  g.restore();
+}
+
+function drawLogin() {
+  const g = screenCtx, w = screenCanvas.width, h = screenCanvas.height;
+  const L = state.login;
+  g.fillStyle = '#04121a'; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(120,220,255,.045)';
+  for (let y = 0; y < h; y += 4) g.fillRect(0, y, w, 1);
+  if (!L.active) {
+    // every fault is not clear yet: say which ones, so the screen is never a riddle
+    g.fillStyle = '#8ff0ff';
+    g.font = '700 24px ui-monospace,monospace';
+    g.fillText('PC DOKTER — BOOT', 28, 44);
+    g.fillStyle = '#ffb84d';
+    g.font = '700 34px ui-monospace,monospace';
+    g.fillText('BOOT HALTED', 28, 112);
+    g.font = '400 21px ui-monospace,monospace';
+    g.fillStyle = 'rgba(255,220,160,.9)';
+    g.fillText(state.codes.length
+      ? state.codes.join(' · ') + '   (' + state.codes.length + ' fault' + (state.codes.length > 1 ? 's' : '') + ')'
+      : 'nothing left · opening the login…', 28, 158);
+    g.fillStyle = 'rgba(140,230,255,.55)';
+    g.font = '400 17px ui-monospace,monospace';
+    g.fillText('the two-digit display on the case is cycling them', 28, 206);
+    g.fillText('the customer login comes up when the last one clears', 28, 234);
+    screenLive.needsUpdate = true;
+    return;
+  }
+  if (!L.ok) {
+    g.fillStyle = '#8ff0ff';
+    g.font = '700 26px ui-monospace,monospace';
+    g.fillText('PC DOKTER — CUSTOMER LOGIN', 28, 44);
+    LOGIN_ICONS.forEach((k, i) => iconPaths(g, k, 40 + i * 96, 74, 56));
+    g.fillStyle = 'rgba(140,230,255,.55)';
+    g.font = '400 17px ui-monospace,monospace';
+    g.fillText('the order is the row above · six characters', 28, 186);
+    const overField = L.cursor.x > FIELD.x0 && L.cursor.x < FIELD.x1 && L.cursor.y > FIELD.y0 && L.cursor.y < FIELD.y1;
+    g.fillStyle = overField ? '#ffffff' : 'rgba(200,244,255,.85)';
+    g.font = '700 20px ui-monospace,monospace';
+    g.fillText('ENTER PASSWORD', 28, 276);
+    g.strokeStyle = L.focus ? '#c8f4ff' : overField ? '#8ff0ff' : 'rgba(140,230,255,.45)';
+    g.lineWidth = L.focus || overField ? 4 : 2;
+    g.strokeRect(28, 296, 584, 62);
+    g.fillStyle = '#eafcff';
+    g.font = '700 38px ui-monospace,monospace';
+    g.fillText(L.typed.split('').join(' ') + (L.focus ? '▏' : ''), 46, 340);
+    g.fillStyle = L.focus ? '#7fffc0' : 'rgba(140,230,255,.5)';
+    g.font = '400 17px ui-monospace,monospace';
+    g.fillText(L.focus ? 'field focused · press the keys' : 'click the field, then press the keys', 28, 386);
+  } else {
+    g.fillStyle = '#8ff0ff';
+    g.font = '700 26px ui-monospace,monospace';
+    g.fillText('PC DOKTER — CUSTOMER LOGIN', 28, 44);
+    g.fillStyle = '#7fffc0';
+    g.font = '700 30px ui-monospace,monospace';
+    g.fillText('PASSWORD RECOVERED', 28, 118);
+    g.font = '400 20px ui-monospace,monospace';
+    g.fillStyle = 'rgba(140,255,200,.75)';
+    g.fillText('customer boots normally', 28, 156);
+    const overBtn = L.cursor.x > UNSHRINK_BTN.x0 && L.cursor.x < UNSHRINK_BTN.x1
+      && L.cursor.y > UNSHRINK_BTN.y0 && L.cursor.y < UNSHRINK_BTN.y1;
+    g.fillStyle = overBtn ? 'rgba(120,255,200,.3)' : 'rgba(90,240,180,.16)';
+    g.fillRect(140, 228, 360, 92);
+    g.strokeStyle = '#7fffc0'; g.lineWidth = overBtn ? 6 : 4;
+    g.strokeRect(140, 228, 360, 92);
+    g.fillStyle = '#eafff5'; g.font = '700 24px ui-monospace,monospace';
+    g.fillText('UN-SHRINK THE OPERATOR', 160, 282);
+  }
+  const cx = L.cursor.x * w, cy = L.cursor.y * h;
+  g.save();
+  g.fillStyle = '#ffffff'; g.strokeStyle = '#04202a'; g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(cx, cy); g.lineTo(cx + 3, cy + 26); g.lineTo(cx + 10, cy + 19);
+  g.lineTo(cx + 18, cy + 30); g.lineTo(cx + 24, cy + 25); g.lineTo(cx + 15, cy + 15);
+  g.lineTo(cx + 22, cy + 12); g.closePath();
+  g.fill(); g.stroke();
+  g.restore();
+  screenLive.needsUpdate = true;
+}
+
+function openLogin() {
+  if (state.login.active) return;
+  state.login.active = true;
+  state.login.cursor = { x: .12, y: .06 };
+  kbDeckG.updateMatrixWorld(true);
+  const v = new THREE.Vector3();
+  for (const k of kbKeyMap) { v.set(k.x, .0125, k.z); kbDeckG.localToWorld(v); k.wx = v.x; k.wy = v.y; k.wz = v.z; }
+  monitorScreen.material.map = screenLive;
+  monitorScreen.material.emissiveMap = screenLive;
+  monitorScreen.material.emissiveIntensity = 1.05;
+  monitorScreen.material.needsUpdate = true;
+  drawLogin();
+  setTimeout(() => toast('Every fault is clear. The screen is asking for a password.', 'good'), 400);
+  setTimeout(() => toast('The pictograms are the order.', ''), 2600);
+}
+
+function loginTargetAt() {
+  const c = state.login.cursor;
+  if (!state.login.active) return null;
+  if (!state.login.ok) {
+    return c.x > FIELD.x0 && c.x < FIELD.x1 && c.y > FIELD.y0 && c.y < FIELD.y1 ? 'field' : null;
+  }
+  return c.x > UNSHRINK_BTN.x0 && c.x < UNSHRINK_BTN.x1 && c.y > UNSHRINK_BTN.y0 && c.y < UNSHRINK_BTN.y1 ? 'button' : null;
+}
+function loginMove(dx, dy) {
+  const c = state.login;
+  c.cursor.x = clamp(c.cursor.x + dx * .0011, .01, .99);
+  c.cursor.y = clamp(c.cursor.y + dy * .0011, .02, .98);
+  drawLogin();
+}
+function loginClick() {
+  const c = state.login;
+  if (!c.active) return;
+  const { x, y } = c.cursor;
+  if (!c.ok) {
+    if (x > FIELD.x0 && x < FIELD.x1 && y > FIELD.y0 && y < FIELD.y1) {
+      c.focus = true; sfx.click();
+      toast('The field takes the click. Now the keyboard.');
+    } else { sfx.click(); toast('The click lands on the desktop.'); }
+  } else if (x > UNSHRINK_BTN.x0 && x < UNSHRINK_BTN.x1 && y > UNSHRINK_BTN.y0 && y < UNSHRINK_BTN.y1) {
+    unshrink();
+  } else { sfx.click(); toast('Nothing there.'); }
+  drawLogin();
+}
+function typeKey(k) {
+  const c = state.login;
+  if (!c.active || c.ok || !c.focus) { sfx.nope(); toast('The field is not focused. Click it first.'); return; }
+  if (c.typed.length >= 6) return;
+  c.typed += k.ch.toUpperCase();
+  k.cap.position.y -= .0018;
+  setTimeout(() => { k.cap.position.y += .0018; }, 130);
+  sfx.clack();
+  drawLogin();
+  if (c.typed.length === 6) setTimeout(checkPassword, 220);
+}
+function checkPassword() {
+  const c = state.login;
+  if (c.typed === 'BROKEN') {
+    c.ok = true; sfx.chime();
+    toast('The login takes it. Password recovered.', 'good');
+    setTimeout(() => toast('There is one thing left on the screen.', ''), 1800);
+  } else {
+    c.typed = ''; sfx.buzz();
+    toast('Wrong. The field clears.', 'bad');
+  }
+  drawLogin();
+}
+function unshrink() {
+  if (state.login.started) return;
+  state.login.started = true;
+  sfx.charge(1.1);
+  bloom.style.opacity = '.96';
+  setTimeout(() => {
+    bloom.style.opacity = '0';
+    P = HUMAN;
+    camera.near = P.near;
+    camera.fov = 72;
+    camera.updateProjectionMatrix();
+    camera.position.set(2.55, 1.62, -0.10);
+    feet = 0; vy = 0;
+    yaw = Math.PI - .35; pitch = -.06;
+    scene.fog.density = .026;
+    renderer.toneMappingExposure = 1;
+    shopLight.intensity = 46; shopLight2.intensity = 34; benchLamp.intensity = 9;
+    torchLight.intensity = 0;
+    caseGlow.distance = 0;
+    state.phase = 'human';
+    state.won = true;
+    banner('PC DOKTER — we make it whole again<small>neat work. the coffee is in the kitchen.</small>');
+    sfx.chime();
+    toast('You are standing in the shop. The tower is on, the desk is a desk again.', 'good');
+    setTimeout(() => toast('Press R to walk it again.', ''), 2600);
+  }, 1100);
+}
+
+/* lettered keys are things you press, not things you climb */
+kbKeyMap.forEach(k => {
+  register(k.cap, 'key_' + k.ch, 'the ' + k.ch + ' key');
+  THINGS['key_' + k.ch] = {
+    kicker: 'the keyboard', title: 'The ' + k.ch + ' key',
+    text: () => state.login.focus && !state.login.ok
+      ? '<p>Lit, and waiting for a press.</p>'
+      : '<p>A keycap, with a letter on it.</p>',
+    keys: () => state.login.focus && !state.login.ok ? '<kbd>E</kbd>press it' : '',
+    act() { typeKey(k); },
+  };
+});
+
+Object.assign(THINGS, {
+  monitor: {
+    kicker: 'desk', title: 'Monitor',
+    text: () => state.login.ok
+      ? '<p><b>PASSWORD RECOVERED</b>. One button on the screen: un-shrink the operator.</p>'
+      : state.login.active
+        ? `<p><b>CUSTOMER LOGIN</b> — six characters, and the pictograms above the field are the order.</p>
+           <p class="sub">Cursor at ${Math.round(state.login.cursor.x * 100)}%, ${Math.round(state.login.cursor.y * 100)}%.</p>`
+        : '<p>NO SIGNAL, in patient blue letters.</p>',
+    keys: () => '', act() { },
+  },
+  mouse: {
+    kicker: 'desk', title: 'Mouse',
+    text: () => state.login.active && state.usb.mouse && state.usb.clean
+      ? `<p>The cursor is on the screen. This is the thing that moves it: hold it and drag.</p>
+         <p class="sub">E again to click, once the pointer is where you want it.</p>`
+      : state.login.active && !state.usb.mouse
+        ? '<p>Not plugged in — so the cursor on the screen is not going anywhere.</p>'
+        : state.login.active
+          ? '<p>Plugged in, and the pointer still jumps in squares: the sensor window has dust in it.</p>'
+          : state.usb.tipped
+        ? '<p>Over on its side, feet in the air.</p>'
+        : !state.usb.mouse
+          ? '<p>On its pad, cable running off. Not plugged in.</p>'
+          : '<p>On its pad, logo lit. The intake form was right about this one.</p>',
+    keys: () => {
+      if (state.login.active) {
+        if (state.usb.mouse && state.usb.clean) return '<kbd>E</kbd>take hold · drag to move the cursor';
+        return state.usb.tipped ? '<kbd>E</kbd>put it back on its pad' : '<kbd>E</kbd>tip it onto its side';
+      }
+      if (state.phase !== 'shrunk') return '';
+      return state.usb.tipped ? '<kbd>E</kbd>put it back on its pad' : '<kbd>E</kbd>tip it onto its side';
+    },
+    act() {
+      // a mouse that cannot drive the cursor is still a mouse you can turn over
+      if (state.login.active && state.usb.mouse && state.usb.clean) {
+        state.grab = { id: 'loginMouse', p: 0, need: 1, label: 'drag the mouse to move the cursor' };
+        sfx.click();
+        toast('The cursor is yours. Drag.');
+        renderTray();
+        return;
+      }
+      if (state.login.active) {
+        toast(state.usb.mouse
+          ? 'It goes over with a rattle. The window is under it: blow the dust out.'
+          : 'It is not plugged in — and the sensor is under it anyway.', '');
+      }
+      tipMouse(!state.usb.tipped);
+    },
+  },
+  mouseBtnL: {
+    kicker: 'desk', title: 'The left button',
+    text: () => state.login.active
+      ? '<p>A big plastic button with a hinge under it.</p>'
+      : '<p>The left button. Nothing to click yet.</p>',
+    keys: () => state.login.active ? '<kbd>E</kbd>click whatever the cursor is on' : '',
+    act() { loginClick(); },
+  },
+});
+register(mBtnL, 'mouseBtnL', 'the left mouse button');
+
 /* --- per-frame animation ----------------------------------------------- */
+let fanPhase = 0;
 function slice2Tick(dt, t) {
   const yC = state.gpu.seated ? GPU.seatY : GPU.hangY + (GPU.seatY - GPU.hangY) * state.gpu.drop;
   gpuGroup.position.set(HOIST.x, yC, HOIST.z);
-  const topY = B2 + .95;
+  const topY = B2 + .936;
   const ropeTo = yC + GPU.h / 2;
   const h = Math.max(.02, topY - ropeTo);
   gpuRope.scale.y = h;
   gpuRope.position.set(HOIST.x, (topY + ropeTo) / 2, HOIST.z);
   gpuRope.visible = !state.gpu.seated;
-  const spin = state.fans.spinning ? 1 : 0;
-  const w = t * 9 * spin;
-  if (spin) {
-    fanRear.blades.rotation.z = w; fanIn.blades.rotation.z = w; fanCpu.blades.rotation.z = w;
+  updateDragWire();
+  {
+    const hand = new THREE.Vector3();
+    heldPlug.getWorldPosition(hand);
+    hand.lerp(camera.position, .32);
+    stretchCyl(wireRear, REAR_FAN_P,
+      state.fans.rear ? CHA_FAN1_P : state.held === 'fanRear' ? hand : plugRear.position);
+    stretchCyl(wireCpu, CPU_FAN_P,
+      state.fans.cpu ? CPU_FAN_P2 : state.held === 'fanCpu' ? hand : cpuPlug.position);
+    stretchCyl(wireHdmi, ZIP_PATH[8], state.held === 'hdmi' ? hand : HDMI_REST);
+    stretchCyl(wireHdmiB, HDMI_DESK, HDMI_DESK);
+    wireHdmi.visible = state.held === 'hdmi' && !state.mon.plugged;
+    wireHdmiB.visible = false;
+    // the USB cables follow their connectors: on the desk, in the hand, or routed
+    for (const k of ['usbKbd', 'usbMouse']) {
+      const w = usbWire[k], plug = k === 'usbKbd' ? kbdPlug : mousePlug;
+      w.userData.interact = state.held === k ? null : k;   // in the hand, the cable is not a target
+      if (state.held === k) {
+        w.visible = true; stretchCyl(w, USB[k].device, hand);
+      } else if (USB[k].routed) {
+        w.visible = false;                                 // the cable lies along the route now
+      } else if (plug.visible) {
+        const to = new THREE.Vector3();
+        plug.getWorldPosition(to);
+        w.visible = true; stretchCyl(w, USB[k].device, to);
+      } else {
+        w.visible = false;
+      }
+    }
   }
+  // fans only turn while the board actually has 12 V — kill the mains and they coast to a stop
+  const spinning = state.fans.spinning && railLive();
+  fanPhase += dt * 9 * (spinning ? 1 : 0);
+  fanRear.blades.rotation.z = fanPhase;
+  fanIn.blades.rotation.z = fanPhase;
+  fanCpu.blades.rotation.z = fanPhase;
   if (state.gpu.trying) { /* tray already drawn by renderTray */ }
 }
 
@@ -2456,7 +4528,9 @@ function tick() {
   const dt = Math.min(clock.getDelta(), .1);   // slow machines should not crawl
   const t = clock.elapsedTime;
 
-  if (state.running && state.locked && state.phase !== 'shrinking') move(dt);
+  diskTick(dt);
+  if (state.zip.riding) rideTick(dt);
+  else if (state.running && state.locked && state.phase !== 'shrinking') move(dt);
   camera.rotation.set(pitch, yaw, 0);
 
   // music chord every 3.6 s
@@ -2483,12 +4557,21 @@ function tick() {
     }
   }
 
+  // the starter cord follows your hand, and snaps back when the engine catches
+  {
+    const want = state.grab && state.grab.id === 'genCord' ? state.grab.p / state.grab.need : 0;
+    const k = Math.min(1, dt * (want > cordVis ? 16 : 30));
+    cordVis += (want - cordVis) * k;
+    updateCord(cordVis);
+  }
+
   // torch sway
   if (state.torch) {
     torchLight.target.position.set(Math.sin(t * .7) * .06, Math.sin(t * 1.1) * .05, -1);
     torchLight.intensity = 24 + Math.sin(t * 9) * 1.2 + Math.sin(t * 23) * .6;
   }
-  if (!state.torch) torchPin.material.emissiveIntensity = 1.2 + (Math.sin(t * 2.6) > .3 ? 2.4 : 0);
+  if (!state.torch) torchPin.material.emissiveIntensity = state.gen.running ? .55
+    : 1.2 + (Math.sin(t * 2.6) > .3 ? 2.4 : 0);
   if (state.gen.running) {
     shopLight.intensity = 46 + Math.sin(t * 17) * 1.6 + Math.sin(t * 41) * .8;
     shopLight2.intensity = 34 + Math.sin(t * 13 + 2) * 1.2;
@@ -2519,7 +4602,7 @@ function tick() {
   }
   if (state.grab) crosshair.classList.add('grab'); else crosshair.classList.remove('grab');
 
-  if (state.running && state.phase !== 'shrinking') {
+  if (state.started && state.running && !state.won && state.phase !== 'shrinking') {
     state.elapsed += dt;
     const s = Math.floor(state.elapsed);
     timerEl.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -2531,10 +4614,20 @@ function tick() {
 renderer.setAnimationLoop(tick);
 
 /* ------------------------------------------------------------------ start */
+$('#startBtn').addEventListener('click', () => {
+  $('#start').hidden = true;
+  audioInit();
+  state.started = true;
+  state.running = true;
+  state.elapsed = 0;
+  canvas.requestPointerLock?.();
+  setTimeout(() => playMessage(), 600);          // Gerrit left a message; it plays now
+  setTimeout(() => toast('W A S D to walk · E to use · I for the inventory', ''), 900);
+});
+/* ------------------------------------------------------------------ start */
 camera.position.set(0.25, 1.62, 2.6);
 yaw = 0.12; pitch = -.10;
-setTimeout(() => toast('Dark shop, dead meter, one tower on the bench.', ''), 500);
-setTimeout(() => toast('Something on the floor is reflecting your eye.', ''), 3200);
+
 
 /* -------------------------------------------------- test hook (?debug|?test) */
 if (new URLSearchParams(location.search).has('debug') || new URLSearchParams(location.search).has('test')) {
@@ -2542,6 +4635,11 @@ if (new URLSearchParams(location.search).has('debug') || new URLSearchParams(loc
     state, THINGS, sfx, drawLed, use, currentTarget, genPull, pullLever, doShrink, startGenerator, giveHint,
     interact, camera, scene, THREE, raycaster, ledCanvas, ledCtx, ledTexture, ledMat, led, A, audioInit,
     setFeet(f) { feet = f; camera.position.y = f + P.eye; },
+    zip: ZIP, startRide, tipMouse, cleanLens, plugUsb, takeUsb, takeAir, usbWire, dropHeld,
+    a2Solid, b2Solid, SEATED_Z0, SEATED_Z1, USB, kbKeyMat, kbLegendMat, kbDeckG, kbGlow, mLed, mSensor, checkUsbPower, darkUsb,
+    toast, enterDisk, leaveDisk, ejectFromDisk, pullWormLever, DISK, worm, CH, SSD, SOLID_D, sectorBlocks, readmePanel,
+    openLogin, loginMove, loginClick, typeKey, checkPassword, unshrink, kbKeyMap, FIELD, UNSHRINK_BTN, screenLive,
+    ssdLed, ssdSocket, ssdPlugG, takeSsdTail, plugSsd, chDoor, hatchDoor, DOOR_SHUT_Y, DOOR_OPEN_Y, wormInChamber, blockAt, DOOR, HATCH,
     look(y, pi) { yaw = y; pitch = pi; camera.rotation.set(pitch, yaw, 0); },
     aimAt(id, dist = 1.1, fy = null, at = null) {
       const cands = interact.filter(o => o.userData.interact === id);

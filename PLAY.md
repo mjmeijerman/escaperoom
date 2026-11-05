@@ -8,6 +8,11 @@ Run it at **http://localhost:8080/pcdoc.html**.
 
 ---
 
+## Starting
+
+Click **Start the shift**. The timer starts, the shop wakes up, and Gerrit's answering machine plays — he left the
+message before he drove off, and the transcript appears in the bottom-left tray while he talks.
+
 ## Controls
 
 | Key | What it does |
@@ -16,9 +21,9 @@ Run it at **http://localhost:8080/pcdoc.html**.
 | `Shift` | hurry |
 | `Space` | jump |
 | mouse (click to capture) | look |
-| `E` | use / read / pick up — only offered when it does something |
-| `Q` | let go: drop a cable, stop turning a winch, back out of the padlock |
-| `I` | the workshop notepad: items, fault codes, characters found |
+| `E` | use / read / pick up / ride the cable — only offered when it does something |
+| `Q` or **right mouse button** | let go: drop a cable, stop turning a winch, back out of the padlock |
+| `I` | inventory and notepad: what you are carrying (click an item to use it), the fault codes, the characters |
 | `H` | a hint for the next thing that is actually unsolved |
 | `M` | music off / on — effects keep playing |
 | `N` | all sound off / on |
@@ -38,18 +43,24 @@ Read it — the room runs on stickers, notes and manuals.
 2. **Order matters.** Power, then the board, then the parts. The room will tell you so, out loud or in writing.
 3. **Two scales.** At 1.6 m tall the tower is a box on a bench. At 17 mm it is a building and you are inside it.
    Nothing inside the case can be touched while you are full size.
-4. **Nothing is fatal.** Not one thing in this room can be ruined, lost, or done in an unrecoverable order.
-5. **The screen is a display, not a menu.** The only overlays are the tray, the notepad, the timer and the key
+   The desk is a separate country with no stairs: the monitor cable is the only way across it.
+4. **You carry things in your hands.** A cable end you pick up sits in front of you; the inventory on `I` shows
+   everything else, and clicking an item there uses it.
+5. **Nothing is fatal.** Not one thing in this room can be ruined, lost, or done in an unrecoverable order.
+6. **The screen is a display, not a menu.** The only overlays are the tray, the notepad, the timer and the key
    legend. If you see text, it belongs to an object.
 
 ---
 
-## The five stages
+## The stages
 
 ### 1. Dark shop
 
 The meter is dead. There is one thing in here with its own power: a torch on the counter in front of you, blinking
 green. Take it (`E`), then find the way out — the green **EXIT** sign, back right.
+
+The customer's intake form and Gerrit's service log are on the workbench, not on the counter — once you are 17 mm tall
+they are the size of billboards and you can read both. The log is a book you have to walk round.
 
 ### 2. The generator
 
@@ -84,11 +95,25 @@ seconds. The **manual** lying open on the bench names them. Your job is to make 
 They can be fixed in any order, with one exception: a board with no 12 V says nothing useful, so power comes first
 if you want the display to make sense of itself.
 
-### 5. Now what is left
+### 5. What is left after that
 
-Four of the five faults are in the room right now: `C1`, `F1`, `d4`, and the power underneath them. `A2` (the
-monitor cable) and `b7` (the thing living in the SSD) are the next two slices of the build, and the login screen
-after that. The room ends, for now, with two codes still on the display.
+`A2` is one cable away on the bench, and `b7` is not a cable at all: it is living in the SSD on the bench beside the
+case, and the drive's SATA port is a doorway.
+
+### 6. The desk, and the two devices
+
+With the monitor cable plugged in at both ends it is a taut span from the bench lip to the desk, and Gerrit has
+taped a grip at each end. At 17 mm that is a rope: `E` the grip and ride it, hand over hand, both ways.
+
+On the desk, at the end of their own cables, lie the keyboard's and the mouse's USB connectors — Gerrit pulled both
+out of the case and left them by the monitor. The ports are on the rear panel, across the gap, so each connector
+has to go over on the cable: pick it up, ride the zipline back to the bench with it in your hands (the cable follows
+you), and plug it into either blue port. One hand, one connector, two trips.
+
+The keyboard's backlight comes up. The mouse lights up too, and then proves the intake form right: its sensor glows
+red and reads nothing, because there is a hair across the optical window. Tip it onto its side, take the can of air
+from the bench (left of the case) into the notepad, then `E` the window — the notepad opens and you click the can.
+Then put it back on its pad.
 
 ---
 
@@ -107,7 +132,8 @@ ring.
 
 **I am inside the case and the display says C1.**
 Two memory modules. One is leaning out of its slot; one has a burnt chip and the word RMA on it. The good one that
-Gerrit left for exactly this job is in a bag on the board, labelled with the slot it belongs in.
+Gerrit left for exactly this job is in a sealed bag on the bench **in front of the case**, labelled with the slot it
+belongs in. Pull the burnt one out — it leaves the machine — then take the spare and seat it in the empty slot.
 
 **The display still says C1 after I pushed the loose module home.**
 Then the loose module was not the fault. Read the label on the spare bag again — it names a slot, and it is not the
@@ -117,14 +143,56 @@ one you just fixed.
 Three separate mistakes: a plug lying loose by the back wall, a cable in the wrong header, and a tool jammed in a
 fan. The manual underlines one of those headers for you.
 
+**The display still says A2.**
+"No monitor detected" is not about the monitor, it is about the cable. The monitor's HDMI cable is coiled on the
+bench in front of the case — Gerrit dumped it there when he moved the desk. Pick up the loose end, walk around the
+side and behind the tower, and plug it into the rear panel.
+
 **The card is padlocked.**
-Three digits. The shop number is printed on the side panel of the case, and Gerrit's note says the lock uses the end
-of it. Do not use `Esc` to back out of the lock — that also releases your mouse. Use `Q`.
+Three digits, and the tag hanging on the bracket says where they come from: the end of the shop number. That number is
+printed on the side panel of the case. Do not use `Esc` to back out of the lock — that also releases your mouse. Use
+`Q`.
 
 **I have the card but nothing happens.**
 It has to come down to the rail before it will seat. The winch drum is at the right-hand end of the machine: grab it,
 drag back, then push the card in. Then it wants its own power cable — and there are two identical 8-pin plugs in
 this room that are not interchangeable.
+
+**The monitor cable is plugged in and I still cannot get to the desk.**
+Look along the cable from the bench lip. Gerrit taped a grip on it, right where it leaves the bench. `E` that and you
+ride it down. Ride the far grip to come back. If you step off an edge instead, the lip catches you and puts you back
+on top — nothing is lost.
+
+**The drive on the bench has a red light on it.**
+Then it is connected and alive, and the port is a doorway. If the light is dark: the tail is not in the rear panel, or
+the board has no 12 V. The worm inside is not a boss fight — it eats the block you leave, so keep moving, get it into
+the chamber, and pull the lever from outside.
+
+**The USB ports do nothing.**
+A connector goes in with the power on or off — but the device only wakes up once the board has 12 V: mains switch,
+24-pin, CPU 8-pin. If the keyboard stayed dark, that is why. Both connectors are on the **desk**, by the monitor, at the end of their own cables — pale tops, blue collars, with a
+note beside them. Click the connector, or the cable near it, then ride the zipline back over with it in your hands.
+The cable follows you; that is the only way it is getting across.
+
+**The monitor says BOOT HALTED.**
+Then a fault is still live: the screen lists which ones. Those are the codes still cycling on the two-digit display
+inside the case. The customer login only comes up when that list is empty.
+
+**The monitor says BOOT HALTED with no codes on it.**
+Wait a moment — it opens the login by itself about a second after the last fault clears.
+
+**The login cursor will not move.**
+Two reasons, and the tray says which. The mouse must be plugged into the rear panel and its sensor window must be
+clean — take the can of air out of the notepad and blow the hair off. Then `E` it to take hold, drag, and `E` again
+to click. `Q` lets go.
+
+**A key press does not type anything.**
+The field has to be focused first — click it with the left button. The key is pressed with `E` while you look at it.
+
+**The mouse lights up but does not work — "the mouse is doing weird things".**
+The sensor reads the pad through a glass window in the base, and there is a hair across it. `E` the mouse to tip it
+onto its side, `E` the window (the notepad opens), then click the **compressed air** in the notepad. `E` the mouse
+again to put it back on its pad.
 
 ---
 
@@ -137,31 +205,70 @@ this room that are not interchangeable.
 3. **Shrink ray** — stand on the painted ring, `E` the tripod.
 4. **Power inside the case** (gives the board 12 V and clears the way for everything else):
    - `E` the rocker switch on the PSU block in the front corner.
-   - Pick up the **24-pin** cable end, plug it into the big socket on the board.
-   - Pick up the 8-pin labelled **EPS**, plug it into the CPU socket near the heatsink. (The 8-pin labelled
-     **PCIe** is refused there — that is the trap.)
-   - Pick up the **SATA** connector, plug it into the fan hub.
-   - The rail label gives up the character **R**.
+   - The four cable ends lie beside the PSU, each on a stencilled label: **24-PIN**, **EPS 8-PIN**, **PCIe 8-PIN**,
+     **SATA**. Pick one up — it appears in your hands — then look at its socket and press `E`. The cable draws itself
+     from the PSU to the socket.
+   - **24-PIN** → the big socket on the board.
+   - **EPS 8-PIN** → the CPU socket near the heatsink. (The **PCIe 8-PIN** is refused there — that is the trap.)
+   - **SATA** → the fan hub.
+   - The rail label gives up the character **K**.
 5. **`C1` — memory**
    - Slot **A2**: `E` the leaning module. It slides home. C1 stays up.
    - Slot **B2**: `E` the scorched module. It comes out.
    - The bag beside the slots says **SPARE > B2**. Take the module.
-   - Slot **B2** again: `E` to seat it. `C1` clears, and the module gives up **B**.
+   - Slot **B2** again: `E`, then click the module in the inventory that opens. `C1` clears, and the module gives
+     up **N**.
 6. **`F1` — fans**
    - Pick up the loose 4-pin lying by the back wall, plug it into **CHA_FAN1**.
    - `E` **SYS_FAN3** to pull the CPU fan cable out, then `E` **CPU_FAN** to plug it in there.
    - `E` the screwdriver jammed in the intake fan.
    - All three spin, `F1` clears, and the hub gives up **O**.
-7. **`d4` — the card**
+7. **`A2` — the monitor**
+   - The monitor's HDMI cable is coiled on the bench in front of the case (stencil: **HDMI**). Pick up its end.
+   - Walk out of the case, around the side, behind it. The rear panel has HDMI and two USB-A ports.
+   - `E` the HDMI port. `A2` clears, the monitor on the desk lights up, and the panel gives up **R**. Now the cable
+     is a span: the taped grip sits where it leaves the bench lip.
+9. **The way down** — `E` the taped grip on the cable at the bench lip and ride it, hand over hand, to the desk.
+   `E` the grip at the desk end to ride back. No other route exists, in either direction. The desk is walkable;
+   a step off its edge drops you to the bench lip rather than the shop floor.
+10. **The keyboard and the mouse** (the connectors are on the desk by the monitor):
+   - Before you go down, `E` the can of air standing on the bench, left of the case — it goes into the notepad.
+   - Ride down. `E` the keyboard's connector, then `E` the desk grip to ride back up with it in your arms.
+     `E` either blue USB port. The keyboard's backlight comes up.
+   - Ride down again for the mouse's connector, ride back, `E` the other port. Its sensor glows red and the cursor
+     is still a mess.
+   - Ride down once more, to the mouse. `E` it to tip it onto its side. Underneath: a hair across the optical window.
+   - `E` the window: the notepad opens. Click **compressed air**. The hair goes, and the mouse rights itself.
+11. **`d4` — the card**
    - Padlock: dial **4 5 6** (`↑↓` digit, `←→` next wheel, `E` try). The shop number ends in 123456.
    - Grab the winch drum (`E`, then drag the mouse back) until the card is at the rail.
    - `E` the card to seat it.
    - Pick up the **PCIe** 8-pin, plug it into the socket hanging near the bottom of the card.
-   - `d4` clears and the serial plate gives up **K**.
+   - `d4` clears and the serial plate gives up **E**.
+12. **`b7` — the SSD**
+   - The drive lies on the bench in front of the case, unplugged, its tail beside it. `E` the tail, walk it round the
+     back of the case, and `E` the SATA socket on the rear panel. Its LED turns **red** if the board has 12 V.
+   - `E` the drive's SATA port and step in.
+   - Inside: a lattice of sector blocks over a void, some sectors missing entirely. A worm follows you and eats the
+     blocks you leave behind. It is slower than you are — but the grid is not the answer, the chamber is.
+   - Walk into the quarantaine chamber in the middle. Let it follow you in, then leave through the hatch in the far
+     wall and `E` the lever beside the door. The door comes down on it.
+   - `b7` clears, the lattice goes green, and the drive gives up **B**. The paper taped beside the door —
+     **README.txt** — is the whole story: the customer's "repair", in her own words.
+   - `E` the port mouth inside to step back out. A missing sector spits you out at the port, no harm done.
 
-Codes left on the display afterwards: `A2` and `b7` — the monitor and the SSD, still to be built. The characters
-you have collected (**B**, **R**, **O**, **K**) are the first four of the password, and the notepad on `I` is holding
-them for you.
+13. **The login** — with every code clear the monitor comes up on a customer login: six pictograms in a row, and a
+    field that says **ENTER PASSWORD**.
+    - The cursor is on the screen; the mouse is on the desk. `E` the mouse, drag it, and the cursor moves. Push it
+      over the field and press `E` again to click — the field takes the click and starts taking letters. `Q` lets go.
+      (The mouse's own left button does the same thing if you would rather look at it and press `E` there.)
+    - **The mouse has to be plugged in and clean.** An unplugged mouse will not take hold, and a dirty sensor makes
+      the pointer jump: no cleaning, no login. A mouse that cannot drive the cursor still tips over with `E`, so the
+      cleaning is never locked out.
+    - Walk the keyboard. Every lettered key answers `E`: press **B R O K E N**. The pictograms are the order —
+      SSD, monitor, fans, PSU, GPU, RAM — which is that word.
+    - The screen says **PASSWORD RECOVERED** and puts one button on it. Cursor onto the button, left button to
+      click: you are standing on the floor again and the sign is lit. `R` walks the room again.
 
 </details>
 

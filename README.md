@@ -39,7 +39,7 @@ docker run -d -p 8080:80 --name escaperoom escaperoom
 | `E` | Act on what you are looking at |
 | `Space` | Jump (needed once you are 17 mm tall) |
 | `I` | The workshop notepad: items, fault codes, found characters |
-| `Q` | Let go: drop a cable, stop turning a winch, back out of the padlock (`Esc` belongs to the browser) |
+| `Q` / right mouse button | Let go: drop a cable, stop turning a winch, back out of the padlock (`Esc` belongs to the browser) |
 | `M` | Music off / on — effects keep playing |
 | `N` | All sound off / on |
 | `H` | A hint for the next unsolved thing |
@@ -142,6 +142,7 @@ customer's tower on the bench is in a bad way.
 
 Slice 1, playable now:
 
+0. **Start the shift** — the button starts the timer, wakes the shop, and plays Gerrit's voicemail.
 1. The shop starts dark. The torch lies on the counter in front of you, its battery LED blinking green.
 2. The generator is in the back yard. Its sticker gives the cold-start order: fuel cock **open**, choke **closed**,
    three pulls on the cord (grab it with `E` and drag back). Get the order wrong and it floods — three squeezes of the
@@ -169,7 +170,31 @@ shipped as files), played through the game's audio bus so `N` mutes it and `M` d
    last three digits of the shop number on the case (456). Grab the drum and drag back to lower it, push it into the
    rail, then give it its own 8-pin.
 
-Still stubs: the monitor (`A2`, slice 3), the SSD virus (`b7`, slice 4) and the whole finale (slice 5).
+10. **The monitor** (slice 3, `A2`): the monitor's own HDMI cable is coiled on the bench in front of the case. Take
+    the loose end, walk around the side and behind the tower, and plug it into the rear panel's HDMI port. The
+    monitor on the desk lights up with `PC DOKTER / HDMI 1`, `A2` drops out, and the rear panel gives up an `E`.
+11. **The way down to the desk** (slice 3): with both ends in, the monitor cable is a taut span from the bench lip to
+    the desk, with a taped grip at each end. At 17 mm you can hang from it: `E` the grip and go hand over hand, both
+    ways. It is the only way across — the desk is a country with no stairs, and the shop floor is eight storeys down.
+    A lip catches you if you step off an edge.
+12. **The two USB devices** (slice 3): the connectors sit on the desk by the monitor, at the end of the keyboard's
+    and the mouse's own cables. Their ports are on the rear panel, across the gap — so each connector rides the
+    zipline back to the bench in your hands, its cable following it. Plugging the keyboard in lights its backlight.
+    Plugging the mouse in proves the intake form right: its sensor glows red and reads nothing, because there is a
+    hair across the optical window. Tip the mouse onto its side, put the can of air from the bench into the notepad,
+    and click it there to blow the window clean. That is the cheapest fix in the trade.
+13. **The SSD** (slice 4, `b7`): the drive on the bench beside the case has a SATA port that is a doorway. Inside is
+    a lattice of sector blocks over a void, missing sectors you can fall through, and a worm that eats the blocks you
+    leave behind. Lure it into the quarantaine chamber, slip out through the hatch, and pull the lever. `b7` clears,
+    the lattice goes green, and the README inside says where the whole repair came from. That is the last fault.
+
+14. **The login and the way out** (slice 5): with every code clear the monitor shows a customer login — six
+    pictograms (SSD · monitor · fans · PSU · GPU · RAM) and a field. The cursor is on the screen and the mouse is on
+    the desk: grab the plastic mouse, drag the cursor into the field, click with its left button, then walk the
+    keyboard and press **B R O K E N** with `E` on each key. The screen gives one button back: un-shrink, and you are
+    standing on the shop floor with the sign lit. `R` walks it again.
+
+That is the room, end to end: five faults, the drive, the login, and BROKEN.
 
 ## Files
 
@@ -177,7 +202,9 @@ Still stubs: the monitor (`A2`, slice 3), the SSD virus (`b7`, slice 4) and the 
 - `edo.html` — the Edo Room (served at `/edo.html`)
 - `index.html` — the Locked Study, 3D (HTML, CSS, ES module inline)
 - `classic.html` — the original 2D point-and-click room
-- `pcdoc.html` — PC Doctor, slice 1 (dark shop, generator, shrink ray, the case interior, the memory chain)
+- `pcdoc.html` — PC Doctor, complete (dark shop, generator, shrink ray, the case interior, the memory chain, power
+  routing, the fans, the card, the monitor cable and its span to the desk, the keyboard and the mouse, the inside of
+  the SSD, and the login)
 - `PC-DOCTOR.md` — the design bible: story, every fault chain, the finale, the sound design, the decisions
 - `test/rooms.mjs` — shell + collision checks for the study, no browser needed (`node test/rooms.mjs`)
 - `test/spells.browser.cjs` — headless browser test of the Founders' Chamber: no overlays in the DOM, every charm
@@ -193,9 +220,11 @@ Still stubs: the monitor (`A2`, slice 3), the SSD virus (`b7`, slice 4) and the 
   ```
 
   Swap the last argument for `test/edo.browser.cjs` to test the Edo Room, or `test/pcdoc.browser.cjs` for PC Doctor
-  (72 checks: torch, generator order, the flood, the shrink, the display cycling, the memory chain, power routing,
+  (192 checks: torch, generator order, the flood, the shrink, the display cycling, the memory chain, power routing,
   the twin 8-pins refusing each other, the three fans, the padlock, the winch, the card, the notepad, hardware
-  ignoring a full-sized person, and read-only paper not offering a lie of an `E`). They write
+  ignoring a full-sized person, the HDMI run to the rear panel, the two-way cable span down to the desk, the fall off
+  an edge, the keyboard and the mouse's dirty lens, the inside of the SSD with its worm and its missing sectors, and
+  that the six characters spell BROKEN). They write
   `test/.shots/spells.png` and `test/.shots/solved.png`; make that directory writable (`mkdir -p test/.shots && chmod 777 test/.shots`) or Puppeteer cannot save it as `pptruser`.
 - `vendor/three.module.min.js` — three.js r160 (MIT, license in `vendor/THREE-LICENSE.txt`)
 - `vendor/voicemail/*.mp3` — Gerrit's six recorded lines, generated once and shipped as files
