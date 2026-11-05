@@ -443,6 +443,24 @@ const check = (name, ok, detail = '') => {
   check('and it is malfunctioning, as the intake form said', (await st()).usb.clean === false);
 
   check('the compressed-air can is in the tub', (await at('airCan')) === 'airCan');
+
+  const walkInto = (x, z, yawV, fy, ms = 900) => page.evaluate(async ([x, z, yawV, fy, ms]) => {
+    const d = window.__doctor;
+    d.setFeet(fy);
+    d.camera.position.set(x, fy + d.P.eye, z);
+    d.look(yawV, 0);
+    d.state.locked = true;
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
+    await new Promise(r => setTimeout(r, ms));
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
+    d.state.locked = false;
+    return { x: +d.camera.position.x.toFixed(3), z: +d.camera.position.z.toFixed(3) };
+  }, [x, z, yawV, fy, ms]);
+
+  const intoCan = await walkInto(-2.55, -2.42, Math.PI, 0.95, 1400);
+  check('the air can is a thing you bump into, not air',
+    intoCan.z < -2.30 && intoCan.z > -2.40, JSON.stringify(intoCan));
+  await at('airCan');
   await press();
   check('you can carry the can', (await st()).held === 'air');
 
@@ -464,6 +482,10 @@ const check = (name, ok, detail = '') => {
   check('the can came with you', (await st()).held === 'air');
 
   const deskAt = (id, d = 0.04) => page.evaluate(([id, d]) => window.__doctor.aimAt(id, d, 0.76), [id, d]);
+  const intoKb = await walkInto(2.42, -0.85, Math.PI, 0.76, 1500);
+  check('the keyboard is solid: you walk into it, not through it', intoKb.z < -0.72, JSON.stringify(intoKb));
+  const intoMouse = await walkInto(3.05, -0.75, Math.PI, 0.76, 1700);
+  check('so is the mouse', intoMouse.z < -0.60, JSON.stringify(intoMouse));
   check('the mouse is within reach on the desk', (await deskAt('mouse', 0.05)) === 'mouse');
   await press();
   check('it goes over onto its side', (await st()).usb.tipped === true);
