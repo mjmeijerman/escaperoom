@@ -680,6 +680,36 @@ const check = (name, ok, detail = '') => {
   });
   check('the worm comes after you', chased > .01, String(chased));
 
+  const lured = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.locked = false;
+    d.setFeet(d.DISK.y);
+    d.camera.position.set((d.CH.x0 + d.CH.x1) / 2, d.DISK.y + d.P.eye, (d.CH.z0 + d.CH.z1) / 2);
+    const doorX = (d.DOOR.x0 + d.DOOR.x1) / 2;
+    d.worm.position.set(doorX - .06, d.DISK.y + .02, d.CH.z1 + .13);   // outside, just short of the door
+    const t0 = performance.now();
+    while (performance.now() - t0 < 6000 && !d.wormInChamber(d.worm.position.x, d.worm.position.z)) {
+      await new Promise(r => setTimeout(r, 80));
+    }
+    return { inChamber: d.wormInChamber(d.worm.position.x, d.worm.position.z) };
+  });
+  check('it follows you into the chamber through the door', lured.inChamber === true, JSON.stringify(lured));
+
+  const noFloat = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.locked = false;
+    d.setFeet(d.DISK.y);
+    d.camera.position.set(-1.02, d.DISK.y + d.P.eye, -1.90);      // across the hole at cell 6,6
+    d.worm.position.set(-1.02, d.DISK.y + .02, -2.22);
+    let floats = 0;
+    for (let i = 0; i < 24; i++) {
+      await new Promise(r => setTimeout(r, 80));
+      if (d.state.disk.inside && !d.blockAt(d.worm.position.x, d.worm.position.z)) floats++;
+    }
+    return { floats };
+  });
+  check('it never crawls out over a missing sector', noFloat.floats === 0, JSON.stringify(noFloat));
+
   const sealed = await page.evaluate(async () => {
     const d = window.__doctor;
     d.state.locked = false;
@@ -688,12 +718,17 @@ const check = (name, ok, detail = '') => {
     d.use();
     await new Promise(r => setTimeout(r, 250));
     return { sealed: d.state.disk.sealed, codes: d.state.codes.slice(), note: d.state.notes.SSD,
-      readme: d.readmePanel.visible };
+      readme: d.readmePanel.visible,
+      door: +d.chDoor.position.y.toFixed(3), hatch: +d.hatchDoor.position.y.toFixed(3),
+      shut: +d.DOOR_SHUT_Y.toFixed(3) };
   });
   check('the lever drops the door on it', sealed.sealed === true);
   check('b7 clears', !sealed.codes.includes('b7'), sealed.codes.join(','));
   check('and the drive gives up a B', sealed.note === 'B', String(sealed.note));
   check('the README is there to read', sealed.readme === true);
+  check('both doors come down: the room is shut, front and back',
+    Math.abs(sealed.door - sealed.shut) < .02 && Math.abs(sealed.hatch - sealed.shut) < .02,
+    JSON.stringify({ door: sealed.door, hatch: sealed.hatch, shut: sealed.shut }));
   check('and the LED on the drive goes green', await page.evaluate(async () => {
     await new Promise(r => setTimeout(r, 220));
     return window.__doctor.ssdLed.material.emissive.getHex() === 0x36d08a;

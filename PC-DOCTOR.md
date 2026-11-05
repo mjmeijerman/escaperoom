@@ -494,12 +494,13 @@ Known rough edge for slice 5: the keyboard is not yet solid, and its backlight i
 - **the worm**: follows you at 0.075 m/s (you walk at 0.105) and eats the block it crawls over — the lattice goes dark
   behind it and grows back when you are ejected. Touch it and you are out.
 - **the quarantaine chamber**: three cells square, a door on one wall and a hatch on the other, its own floor, ribs
-  down the outside, a rim on every wall and a `QUARANTINE` sign over the door. The door is a panelled slab sitting up
-  in two guides with a rod running to the lever, and pulling the lever drops it in front of you — the lever arm
-  swings, the panel travels. Get the worm inside, leave by the hatch, pull. `b7` clears and the drive gives up **B**.
-- **the worm** is a chain of nine tapering segments with rings on the even ones, two eyes and a red light that travels
-  with it. It collides with the chamber walls instead of ghosting through them, and when the two of you are on
-  opposite sides of a wall it heads for the door or the hatch first — it knows its own way round.
+  down the back and sides, a rim on every wall. Both openings have a panelled slab sitting up in guides, the
+  `QUARANTINE` plate is bolted to the front door, and a rod runs from the door to the lever — pull it and the arm
+  swings while both panels travel down. The room ends up shut front and back. Get the worm inside, leave by the hatch, pull. `b7` clears and the drive gives up **B**.
+- **the worm** is ten tapering segments, alternating bright and dark, with legs that paddle, two eyes, two mandibles
+  and a red light that travels with it. It collides with the chamber walls instead of ghosting through them, it will
+  not step over a missing sector (it slides along the hole's edge instead), and when the two of you are on opposite
+  sides of a wall it heads for the door or the hatch first — it knows its own way round, including into the chamber.
 - **the twist**: `README.txt` appears taped to the *outside* of the chamber wall, beside the door, at a height that is
   a paper and not a floor covering — the free "diagnostic tool" from the design's §8, in English, in her own words.
   The drive's label, with the `B`, is on the side wall next to it.

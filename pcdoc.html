@@ -3415,6 +3415,9 @@ SOLID_S.push(S(2.37, 3.03, DESK.top + .30, DESK.top + .70, -1.4625, -1.4175));  
 SOLID_S.push(S(2.67, 2.73, DESK.top + .02, DESK.top + .30, -1.385, -1.335));     // the post
 SOLID_S.push(S(2.57, 2.83, DESK.top, DESK.top + .02, -1.44, -1.24));             // the base
 
+/* the case's side panel lies on the bench as 1.4 cm of steel: you step onto it */
+SOLID_S.push(S(-1.36, -0.74, BENCH.top, BENCH.top + .014, -2.62, -2.28));
+
 /* the keyboard, the mouse and the can are objects you bump into, not air */
 SOLID_S.push(S(2.20, 2.64, DESK.top, DESK.top + .034, -.74, -.58));             // the keyboard
 const mouseSolid = S(3.022, 3.078, DESK.top, DESK.top + .034, -.702, -.618);   // the mouse, upright
@@ -3749,11 +3752,14 @@ chWall((HATCH.x1 + CH.x1) / 2, CH.z0, CH.x1 - HATCH.x1, CH_T);
 chWall(CH.x0, (CH.z0 + CH.z1) / 2, CH_T, CH.z1 - CH.z0);
 chWall(CH.x1, (CH.z0 + CH.z1) / 2, CH_T, CH.z1 - CH.z0);
 // ribs down the outside, and a floor plate inside
-for (let i = 0; i < 4; i++) {
+for (let i = 0; i < 4; i++) {                                    // ribs on the back only
   const t = (i + .5) / 4;
-  box(.008, CH_H - .02, .01, chTrim, CH.x0 + t * (CH.x1 - CH.x0), DISK.y + CH_H / 2, CH.z1 + CH_T / 2 + .006, diskG);
   box(.008, CH_H - .02, .01, chTrim, CH.x0 + t * (CH.x1 - CH.x0), DISK.y + CH_H / 2, CH.z0 - CH_T / 2 - .006, diskG);
 }
+[.25, .75].forEach(t => {                                        // and two a side
+  box(.01, CH_H - .02, .008, chTrim, CH.x0 - CH_T / 2 - .006, DISK.y + CH_H / 2, CH.z0 + t * (CH.z1 - CH.z0), diskG);
+  box(.01, CH_H - .02, .008, chTrim, CH.x1 + CH_T / 2 + .006, DISK.y + CH_H / 2, CH.z0 + t * (CH.z1 - CH.z0), diskG);
+});
 box(CH.x1 - CH.x0 - .02, .006, CH.z1 - CH.z0 - .02, new THREE.MeshStandardMaterial({ color: 0x1d3a44, emissive: 0x0d3644, emissiveIntensity: .35, roughness: .7 }),
   (CH.x0 + CH.x1) / 2, DISK.y + .004, (CH.z0 + CH.z1) / 2, diskG);
 // the door: a panel that sits up in its guides and drops when the lever is pulled
@@ -3765,12 +3771,18 @@ box(doorW * .9, .008, CH_T, chTrim, (DOOR.x0 + DOOR.x1) / 2, DISK.y + CH_H + .03
   box(.012, CH_H * 2, CH_T + .01, M.metalDark, x, DISK.y + CH_H, CH.z1, diskG);
 });
 const DOOR_OPEN_Y = DISK.y + CH_H + .035, DOOR_SHUT_Y = DISK.y + CH_H / 2;
-// a sign over the door
-const chSign = plane(.098, .026, new THREE.MeshStandardMaterial({
+const doorMat = new THREE.MeshStandardMaterial({ color: 0x3a2028, emissive: 0x40151a, emissiveIntensity: .5, roughness: .55 });
+// the QUARANTINE plate is bolted to the door, so it comes down with it
+const chSign = plane(.086, .020, new THREE.MeshStandardMaterial({
   map: stickerTex([['QUARANTINE', 24, true]], { bg: '#8c2f24', ink: '#f2e9d8', h: 100, top: 62, align: 'center' }),
   emissive: 0x3a0f0a, emissiveIntensity: .5, roughness: .7,
-}), (DOOR.x1 + CH.x1) / 2, DISK.y + .098, CH.z1 + CH_T / 2 + .0015);
-diskG.add(chSign);
+}), 0, 0, CH_T * .4 + .0012, chDoor);
+chSign.position.set(0, .012, CH_T * .4 + .0012);
+// the hatch gets a door of its own: the room has to be shut, both ways
+const hatchDoor = box(HATCH.x1 - HATCH.x0, CH_H, CH_T * .8, doorMat,
+  (HATCH.x0 + HATCH.x1) / 2, DOOR_OPEN_Y, CH.z0, diskG);
+[[HATCH.x0 - .012], [HATCH.x1 + .012]].forEach(([x]) =>
+  box(.012, CH_H * 2, CH_T + .01, M.metalDark, x, DISK.y + CH_H, CH.z0, diskG));
 const chLamp = new THREE.PointLight(0x2f8faf, .40, 2.0, 1.6);
 chLamp.position.set(DISK.x, DISK.y + .22, DISK.z);
 scene.add(chLamp);
@@ -3785,29 +3797,39 @@ leverArm.rotation.x = -.5;
 box(.008, .008, .10, M.metalDark, CH.x1 + .07, DISK.y + .075, CH.z1 + .02, diskG);   // the rod to the door
 register(leverG, 'wormLever', 'the quarantine lever');
 SOLID_D.push(S(CH.x1 + .095, CH.x1 + .145, DISK.y - .1, DISK.y + .09, CH.z1 + .025, CH.z1 + .075));
-// the worm: a chain of segments with rings on it, and a light that comes with it
+// the worm: a tapered, wobbling body with legs, two eyes and a light of its own
 const worm = new THREE.Group();
 worm.position.set(DISK.x0 + 1.1 * DISK.cell, DISK.y + .02, DISK.z0 + 7.4 * DISK.cell);
 diskG.add(worm);
-const wormMat = new THREE.MeshStandardMaterial({ color: 0x6e2018, emissive: 0xff3f1e, emissiveIntensity: .85, roughness: .5 });
-const wormHead = sphere(.027, wormMat, 0, .002, .012, worm, 14);
-const wormBody = [];
-for (let i = 1; i < 9; i++) {
-  const r = .024 - i * .0021;
-  wormBody.push(sphere(r, wormMat, 0, Math.sin(i * .9) * .005, -i * .026, worm, 12));
-  if (i % 2 === 0) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 1.05, .0026, 4, 12), new THREE.MeshStandardMaterial({ color: 0x2a0e08, emissive: 0x6b1f10, emissiveIntensity: .6, roughness: .7 }));
-    ring.rotation.x = Math.PI / 2;
-    ring.position.set(0, Math.sin(i * .9) * .005, -i * .026);
-    worm.add(ring);
-  }
+const wormMat = new THREE.MeshStandardMaterial({ color: 0x6e1c12, emissive: 0xff5a24, emissiveIntensity: .8, roughness: .5 });
+const wormMatDark = new THREE.MeshStandardMaterial({ color: 0x2a0b07, emissive: 0x6b1c10, emissiveIntensity: .35, roughness: .75 });
+const wormSegs = [];
+const WORM_N = 10;
+for (let i = 0; i < WORM_N; i++) {
+  const r = .024 - i * .0015;
+  const seg = sphere(r, i % 2 ? wormMatDark : wormMat, 0, 0, -i * .030, worm, 12);
+  if (i === 0) seg.scale.set(1.12, .82, 1.3);
+  wormSegs.push({ mesh: seg, r, i });
 }
-[[-.010, .020], [.014, .020]].forEach(([x, z]) => box(.007, .007, .006,
-  new THREE.MeshStandardMaterial({ color: 0x1a0b08, emissive: 0xffd166, emissiveIntensity: 1.8, roughness: .3 }), x, .020, z, worm));
-const wormLight = new THREE.PointLight(0xff4a20, .55, .55, 1.6);
+const wormLegs = [];
+for (let i = 1; i <= 4; i++) [-1, 1].forEach(side => {
+  const leg = box(.0035, .0025, .013, new THREE.MeshStandardMaterial({ color: 0x2a0e08, emissive: 0x7a2418, emissiveIntensity: .5, roughness: .6 }),
+    side * (.018 - i * .0015), -.014, -i * .019, worm);
+  wormLegs.push({ mesh: leg, i, side });
+});
+const eyeMat = new THREE.MeshStandardMaterial({ color: 0x120804, emissive: 0xffb347, emissiveIntensity: 1.6, roughness: .3 });
+[[-.007, .022], [.008, .022]].forEach(([x, z]) => sphere(.0036, eyeMat, x, .008, z, worm, 8));
+[[-.012, .030], [.013, .030]].forEach(([x, z]) => box(.004, .004, .012,
+  new THREE.MeshStandardMaterial({ color: 0x1a0b08, emissive: 0xffb347, emissiveIntensity: .8, roughness: .5 }), x, -.004, z, worm));
+const wormLight = new THREE.PointLight(0xff4a20, .22, .40, 1.8);
 wormLight.position.set(0, .03, 0);
 worm.add(wormLight);
 function wormInChamber(x, z) { return x > CH.x0 && x < CH.x1 && z > CH.z0 && z < CH.z1; }
+function blockAt(x, z) {
+  const c = Math.floor((x - DISK.x0) / DISK.cell), r = Math.floor((z - DISK.z0) / DISK.cell);
+  if (c < 0 || r < 0 || c >= DISK.cols || r >= DISK.rows) return false;
+  return !HOLES.has(c + ',' + r);
+}
 // the port mouth inside, where you came in and where you leave
 const mouth = new THREE.Group();
 mouth.position.set(DISK.x0 + 4.5 * DISK.cell, DISK.y + .004, DISK.z0 + 8.5 * DISK.cell);
@@ -3994,8 +4016,18 @@ function plugSsd() {
 function diskTick(dt) {
   // the door and the lever move together: pull the lever and the panel comes down
   const wantY = state.disk.sealed ? DOOR_SHUT_Y : DOOR_OPEN_Y;
-  chDoor.position.y += (wantY - chDoor.position.y) * Math.min(1, dt * 9);
-  leverArm.rotation.x += ((state.disk.sealed ? .55 : -.5) - leverArm.rotation.x) * Math.min(1, dt * 9);
+  const k = Math.min(1, dt * 9);
+  chDoor.position.y += (wantY - chDoor.position.y) * k;
+  hatchDoor.position.y += (wantY - hatchDoor.position.y) * k;
+  leverArm.rotation.x += ((state.disk.sealed ? .55 : -.5) - leverArm.rotation.x) * k;
+  if (worm.visible) {                    // it is alive even when it is standing still
+    const t = clock.elapsedTime;
+    for (const s2 of wormSegs) {
+      s2.mesh.position.y = Math.sin(t * 7 - s2.i * .55) * .005;
+      s2.mesh.position.x = Math.cos(t * 5 - s2.i * .35) * .0025;
+    }
+    for (const l of wormLegs) { l.mesh.rotation.z = Math.sin(t * 10 - l.i * .9) * .7 * l.side; }
+  }
   // red while b7 is in there, green once it is quarantined, dark without 12 V
   const live = state.ssd.plugged && railLive();
   ssdLed.material.emissive.setHex(!live ? 0x000000 : state.codes.includes('b7') ? 0xff3a2a : 0x36d08a);
@@ -4017,14 +4049,20 @@ function diskTick(dt) {
   let tx = p.x, tz = p.z;
   const wIn = wormInChamber(worm.position.x, worm.position.z);
   const pIn = wormInChamber(p.x, p.z);
-  if (!wIn && pIn) { tx = (DOOR.x0 + DOOR.x1) / 2; tz = CH.z1; }
-  else if (wIn && !pIn) { tx = (HATCH.x0 + HATCH.x1) / 2; tz = CH.z0; }
+  if (!wIn && pIn) { tx = (DOOR.x0 + DOOR.x1) / 2; tz = CH.z1 - .07; }        // through the door, not to it
+  else if (wIn && !pIn) { tx = (HATCH.x0 + HATCH.x1) / 2; tz = CH.z0 + .07; }
   const dx = tx - worm.position.x, dz = tz - worm.position.z;
   const d = Math.hypot(dx, dz) || 1e-6;
   const chase = Math.hypot(p.x - worm.position.x, p.z - worm.position.z);
   worm.rotation.y = Math.atan2(dx, dz);          // nose-first
   const step = Math.min(.075 * dt, d);
-  const next = { x: worm.position.x + dx / d * step, z: worm.position.z + dz / d * step };
+  const nx = worm.position.x + dx / d * step, nz = worm.position.z + dz / d * step;
+  const next = { x: worm.position.x, z: worm.position.z };
+  // it crawls the lattice: no sector, no step. If the way ahead is a hole it
+  // slides along the edge instead, and if both are holes it waits there.
+  if (blockAt(nx, nz)) { next.x = nx; next.z = nz; }
+  else if (blockAt(nx, worm.position.z)) next.x = nx;
+  else if (blockAt(worm.position.x, nz)) next.z = nz;
   resolve(next, .020, DISK.y, .05, SOLID_D, 0);  // it slides along walls, it does not go through them
   worm.position.x = next.x;
   worm.position.z = next.z;
@@ -4209,7 +4247,7 @@ if (new URLSearchParams(location.search).has('debug') || new URLSearchParams(loc
     zip: ZIP, startRide, tipMouse, cleanLens, plugUsb, takeUsb, takeAir, usbWire, dropHeld,
     a2Solid, b2Solid, SEATED_Z0, SEATED_Z1, USB, kbKeyMat, kbLegendMat, kbDeckG, kbGlow, mLed, mSensor, checkUsbPower, darkUsb,
     toast, enterDisk, leaveDisk, ejectFromDisk, pullWormLever, DISK, worm, CH, SSD, SOLID_D, sectorBlocks, readmePanel,
-    ssdLed, ssdSocket, ssdPlugG, takeSsdTail, plugSsd, chDoor, DOOR_SHUT_Y, DOOR_OPEN_Y, wormInChamber,
+    ssdLed, ssdSocket, ssdPlugG, takeSsdTail, plugSsd, chDoor, hatchDoor, DOOR_SHUT_Y, DOOR_OPEN_Y, wormInChamber, blockAt, DOOR, HATCH,
     look(y, pi) { yaw = y; pitch = pi; camera.rotation.set(pitch, yaw, 0); },
     aimAt(id, dist = 1.1, fy = null, at = null) {
       const cands = interact.filter(o => o.userData.interact === id);
