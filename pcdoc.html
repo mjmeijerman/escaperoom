@@ -3257,9 +3257,7 @@ function startRide(toDesk) {
   ZIP.to = toDesk ? 'desk' : 'bench';
   state.grab = null;
   vy = 0;
-  const tan = ZIP.curve.getTangentAt(ZIP.u);
-  yaw = Math.atan2(-tan.x * ZIP.dir, -tan.z * ZIP.dir);
-  pitch = -.05;
+  // the ride moves you; where you are looking stays yours, at the start and at the end
   sfx.scratch();
   toast(toDesk ? 'Down the cable.' : 'Up the cable.');
   renderTray();
@@ -3281,8 +3279,6 @@ function finishRide() {
   camera.position.set(land.x, land.y + P.eye, land.z);
   feet = land.y;
   vy = 0;
-  yaw = desk ? 3.0 : 0.30;                    // the desk end faces the keyboard; the bench end the case
-  pitch = .04;
   sfx.step(false);
   toast(desk ? 'On the desk.' : 'Back on the bench.', 'good');
   renderTray();

@@ -526,6 +526,26 @@ const check = (name, ok, detail = '') => {
   const zipDown = await ride('down');
   check('the ride lands you on the desk', zipDown.onDesk && zipDown.y > .77 && zipDown.riding === false,
     JSON.stringify(zipDown));
+  const lookKept = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.zip.seconds = 0.35;
+    d.look(1.1, -.2);                                   // a look the ride must not touch
+    d.aimAt('zipDesk', 0.05, 0.76);
+    d.look(1.1, -.2);
+    d.use();
+    await new Promise(r => setTimeout(r, 750));
+    return { yaw: +d.camera.rotation.y.toFixed(2), pitch: +d.camera.rotation.x.toFixed(2), riding: d.state.zip.riding };
+  });
+  check('coming off the cable leaves your look direction alone',
+    Math.abs(lookKept.yaw - 1.1) < .25 && Math.abs(lookKept.pitch + .2) < .25 && lookKept.riding === false,
+    JSON.stringify(lookKept));
+  // back to the desk for the rest of the walkthrough
+  await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.zip.seconds = 0.35;
+    d.aimAt('zipBench', 0.05, 0.95); d.use();
+    await new Promise(r => setTimeout(r, 750));
+  });
 
   check('the keycaps carry letters you can read', await page.evaluate(() => {
     const d = window.__doctor;
