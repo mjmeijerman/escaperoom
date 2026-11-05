@@ -1,0 +1,1049 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<title>Murdoku — a 3D murder grid</title>
+<style>
+  :root{
+    --ink:#efe6dc; --dim:#a3968c; --accent:#e0b072; --ok:#7ad6a0; --bad:#ff6b5a;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{height:100%;margin:0;overflow:hidden;background:#08070a;color:var(--ink);font-family:var(--sans)}
+  canvas#scene{position:fixed;inset:0;display:block;width:100%;height:100%;cursor:crosshair;touch-action:none}
+  .vignette{position:fixed;inset:0;pointer-events:none;z-index:3;
+    background:radial-gradient(ellipse at 50% 45%,transparent 38%,rgba(0,0,0,.66) 100%)}
+  kbd{font-family:var(--mono);font-size:.74em;border:1px solid rgba(239,230,220,.4);border-bottom-width:2px;
+    border-radius:3px;padding:.06em .38em;margin-right:.4em;color:#fff;background:rgba(0,0,0,.35)}
+
+  #hud{position:fixed;inset:0;z-index:5;pointer-events:none}
+  #crosshair{position:absolute;left:50%;top:50%;width:9px;height:9px;margin:-4px 0 0 -4px;border-radius:50%;
+    border:1px solid rgba(240,230,220,.65);background:rgba(0,0,0,.25);
+    transition:transform .12s,background .12s,border-color .12s}
+  #crosshair.hot{background:var(--accent);border-color:#fff2dd;transform:scale(1.5);
+    box-shadow:0 0 12px rgba(224,176,114,.9)}
+  #crosshair.carry{border-radius:2px;border-color:#ffd166;background:#ffd166;transform:scale(1.2) rotate(45deg)}
+  #prompt{position:absolute;left:50%;top:calc(50% + 36px);transform:translateX(-50%);white-space:nowrap;
+    font-family:var(--mono);font-size:.78rem;letter-spacing:.03em;padding:.34em .72em;border-radius:3px;
+    background:rgba(10,8,10,.86);border:1px solid rgba(224,176,114,.35);color:#ffe8c8}
+  #prompt.read{border-color:rgba(255,255,255,.14);color:#b3a89f;font-style:italic}
+  .topbar{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:center;
+    padding:12px 18px;font-family:var(--mono);font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;
+    color:#8d8178;background:linear-gradient(180deg,rgba(6,5,7,.85),rgba(6,5,7,0))}
+  .brand{display:flex;align-items:center;gap:.6em;color:#d8c9bb}
+  .brand i{display:inline-grid;place-items:center;width:26px;height:26px;border:1px solid rgba(224,176,114,.5);
+    color:var(--accent);font-style:normal;font-size:.8rem}
+  .clock{font-variant-numeric:tabular-nums;color:#c0b4a9}
+
+  #tray{position:fixed;left:16px;bottom:16px;z-index:6;width:min(360px,34vw);padding:11px 13px;
+    background:linear-gradient(180deg,rgba(18,14,16,.92),rgba(9,7,9,.95));
+    border:1px solid rgba(224,176,114,.25);border-left:2px solid rgba(224,176,114,.6);
+    box-shadow:0 16px 44px rgba(0,0,0,.6);font-family:var(--mono);font-size:.76rem;line-height:1.55}
+  #tray .head{display:flex;align-items:baseline;gap:.5em;margin-bottom:.4em;flex-wrap:wrap}
+  #tray .head b{font-size:.86rem;font-weight:600;color:#f4ece2}
+  #tray .head span{font-size:.56rem;letter-spacing:.2em;text-transform:uppercase;color:#8a7d74}
+  #tray p{margin:.35em 0;color:#cfc2b6}
+  #tray p b{color:#fff}
+  #tray .sub{color:#9a8d83;font-size:.7rem}
+  #tray .say{color:#ffd9a3}
+  #tray .keys{margin-top:.5em;font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:#7e736a}
+  #tray table{border-collapse:collapse;margin-top:.35em;width:100%}
+  #tray td{padding:1px 0;vertical-align:top;color:#cfc2b6}
+  #tray td.c{color:var(--accent);padding-right:.6em;font-weight:600;white-space:nowrap}
+
+  #pad{position:fixed;right:16px;top:56px;z-index:8;width:min(330px,34vw);padding:12px 14px;
+    background:repeating-linear-gradient(180deg,rgba(24,19,21,.96) 0 21px,rgba(31,25,27,.96) 21px 22px);
+    border:1px solid rgba(255,255,255,.13);box-shadow:0 18px 50px rgba(0,0,0,.65);
+    font-family:var(--mono);font-size:.72rem;line-height:22px;color:#e2d7cd}
+  #pad h2{margin:0 0 6px;font-size:.56rem;letter-spacing:.22em;text-transform:uppercase;color:#8d8178;font-weight:600}
+  #pad ul{list-style:none;margin:0 0 8px;padding:0}
+  #pad li{display:flex;justify-content:space-between;gap:.5em}
+  #pad li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #pad li b{color:var(--ok);font-weight:600}
+  #pad li b.no{color:var(--bad)}
+  #pad li b.none{color:#7e736a}
+  #pad li i{font-style:normal;color:#9a8d83;font-size:.68rem;display:block}
+  #pad .rule{color:#b9aca1;font-size:.68rem;line-height:1.5}
+
+  #legend{position:fixed;right:16px;bottom:16px;z-index:6;display:flex;flex-wrap:wrap;gap:.3em 1em;
+    max-width:min(380px,52vw);padding:8px 11px;background:rgba(7,6,8,.62);
+    border:1px solid rgba(255,255,255,.1);font-family:var(--mono);font-size:.58rem;letter-spacing:.09em;
+    text-transform:uppercase;color:#8a7d74;line-height:1.6;pointer-events:none}
+  #legend b{color:#dccabd;font-weight:600}
+
+  #start{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:6vh 5vw;
+    background:radial-gradient(1200px 700px at 50% 0%,#241a1d 0%,#08070a 62%)}
+  #start .card{width:min(600px,100%);text-align:center}
+  #start h1{margin:0 0 .3em;font-family:var(--mono);font-size:1.7rem;letter-spacing:.32em;
+    text-transform:uppercase;color:#f4ece2}
+  #start p{margin:0 0 1.4em;color:#a89a8f;font-size:.95rem;line-height:1.7}
+  #start button{font-family:var(--mono);font-size:.9rem;letter-spacing:.22em;text-transform:uppercase;
+    padding:.9em 2.4em;color:#1a1208;background:var(--accent);border:0;border-radius:2px;cursor:pointer;
+    box-shadow:0 0 0 1px rgba(224,176,114,.5),0 14px 40px rgba(0,0,0,.6)}
+  #start button:hover{background:#f0c184}
+  #start small{display:block;margin-top:1.6em;font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;
+    text-transform:uppercase;color:#7e736a}
+
+  #banner{position:fixed;left:50%;top:56px;transform:translateX(-50%);z-index:9;text-align:center;
+    padding:10px 22px;background:rgba(12,9,11,.9);border:1px solid rgba(122,214,160,.55);color:#e8fff1;
+    letter-spacing:.16em;text-transform:uppercase;font-family:var(--mono);font-size:.82rem}
+  #banner small{display:block;margin-top:.45em;font-size:.6rem;letter-spacing:.12em;color:#9a8d83;text-transform:none}
+
+  .toasts{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);z-index:40;display:grid;gap:7px;
+    justify-items:center;pointer-events:none;width:min(560px,92vw)}
+  .toast{padding:.5em 1em;background:rgba(12,9,11,.95);border:1px solid rgba(224,176,114,.4);color:#f2e6d8;
+    font-family:var(--mono);font-size:.76rem;text-align:center}
+  .toast.bad{border-color:rgba(255,107,90,.6);color:#ffcfc8}
+  .toast.good{border-color:rgba(122,214,160,.6);color:#d6ffe6}
+
+  #pad.pulse{animation:pulsePad .9s ease-out 2}
+  @keyframes pulsePad{0%{box-shadow:0 0 0 0 rgba(224,176,114,.55)}100%{box-shadow:0 0 0 18px rgba(224,176,114,0)}}
+  #reset{position:fixed;right:16px;bottom:70px;z-index:9;display:none}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+
+<div id="hud">
+  <div class="topbar">
+    <div class="brand"><i>⌗</i>Murdoku</div>
+    <div class="clock" id="roomNow">the hall</div>
+  </div>
+  <div id="crosshair" aria-hidden="true"></div>
+  <div id="prompt" hidden></div>
+</div>
+
+<aside id="tray" hidden><div class="head"><span id="kicker"></span><b id="title"></b></div>
+  <div id="body"></div><div class="keys" id="keys"></div></aside>
+
+<aside id="pad"><h2>suspects</h2><ul id="padPeople"></ul>
+  <h2>the case</h2><ul id="padClues"></ul>
+  <h2>house rules</h2><div class="rule" id="padRules"></div></aside>
+
+<aside id="legend" aria-label="controls">
+  <span><b>W A S D</b> walk</span>
+  <span><b>E</b> pick up / put down</span>
+  <span><b>F</b> mark a cell</span>
+  <span><b>Q</b> put it back</span>
+  <span><b>I</b> notes</span>
+  <span><b>R</b> reset</span>
+  <span><b>Esc</b> free cursor</span>
+</aside>
+
+<div id="start">
+  <div class="card">
+    <h1>Murdoku</h1>
+    <p>A country house, a body in the hall, and five guests who all have an alibi. The floor is a grid of
+       thirty-six squares and the whole case is a puzzle: put everyone where the statements say they were.</p>
+    <button id="startBtn">Enter the house</button>
+    <small>W A S D walk · E pick up and put down · F mark a cell · I notes · click to look</small>
+  </div>
+</div>
+
+<div id="banner" hidden></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script type="module">
+import * as THREE from './vendor/three.module.min.js';
+
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+/* ------------------------------------------------------------------ setup */
+const canvas = $('#scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b090c);
+scene.fog = new THREE.FogExp2(0x0b090c, 0.022);
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 90);
+scene.add(camera);
+
+/* ------------------------------------------------------------------ grid */
+const N = 6, CELL = 2;
+const cellX = c => (c - 3.5) * CELL;
+const cellZ = r => (r - 3.5) * CELL;
+const key = (c, r) => c + ',' + r;
+const colOf = (x) => clamp(Math.round(x / CELL + 3.5), 1, N);
+const rowOf = (z) => clamp(Math.round(z / CELL + 3.5), 1, N);
+
+const ROOM_DEF = [
+  ['logeerkamer', 0x4a3a52, [[1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [2, 5], [2, 6]]],
+  ['badkamer', 0x2f4652, [[2, 1], [2, 2], [3, 1], [3, 2], [4, 1], [4, 2]]],
+  ['grote slaapkamer', 0x4a2f43, [[2, 3], [2, 4], [3, 3], [3, 4], [4, 3], [4, 4]]],
+  ['keuken', 0x4a4227, [[5, 1], [5, 2], [5, 3], [6, 1], [6, 2], [6, 3]]],
+  ['woonkamer', 0x3a2b26, []],
+];
+const ROOM_AT = {};
+const ROOMS = ROOM_DEF.map(([name, tint, list], i) => {
+  const cells = [];
+  for (let c = 1; c <= N; c++) for (let r = 1; r <= N; r++) ROOM_AT[key(c, r)] = name;
+  return { name, tint, cells: list };
+});
+ROOM_DEF.forEach(([name, tint, list]) => list.forEach(([c, r]) => { ROOM_AT[key(c, r)] = name; }));
+const roomAt = (c, r) => ROOM_AT[key(c, r)];
+
+const FURN = [
+  { kind: 'bed', cells: [[1, 1], [1, 2]], axis: 'z' },
+  { kind: 'rug', cells: [[1, 3], [1, 4]], axis: 'z' },
+  { kind: 'chair', cells: [[4, 2]] },
+  { kind: 'table', cells: [[4, 3]] },
+  { kind: 'bed', cells: [[2, 4], [3, 4]], axis: 'x' },
+  { kind: 'rug', cells: [[4, 4]] },
+  { kind: 'chair', cells: [[3, 5]] },
+  { kind: 'tv', cells: [[3, 6]] },
+  { kind: 'table', cells: [[5, 1], [6, 1]], axis: 'x' },
+  { kind: 'plant', cells: [[5, 3]] },
+  { kind: 'plant', cells: [[5, 4]] },
+];
+const BEDS = new Set(), TABLES = new Set(), CHAIRS = new Set(), TVS = new Set(), RUGS = new Set(), PLANTS = new Set();
+FURN.forEach(f => f.cells.forEach(([c, r]) => {
+  const k = key(c, r);
+  if (f.kind === 'bed') BEDS.add(k);
+  if (f.kind === 'table') TABLES.add(k);
+  if (f.kind === 'chair') CHAIRS.add(k);
+  if (f.kind === 'tv') TVS.add(k);
+  if (f.kind === 'rug') RUGS.add(k);
+  if (f.kind === 'plant') PLANTS.add(k);
+}));
+const WINDOW = [6, 4];
+
+/* ------------------------------------------------------------------ people */
+const n8 = (c, r) => {
+  const out = [];
+  for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) {
+    if (!dc && !dr) continue;
+    const a = c + dc, b = r + dr;
+    if (a >= 1 && a <= N && b >= 1 && b <= N) out.push([a, b]);
+  }
+  return out;
+};
+const nearAny = (c, r, set) => n8(c, r).some(([a, b]) => set.has(key(a, b)));
+
+const PEOPLE = [
+  { id: 'A', name: 'Alexander', colour: 0x9a7346, clue: 'Sat on a bed', test: (c, r) => BEDS.has(key(c, r)) },
+  { id: 'B', name: 'Bas', colour: 0x4c7f68, clue: 'Was in the kitchen', test: (c, r) => roomAt(c, r) === 'keuken' },
+  { id: 'C', name: 'Clarissa', colour: 0x86557a, clue: 'Stood next to a table', test: (c, r) => nearAny(c, r, TABLES) },
+  { id: 'D', name: 'Diana', colour: 0x5f6a90, clue: 'Was next to the television', test: (c, r) => nearAny(c, r, TVS) },
+  { id: 'E', name: 'Elsa', colour: 0x8a8750, clue: 'Stood in front of the window', test: (c, r) => c === WINDOW[0] && r === WINDOW[1] },
+  { id: 'V', name: 'Vladimir', colour: 0x8c3a34, victim: true, clue: 'Lay in the last cell left over', test: null },
+];
+
+const state = {
+  started: false, locked: false, won: false,
+  carry: null,                 // person id in your arms
+  marks: new Set(),            // "c,r" with a cross on it
+  placed: {},                  // id -> [c, r]
+  hovered: null, trayId: null,
+};
+
+/* ------------------------------------------------------------------ textures */
+function tex(w, h, draw) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+function grain(g, w, h, a = .05) {
+  for (let i = 0; i < w * h * a; i++) {
+    g.fillStyle = `rgba(0,0,0,${Math.random() * .12})`;
+    g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+  }
+}
+const floorTex = tex(512, 512, (g, w, h) => {
+  g.fillStyle = '#2a2229'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 900; i++) {
+    g.fillStyle = `rgba(${30 + Math.random() * 40},${20 + Math.random() * 30},${25 + Math.random() * 30},.5)`;
+    g.fillRect(Math.random() * w, Math.random() * h, 3 + Math.random() * 22, 1 + Math.random() * 3);
+  }
+  grain(g, w, h, .05);
+});
+const M = {
+  wall: new THREE.MeshStandardMaterial({ color: 0x2b2429, roughness: .95 }),
+  wainscot: new THREE.MeshStandardMaterial({ color: 0x241d21, roughness: .8 }),
+  wood: new THREE.MeshStandardMaterial({ color: 0x4a3527, roughness: .7 }),
+  darkWood: new THREE.MeshStandardMaterial({ color: 0x35251b, roughness: .75 }),
+  metal: new THREE.MeshStandardMaterial({ color: 0x6a6a70, roughness: .45, metalness: .6 }),
+  fabric: new THREE.MeshStandardMaterial({ color: 0x3c2c33, roughness: .95 }),
+  linen: new THREE.MeshStandardMaterial({ color: 0xb8ac9c, roughness: .95 }),
+  chalk: new THREE.MeshBasicMaterial({ color: 0xdfe6e2, transparent: true, opacity: .8 }),
+  tvScreen: new THREE.MeshStandardMaterial({ color: 0x0b1014, emissive: 0x2a6f8c, emissiveIntensity: .35, roughness: .35 }),
+  gold: new THREE.MeshStandardMaterial({ color: 0xb99545, roughness: .35, metalness: .8 }),
+  leaf: new THREE.MeshStandardMaterial({ color: 0x2f5a3a, roughness: .8 }),
+  pot: new THREE.MeshStandardMaterial({ color: 0x5a3a2a, roughness: .85 }),
+};
+
+/* ------------------------------------------------------------------ helpers */
+const SOLIDS = [];
+const S = (x0, x1, y0, y1, z0, z1) => ({ x0, x1, y0, y1, z0, z1 });
+function box(w, h, d, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  m.castShadow = true; m.receiveShadow = true;
+  (parent || scene).add(m);
+  return m;
+}
+function cyl(rt, rb, h, seg, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat);
+  m.position.set(x, y, z);
+  m.castShadow = true; m.receiveShadow = true;
+  (parent || scene).add(m);
+  return m;
+}
+function sphere(r, mat, x, y, z, parent, seg = 14) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg / 2)), mat);
+  m.position.set(x, y, z);
+  m.castShadow = true; m.receiveShadow = true;
+  (parent || scene).add(m);
+  return m;
+}
+function plane(w, h, mat, x, y, z, parent) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  m.position.set(x, y, z);
+  m.receiveShadow = true;
+  (parent || scene).add(m);
+  return m;
+}
+function decal(w, h, t, x, y, z, ry = 0, parent) {
+  const m = plane(w, h, new THREE.MeshStandardMaterial({ map: t, roughness: .9 }), x, y, z, parent);
+  m.rotation.y = ry;
+  return m;
+}
+const interact = [];
+function register(obj, id, label) {
+  obj.traverse(o => { if (o.isMesh) o.userData.interact = id; });
+  obj.userData.interact = id;
+  obj.userData.label = label;
+  interact.push(obj);
+  return obj;
+}
+
+/* ------------------------------------------------------------------ the house */
+const WALL_H = 3.1;
+const HALL = 2.8;                                  // the strip along the south wall
+const X0 = -7, X1 = 7, Z0 = -6.9, Z1 = 6.6 + HALL; // inside faces of the outer walls
+
+function buildShell() {
+  const floor = plane(X1 - X0, Z1 - Z0, new THREE.MeshStandardMaterial({ map: floorTex, roughness: .95 }),
+    (X0 + X1) / 2, 0, (Z0 + Z1) / 2);
+  floor.rotation.x = -Math.PI / 2;
+  const ceil = plane(X1 - X0, Z1 - Z0, new THREE.MeshStandardMaterial({ color: 0x1b1619, roughness: .95 }),
+    (X0 + X1) / 2, WALL_H, (Z0 + Z1) / 2);
+  ceil.rotation.x = Math.PI / 2;
+  // walls
+  box(.3, WALL_H, Z1 - Z0, M.wall, X0 - .15, WALL_H / 2, (Z0 + Z1) / 2);
+  box(.3, WALL_H, Z1 - Z0, M.wall, X1 + .15, WALL_H / 2, (Z0 + Z1) / 2);
+  box(X1 - X0 + .6, WALL_H, .3, M.wall, (X0 + X1) / 2, WALL_H / 2, Z0 - .15);
+  box(X1 - X0 + .6, WALL_H, .3, M.wall, (X0 + X1) / 2, WALL_H / 2, Z1 + .15);
+  // skirting
+  box(.06, .12, Z1 - Z0, M.wainscot, X0 + .03, .06, (Z0 + Z1) / 2);
+  box(.06, .12, Z1 - Z0, M.wainscot, X1 - .03, .06, (Z0 + Z1) / 2);
+  box(X1 - X0, .12, .06, M.wainscot, 0, .06, Z0 + .03);
+  box(X1 - X0, .12, .06, M.wainscot, 0, .06, Z1 - .03);
+  SOLIDS.push(S(X0 - 1, X0, 0, WALL_H, Z0 - 1, Z1 + 1), S(X1, X1 + 1, 0, WALL_H, Z0 - 1, Z1 + 1),
+    S(X0 - 1, X1 + 1, 0, WALL_H, Z0 - 1, Z0), S(X0 - 1, X1 + 1, 0, WALL_H, Z1, Z1 + 1));
+  // the grid itself: a tile per cell, tinted by room, with an inlaid border
+  for (let c = 1; c <= N; c++) for (let r = 1; r <= N; r++) {
+    const room = ROOM_DEF.find(d => d[0] === roomAt(c, r));
+    const t = plane(CELL - .06, CELL - .06, new THREE.MeshStandardMaterial({ color: room[1], roughness: .9 }),
+      cellX(c), .012, cellZ(r));
+    t.rotation.x = -Math.PI / 2;
+    const e = box(CELL - .02, .022, CELL - .02,
+      new THREE.MeshStandardMaterial({ color: 0x1a1418, roughness: .95 }), cellX(c), .004, cellZ(r));
+    const inner = plane(CELL - .12, CELL - .12, new THREE.MeshStandardMaterial({ color: room[1], roughness: .88 }),
+      cellX(c), .017, cellZ(r));
+    inner.rotation.x = -Math.PI / 2;
+  }
+  // room plates on the floor, so you always know where you stand
+  ROOM_DEF.forEach(([name, tint, list]) => {
+    const cells = list.length ? list : [];
+    if (!cells.length) {
+      const all = [];
+      for (let c = 1; c <= N; c++) for (let r = 1; r <= N; r++) if (roomAt(c, r) === name) all.push([c, r]);
+      cells.push(...all);
+    }
+    const cx = cells.reduce((s, [c]) => s + cellX(c), 0) / cells.length;
+    const cz = cells.reduce((s, [, r]) => s + cellZ(r), 0) / cells.length;
+    const label = decal(2.6, .5, tex(512, 96, (g, w, h) => {
+      g.clearRect(0, 0, w, h);
+      g.fillStyle = 'rgba(240,230,220,.30)';
+      g.font = '600 44px ui-monospace,monospace';
+      g.textAlign = 'center';
+      g.fillText(name.toUpperCase(), w / 2, 64);
+    }), cx, .02, cz);
+    label.rotation.x = -Math.PI / 2;
+  });
+  // the hall where everyone starts
+  box(X1 - X0, .02, HALL, new THREE.MeshStandardMaterial({ color: 0x211b1f, roughness: .95 }),
+    0, .01, 6.6 + HALL / 2);
+  const hallLabel = decal(3.4, .6, tex(512, 96, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    g.fillStyle = 'rgba(240,230,220,.35)';
+    g.font = '600 40px ui-monospace,monospace';
+    g.textAlign = 'center';
+    g.fillText('THE HALL', w / 2, 62);
+  }), 0, .021, 6.9);
+  hallLabel.rotation.x = -Math.PI / 2;
+}
+
+/* ------------------------------------------------------------------ furniture */
+function bed(cells, axis) {
+  const [c0, r0] = cells[0];
+  const horizontal = axis === 'x';
+  const w = horizontal ? CELL * cells.length - .12 : CELL - .12;
+  const d = horizontal ? CELL - .12 : CELL * cells.length - .12;
+  const cx = cells.reduce((s, [c]) => s + cellX(c), 0) / cells.length;
+  const cz = cells.reduce((s, [, r]) => s + cellZ(r), 0) / cells.length;
+  box(w, .38, d, M.darkWood, cx, .19, cz);
+  box(w - .1, .18, d - .1, M.linen, cx, .47, cz);
+  box(w - .16, .1, d * .55, new THREE.MeshStandardMaterial({ color: 0x6a4a56, roughness: .95 }),
+    cx, .58, cz + (horizontal ? 0 : d * .18));
+  const px = horizontal ? cx - w * .28 : cx, pz = horizontal ? cz : cz - d * .3;
+  box(.6, .12, .34, new THREE.MeshStandardMaterial({ color: 0xd8cfc0, roughness: .95 }), px, .6, pz);
+  SOLIDS.push(S(cx - w / 2, cx + w / 2, 0, .52, cz - d / 2, cz + d / 2));
+}
+function table(cells, axis) {
+  const horizontal = axis === 'x';
+  const w = horizontal ? CELL * cells.length - .3 : CELL - .4;
+  const d = horizontal ? CELL - .4 : CELL * cells.length - .3;
+  const cx = cells.reduce((s, [c]) => s + cellX(c), 0) / cells.length;
+  const cz = cells.reduce((s, [, r]) => s + cellZ(r), 0) / cells.length;
+  box(w, .08, d, M.wood, cx, .74, cz);
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) =>
+    box(.09, .72, .09, M.darkWood, cx + sx * (w / 2 - .12), .36, cz + sz * (d / 2 - .12)));
+  SOLIDS.push(S(cx - w / 2, cx + w / 2, 0, .78, cz - d / 2, cz + d / 2));
+}
+function chair([c, r]) {
+  const x = cellX(c), z = cellZ(r);
+  box(.52, .06, .52, M.fabric, x, .45, z);
+  box(.52, .62, .07, M.darkWood, x, .78, z - .23);
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) =>
+    box(.05, .44, .05, M.darkWood, x + sx * .2, .22, z + sz * .2));
+  SOLIDS.push(S(x - .28, x + .28, 0, .5, z - .28, z + .28));
+}
+function rug(cells) {
+  const horizontal = cells.length > 1 && cells[0][1] === cells[1][1];
+  const w = horizontal ? CELL * cells.length - .2 : CELL - .2;
+  const d = horizontal ? CELL - .2 : CELL * cells.length - .2;
+  const cx = cells.reduce((s, [c]) => s + cellX(c), 0) / cells.length;
+  const cz = cells.reduce((s, [, r]) => s + cellZ(r), 0) / cells.length;
+  const m = plane(w, d, new THREE.MeshStandardMaterial({ color: 0x5a2f33, roughness: .98 }), cx, .022, cz);
+  m.rotation.x = -Math.PI / 2;
+  const inner = plane(w - .3, d - .3, new THREE.MeshStandardMaterial({ color: 0x6d3a3f, roughness: .98 }), cx, .023, cz);
+  inner.rotation.x = -Math.PI / 2;
+}
+function plant([c, r]) {
+  const x = cellX(c), z = cellZ(r);
+  cyl(.22, .17, .34, 14, M.pot, x, .17, z);
+  cyl(.04, .05, .5, 8, M.leaf, x, .5, z);
+  for (let i = 0; i < 7; i++) {
+    const a = i / 7 * Math.PI * 2;
+    const leaf = sphere(.17, M.leaf, x + Math.cos(a) * .2, .78 + (i % 2) * .14, z + Math.sin(a) * .2, scene, 8);
+    leaf.scale.set(1, .55, .7);
+  }
+  SOLIDS.push(S(x - .26, x + .26, 0, 1, z - .26, z + .26));
+}
+function tv([c, r]) {
+  const x = cellX(c), z = cellZ(r);
+  box(1.5, .5, .5, M.darkWood, x, .25, z + .24);
+  box(1.4, .82, .09, new THREE.MeshStandardMaterial({ color: 0x11151a, roughness: .55 }), x, .92, z + .1);
+  const screen = plane(1.24, .68, M.tvScreen, x, .92, z + .04);
+  screen.rotation.y = Math.PI;                       // facing north, into the house
+  SOLIDS.push(S(x - .78, x + .78, 0, 1.35, z - .1, z + .48));
+}
+function window_(c, r) {
+  const z = cellZ(r);
+  const glow = new THREE.PointLight(0x9fb7d8, 6, 9, 2);
+  glow.position.set(X1 - .5, 1.9, z);
+  scene.add(glow);
+  box(.12, 1.5, 1.7, new THREE.MeshStandardMaterial({ color: 0x121820, roughness: .3 }),
+    X1 - .08, 1.9, z);
+  const pane = plane(1.5, 1.3, new THREE.MeshStandardMaterial({
+    color: 0x9fb7d8, emissive: 0x9fb7d8, emissiveIntensity: 1.4, roughness: .2,
+  }), X1 - .14, 1.9, z);
+  pane.rotation.y = -Math.PI / 2;
+  box(.16, .12, 1.9, M.darkWood, X1 - .08, 2.02, z);      // glazing bars and sill
+  box(.16, .12, 1.9, M.darkWood, X1 - .08, 1.78, z);
+  box(.26, .1, 2.0, M.darkWood, X1 - .12, 1.12, z);
+}
+
+function buildFurniture() {
+  FURN.forEach(f => {
+    if (f.kind === 'bed') bed(f.cells, f.axis);
+    else if (f.kind === 'table') table(f.cells, f.axis);
+    else if (f.kind === 'chair') chair(f.cells[0]);
+    else if (f.kind === 'rug') rug(f.cells);
+    else if (f.kind === 'plant') plant(f.cells[0]);
+    else if (f.kind === 'tv') tv(f.cells[0]);
+  });
+  window_(...WINDOW);
+}
+
+/* ------------------------------------------------------------------ the case file */
+const caseTex = tex(640, 900, (g, w, h) => {
+  g.fillStyle = '#efe6d8'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = '#1b1619'; g.lineWidth = 8; g.strokeRect(16, 16, w - 32, h - 32);
+  g.fillStyle = '#1b1619';
+  g.font = '700 34px ui-monospace,monospace';
+  g.fillText('CASE 004 — VLADIMIR', 40, 74);
+  g.font = '400 22px ui-monospace,monospace';
+  g.fillStyle = '#6a2a26'; g.fillText('MURDER. THE HOUSE IS A GRID.', 40, 112);
+  const lines = [
+    ['ALEXANDER', 'sat on a bed.'],
+    ['BAS', 'was in the kitchen.'],
+    ['CLARISSA', 'stood next to a table.'],
+    ['DIANA', 'was next to the television.'],
+    ['ELSA', 'stood in front of the window.'],
+    ['VLADIMIR', 'lay in the last cell left over.'],
+  ];
+  lines.forEach(([who, what], i) => {
+    g.fillStyle = '#1b1619'; g.font = '700 25px ui-monospace,monospace';
+    g.fillText(who, 40, 190 + i * 70);
+    g.fillStyle = '#3b3336'; g.font = '400 22px ui-monospace,monospace';
+    g.fillText(what, 40, 222 + i * 70);
+  });
+  g.fillStyle = '#1b1619'; g.font = '700 24px ui-monospace,monospace';
+  g.fillText('HOUSE RULES', 40, h - 250);
+  g.fillStyle = '#3b3336'; g.font = '400 20px ui-monospace,monospace';
+  ['one person per column, and one per square.', 'nobody stands on a crossed square.',
+    'a weapon, a motive: not your problem.'].forEach((l, i) => g.fillText(l, 40, h - 212 + i * 34));
+  grain(g, w, h, .06);
+});
+function buildPlaque() {
+  const g = new THREE.Group();
+  g.position.set(X0 + .04, 1.55, 1.6);
+  g.rotation.y = Math.PI / 2;
+  scene.add(g);
+  box(.04, 1.1, .8, M.darkWood, 0, 0, 0, g);
+  decal(.72, 1.02, caseTex, 0, 0, .022, 0, g);
+  register(g, 'casefile', 'the case file');
+}
+
+/* ------------------------------------------------------------------ people */
+function makePerson(p) {
+  const g = new THREE.Group();
+  scene.add(g);
+  const mat = new THREE.MeshStandardMaterial({ color: p.colour, roughness: .8 });
+  const skin = new THREE.MeshStandardMaterial({ color: 0xd8b49a, roughness: .7 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x221b1e, roughness: .9 });
+  if (p.victim) {
+    // lying down, with a chalk outline around him
+    const body = new THREE.Group();
+    body.rotation.z = Math.PI / 2;
+    body.position.y = .2;
+    g.add(body);
+    cyl(.19, .16, 1.15, 12, mat, 0, 0, 0, body).rotation.z = Math.PI / 2;
+    sphere(.15, skin, 0, 0, -.68, body);
+    cyl(.07, .07, .8, 8, dark, 0, 0, .95, body).rotation.x = Math.PI / 2;
+    const outline = new THREE.Mesh(new THREE.RingGeometry(.42, .5, 24), M.chalk);
+    outline.rotation.x = -Math.PI / 2;
+    outline.position.y = .02;
+    outline.scale.set(1, 1.5, 1);
+    g.add(outline);
+    box(.9, .02, 1.6, new THREE.MeshStandardMaterial({ color: 0x1c161a, roughness: 1 }), 0, .01, 0, g);
+  } else {
+    const body = new THREE.Group();
+    g.add(body);
+    cyl(.21, .29, 1.1, 12, mat, 0, .75, 0, body);
+    sphere(.19, skin, 0, 1.46, 0, body);
+    cyl(.07, .07, .72, 8, dark, -.15, .25, 0, body);
+    cyl(.07, .07, .72, 8, dark, .15, .25, 0, body);
+    body.rotation.y = Math.PI;
+  }
+  // a name plate over their head
+  const plateTex = tex(512, 128, (c, w, h) => {
+    c.clearRect(0, 0, w, h);
+    c.fillStyle = 'rgba(12,9,11,.82)';
+    c.fillRect(0, 28, w, 72);
+    c.strokeStyle = 'rgba(224,176,114,.65)'; c.lineWidth = 3; c.strokeRect(0, 28, w, 72);
+    c.fillStyle = '#f4e9dc'; c.font = '700 44px ui-monospace,monospace'; c.textAlign = 'center';
+    c.fillText(p.name.toUpperCase(), w / 2, 80);
+  });
+  const plate = new THREE.Mesh(new THREE.PlaneGeometry(.72, .18),
+    new THREE.MeshBasicMaterial({ map: plateTex, transparent: true, depthWrite: false }));
+  plate.position.set(0, p.victim ? .95 : 2.0, 0);
+  plate.userData.billboard = true;
+  g.add(plate);
+  register(g, 'p_' + p.id, p.name);
+  return { g, plate };
+}
+
+/* ------------------------------------------------------------------ lights */
+const hemi = new THREE.HemisphereLight(0x4a3f48, 0x1a1516, 1.5);
+scene.add(hemi);
+scene.add(new THREE.AmbientLight(0x2a2430, .6));
+[[-5, -5], [0, -5], [5, -5], [-5, 0], [5, 0], [-5, 4], [0, 4], [5, 4], [0, 7]].forEach(([x, z], i) => {
+  const l = new THREE.PointLight(i % 2 ? 0xffd9a8 : 0xffe6c4, 55, 15, 2);
+  l.position.set(x, 2.6, z);
+  l.castShadow = i === 2;
+  l.shadow.mapSize.set(512, 512);
+  scene.add(l);
+  cyl(.16, .2, .1, 12, new THREE.MeshStandardMaterial({ color: 0x2a2226, roughness: .8 }), x, 3.02, z);
+  const bulb = sphere(.09, new THREE.MeshStandardMaterial({ color: 0xfff0d0, emissive: 0xffe6c4, emissiveIntensity: 2 }), x, 2.96, z, scene, 10);
+});
+// a shaft of window light
+const winLight = new THREE.SpotLight(0xa9c3e8, 5, 12, .7, .6, 1.2);
+winLight.position.set(X1 - .4, 2.5, cellZ(WINDOW[1]));
+winLight.target.position.set(2, 0, cellZ(WINDOW[1]));
+scene.add(winLight, winLight.target);
+
+/* ------------------------------------------------------------------ build */
+buildShell();
+buildFurniture();
+buildPlaque();
+
+const visuals = {};
+PEOPLE.forEach(p => { visuals[p.id] = makePerson(p); });
+// the hall plinths everyone waits on
+const PLINTH_X = [-4.6, -2.75, -.9, .95, 2.8, 4.65];
+PEOPLE.forEach((p, i) => {
+  const x = PLINTH_X[i], z = 7.9;
+  box(.9, .18, .9, M.darkWood, x, .09, z);
+  SOLIDS.push(S(x - .45, x + .45, 0, .2, z - .45, z + .45));
+  visuals[p.id].g.position.set(x, .18, z);
+  visuals[p.id].home = new THREE.Vector3(x, .18, z);
+});
+
+// invisible pick squares, one per cell
+const cellPick = {};
+for (let c = 1; c <= N; c++) for (let r = 1; r <= N; r++) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(CELL - .04, CELL - .04),
+    new THREE.MeshBasicMaterial({ visible: false }));
+  m.rotation.x = -Math.PI / 2;
+  m.position.set(cellX(c), .03, cellZ(r));
+  scene.add(m);
+  register(m, 'cell', 'C' + c + 'R' + r);
+  cellPick[key(c, r)] = m;
+}
+
+/* ------------------------------------------------------------------ crosses */
+function markMesh(x, z) {
+  const g = new THREE.Group();
+  g.position.set(x, .05, z);
+  scene.add(g);
+  const mat = new THREE.MeshStandardMaterial({ color: 0xd8cfc0, roughness: .6 });
+  box(.9, .02, .12, mat, 0, 0, 0, g).rotation.y = Math.PI / 4;
+  box(.9, .02, .12, mat, 0, 0, 0, g).rotation.y = -Math.PI / 4;
+  const pole = cyl(.035, .035, .8, 8, M.darkWood, .55, .4, .55, g);
+  return g;
+}
+const markObjs = {};
+function syncMarks() {
+  for (const k of Object.keys(markObjs)) {
+    if (!state.marks.has(k)) { scene.remove(markObjs[k]); delete markObjs[k]; }
+  }
+  for (const k of state.marks) {
+    if (markObjs[k]) continue;
+    const [c, r] = k.split(',').map(Number);
+    markObjs[k] = markMesh(cellX(c), cellZ(r));
+  }
+}
+
+/* ------------------------------------------------------------------ HUD */
+const trayEl = $('#tray'), bodyEl = $('#body'), titleEl = $('#title'), kickerEl = $('#kicker'),
+  keysEl = $('#keys'), promptEl = $('#prompt'), crosshair = $('#crosshair'), toasts = $('#toasts'),
+  bannerEl = $('#banner'), padEl = $('#pad'), roomNow = $('#roomNow');
+
+function toast(msg, kind = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.textContent = msg;
+  toasts.appendChild(el);
+  while (toasts.children.length > 6) toasts.firstElementChild.remove();
+  const life = Math.min(9000, 2600 + msg.length * 42);
+  setTimeout(() => { el.style.transition = 'opacity .5s'; el.style.opacity = '0'; }, life);
+  setTimeout(() => el.remove(), life + 560);
+}
+function banner(html) { bannerEl.innerHTML = html; bannerEl.hidden = false; }
+
+const person = id => PEOPLE.find(p => p.id === id);
+const placedList = () => PEOPLE.filter(p => state.placed[p.id]);
+
+function renderPad() {
+  padEl.hidden = false;
+  $('#padPeople').innerHTML = PEOPLE.map(p => {
+    const at = state.placed[p.id];
+    const ok = at && p.test ? p.test(at[0], at[1]) : null;
+    const tag = !at ? '<b class="none">·</b>' : ok === null ? '<b class="none">?</b>' : ok ? '<b>✓</b>' : '<b class="no">✗</b>';
+    return `<li><span>${p.name}<i>${p.clue}</i>${at ? `C${at[0]}R${at[1]} · ${roomAt(at[0], at[1])}` : 'in the hall'}</span>${tag}</li>`;
+  }).join('');
+  $('#padClues').innerHTML = `
+    <li><span>placed</span><b class="${placedList().length === 6 ? '' : 'none'}">${placedList().length}/6</b></li>
+    <li><span>columns clear</span><b class="${columnsOK() ? '' : 'no'}">${columnsOK() ? 'yes' : 'no'}</b></li>
+    <li><span>marks</span><b class="none">${state.marks.size}</b></li>`;
+  $('#padRules').innerHTML = 'One person per column. One person per square. Nobody on a crossed square. '
+    + 'The victim takes whatever is left. The grid is the confession.';
+}
+function pulsePad() {
+  padEl.classList.remove('pulse');
+  void padEl.offsetWidth;
+  padEl.classList.add('pulse');
+}
+
+function columnsOK() {
+  const used = new Set();
+  for (const p of placedList()) {
+    const at = state.placed[p.id];
+    if (used.has(at[0])) return false;
+    used.add(at[0]);
+  }
+  return true;
+}
+
+function tray(html, keys = '', kicker = '', title = '') {
+  trayEl.hidden = false;
+  kickerEl.textContent = kicker;
+  titleEl.textContent = title;
+  bodyEl.innerHTML = html;
+  keysEl.innerHTML = keys;
+}
+
+/* ------------------------------------------------------------------ looking at things */
+const raycaster = new THREE.Raycaster();
+const REACH = 4.2;
+function target() {
+  raycaster.far = REACH;
+  raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+  const hits = raycaster.intersectObjects(interact, true);
+  for (const h of hits) {
+    let hidden = false;
+    for (let q = h.object; q; q = q.parent) if (q.visible === false) { hidden = true; break; }
+    if (hidden) continue;
+    let o = h.object;
+    while (o) { if (o.userData && o.userData.interact) return { id: o.userData.interact, object: o, point: h.point }; o = o.parent; }
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------------ placing */
+function cellOfPoint(pt) {
+  const c = clamp(Math.round(pt.x / CELL + 3.5), 1, N);
+  const r = clamp(Math.round(pt.z / CELL + 3.5), 1, N);
+  return [c, r];
+}
+function occupantOf(c, r) {
+  return PEOPLE.find(p => { const at = state.placed[p.id]; return at && at[0] === c && at[1] === r; });
+}
+function lift(id) {
+  const p = person(id);
+  if (!p) return;
+  if (state.carry) putBack(state.carry, false);
+  if (state.placed[id]) delete state.placed[id];
+  state.carry = id;
+  visuals[id].g.position.set(0, 0, 0);
+  toast(`Carrying ${p.name}. Stand where they stood, then press E.`);
+  renderPad();
+}
+function place(id, c, r) {
+  const p = person(id);
+  const k = key(c, r);
+  if (state.marks.has(k)) { toast('That square is crossed out.', 'bad'); return false; }
+  const other = occupantOf(c, r);
+  if (other && other.id !== id) { toast(`${other.name} is standing there.`, 'bad'); return false; }
+  state.placed[id] = [c, r];
+  state.carry = null;
+  const g = visuals[id].g;
+  g.position.set(cellX(c), 0, cellZ(r));
+  g.rotation.y = Math.PI;
+  const ok = p.test ? p.test(c, r) : null;
+  toast(ok === null ? `${p.name} on C${c}R${r} — ${roomAt(c, r)}.`
+    : ok ? `${p.name} on C${c}R${r}. That fits their statement.`
+      : `${p.name} on C${c}R${r}. That does not fit their statement.`, ok === false ? 'bad' : ok ? 'good' : '');
+  if (!columnsOK()) toast('Two of them are in the same column.', 'bad');
+  renderPad();
+  checkWin();
+  return true;
+}
+function putBack(id, say = true) {
+  if (state.placed[id]) delete state.placed[id];
+  if (state.carry === id) state.carry = null;
+  const g = visuals[id].g;
+  g.position.copy(visuals[id].home);
+  g.rotation.y = Math.PI;
+  if (say) toast(`${person(id).name} goes back to the hall.`);
+  renderPad();
+}
+function checkWin() {
+  if (state.won) return;
+  if (placedList().length < PEOPLE.length) return;
+  if (!columnsOK()) return;
+  const wrong = PEOPLE.filter(p => p.test && !p.test(...state.placed[p.id]));
+  if (wrong.length) {
+    toast(`${wrong.length} statement${wrong.length > 1 ? 's do' : ' does'} not fit yet.`, 'bad');
+    return;
+  }
+  state.won = true;
+  banner('CASE CLOSED<small>everyone accounted for. Vladimir can rest, and the murderer can start the car.</small>');
+  toast('The grid holds. Every statement fits and every column has one of them.', 'good');
+  renderPad();
+}
+
+/* ------------------------------------------------------------------ movement */
+const keys = new Set();
+let yaw = 0, pitch = 0;
+const P = { eye: 1.62, speed: 3.0, r: .32, reach: REACH, stepUp: .4 };
+let feet = 0, vy = 0, grounded = true;
+
+function resolve(pos) {
+  for (const s of SOLIDS) {
+    if (feet >= s.y1 - .002 || feet + 1.7 <= s.y0 + .002) continue;
+    if (s.y1 - feet <= P.stepUp && s.y1 - feet > 0) continue;
+    const cx = clamp(pos.x, s.x0, s.x1), cz = clamp(pos.z, s.z0, s.z1);
+    const dx = pos.x - cx, dz = pos.z - cz;
+    const d = Math.hypot(dx, dz);
+    if (d > P.r) continue;
+    if (d > 1e-6) { pos.x = cx + dx / d * P.r; pos.z = cz + dz / d * P.r; }
+    else {
+      const dl = pos.x - s.x0, dr = s.x1 - pos.x, db = pos.z - s.z0, df = s.z1 - pos.z;
+      const m = Math.min(dl, dr, db, df);
+      if (m === dl) pos.x = s.x0 - P.r; else if (m === dr) pos.x = s.x1 + P.r;
+      else if (m === db) pos.z = s.z0 - P.r; else pos.z = s.z1 + P.r;
+    }
+  }
+}
+function move(dt) {
+  const fast = keys.has('ShiftLeft') || keys.has('ShiftRight');
+  const speed = P.speed * (fast ? 1.5 : 1);
+  let fx = 0, fz = 0;
+  if (keys.has('KeyW') || keys.has('ArrowUp')) fz -= 1;
+  if (keys.has('KeyS') || keys.has('ArrowDown')) fz += 1;
+  if (keys.has('KeyA') || keys.has('ArrowLeft')) fx -= 1;
+  if (keys.has('KeyD') || keys.has('ArrowRight')) fx += 1;
+  const sin = Math.sin(yaw), cos = Math.cos(yaw);
+  if (fx || fz) {
+    const len = Math.hypot(fx, fz);
+    fx /= len; fz /= len;
+    camera.position.x += (-sin * -fz + cos * fx) * speed * dt;
+    camera.position.z += (-cos * -fz - sin * fx) * speed * dt;
+  }
+  const pos = { x: camera.position.x, z: camera.position.z };
+  resolve(pos);
+  pos.x = clamp(pos.x, X0 + .4, X1 - .4);
+  pos.z = clamp(pos.z, Z0 + .4, Z1 - .4);
+  camera.position.x = pos.x;
+  camera.position.z = pos.z;
+  vy -= 9.8 * dt;
+  feet += vy * dt;
+  if (feet <= 0) { feet = 0; vy = 0; grounded = true; }
+  else grounded = false;
+  camera.position.y = feet + P.eye;
+  if (state.carry) {
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    fwd.y = 0; fwd.normalize();
+    const g = visuals[state.carry].g;
+    g.position.set(camera.position.x + fwd.x * 1.25, feet + (person(state.carry).victim ? .05 : 0),
+      camera.position.z + fwd.z * 1.25);
+    g.rotation.y = yaw + Math.PI;
+  }
+}
+
+/* ------------------------------------------------------------------ input */
+function use() {
+  const t = state.hovered;
+  if (state.carry) {
+    if (!t || t.id !== 'cell') { toast('Look at a square on the floor.'); return; }
+    place(state.carry, ...cellOfPoint(t.point));
+    return;
+  }
+  if (!t) return;
+  if (t.id.startsWith('p_')) { lift(t.id.slice(2)); return; }
+  if (t.id === 'casefile') { readCase(); return; }
+  if (t.id === 'cell') {
+    const [c, r] = cellOfPoint(t.point);
+    const who = occupantOf(c, r);
+    if (who) { lift(who.id); return; }
+    tray(`<p>C${c}R${r} — <b>${roomAt(c, r)}</b>. ${state.marks.has(key(c, r)) ? 'Crossed out.' : 'Empty.'}</p>`,
+      '<kbd>F</kbd>mark this square', 'the grid', `C${c}R${r}`);
+  }
+}
+function readCase() {
+  tray(`<p><b>CASE 004 — VLADIMIR.</b> Murder, and the house is a grid.</p>
+    <table>
+    ${PEOPLE.map(p => `<tr><td class="c">${p.name}</td><td>${p.clue.toLowerCase()}.</td></tr>`).join('')}
+    </table>
+    <p class="sub">One person per column. One per square. Nobody on a crossed square.</p>`,
+    '', 'on the wall', 'the case file');
+}
+function toggleMark() {
+  const t = state.hovered;
+  if (!t || t.id !== 'cell') { toast('Look at a square on the floor first.'); return; }
+  const [c, r] = cellOfPoint(t.point);
+  const k = key(c, r);
+  const who = occupantOf(c, r);
+  if (who) { toast(`${who.name} is standing there.`); return; }
+  if (state.marks.has(k)) state.marks.delete(k); else state.marks.add(k);
+  syncMarks();
+  renderPad();
+  toast(state.marks.has(k) ? `C${c}R${r} crossed out.` : `C${c}R${r} clear again.`);
+}
+
+addEventListener('keydown', e => {
+  if (!state.started) return;
+  if (e.code === 'Tab' || e.code === 'KeyI') {
+    e.preventDefault();
+    padEl.hidden = !padEl.hidden;
+    renderPad();
+    if (document.pointerLockElement) document.exitPointerLock();
+    return;
+  }
+  if (e.code === 'KeyR' && !state.won) {
+    PEOPLE.forEach(p => { delete state.placed[p.id]; visuals[p.id].g.position.copy(visuals[p.id].home); });
+    state.marks.clear(); syncMarks(); state.carry = null;
+    renderPad();
+    toast('Everyone back to the hall, every mark gone.');
+    return;
+  }
+  if (e.code === 'KeyR' && state.won) { location.reload(); return; }
+  if (e.code === 'KeyQ') {
+    if (state.carry) putBack(state.carry);
+    return;
+  }
+  if (e.code === 'KeyF') { toggleMark(); return; }
+  if (e.code === 'KeyE') { use(); return; }
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (grounded) { vy = 3.4; grounded = false; }
+    return;
+  }
+  if (e.code === 'Escape') return;
+  keys.add(e.code);
+});
+addEventListener('keyup', e => keys.delete(e.code));
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('mousedown', e => {
+  if (!state.locked) { canvas.requestPointerLock?.(); return; }
+  use();
+});
+document.addEventListener('pointerlockchange', () => { state.locked = document.pointerLockElement === canvas; });
+document.addEventListener('mousemove', e => {
+  if (!state.locked) return;
+  yaw -= e.movementX * .0026;
+  pitch = clamp(pitch - e.movementY * .0026, -1.3, 1.3);
+});
+
+/* ------------------------------------------------------------------ loop */
+const clock = new THREE.Clock();
+let hoverT = 0;
+function roomUnderPlayer() {
+  const c = clamp(Math.floor((camera.position.x + N * CELL / 2) / CELL) + 1, 1, N);
+  const r = clamp(Math.floor((camera.position.z + N * CELL / 2) / CELL) + 1, 1, N);
+  const inGrid = camera.position.x > -6 && camera.position.x < 6 && camera.position.z > -6 && camera.position.z < 6;
+  return inGrid ? { room: roomAt(c, r), c, r } : { room: 'the hall', c, r };
+}
+function tick() {
+  const dt = Math.min(clock.getDelta(), .1);
+  if (state.started) move(dt);
+  camera.rotation.set(pitch, yaw, 0);
+
+  const here = roomUnderPlayer();
+  roomNow.textContent = `${here.room}${here.room === 'the hall' ? '' : ` · C${here.c}R${here.r}`}`;
+
+  hoverT -= dt;
+  if (hoverT <= 0) {
+    hoverT = .07;
+    state.hovered = target();
+    if (state.hovered) {
+      crosshair.classList.add('hot');
+      const label = state.hovered.object.userData.label || '';
+      let text = label;
+      let actionable = true;
+      if (state.hovered.id === 'cell') {
+        const [c, r] = cellOfPoint(state.hovered.point);
+        text = state.carry ? `put ${person(state.carry).name} on C${c}R${r}`
+          : `C${c}R${r} · ${roomAt(c, r)}`;
+        actionable = !!state.carry;
+      } else if (state.hovered.id.startsWith('p_')) {
+        text = state.carry ? `${label} (in your arms)` : `pick up ${label.toLowerCase()}`;
+        actionable = !state.carry;
+      } else if (state.hovered.id === 'casefile') {
+        actionable = false;
+      }
+      promptEl.innerHTML = actionable ? `<kbd>E</kbd>${text}` : text;
+      promptEl.classList.toggle('read', !actionable);
+      promptEl.hidden = false;
+      if (state.trayId !== state.hovered.id + (state.carry || '')) {
+        state.trayId = state.hovered.id + (state.carry || '');
+        if (state.carry) {
+          tray(`<p>Carrying <b>${person(state.carry).name}</b>. Look at a square and press E to put them down.</p>
+            <p class="sub">Q sends them back to the hall.</p>`, '<kbd>E</kbd>put down · <kbd>Q</kbd>put back',
+            'in your arms', person(state.carry).name);
+        } else if (state.hovered.id === 'casefile') readCase();
+        else if (state.hovered.id.startsWith('p_')) {
+          const p = person(state.hovered.id.slice(2));
+          tray(`<p><b>${p.name}</b> — ${p.clue.toLowerCase()}.</p>
+            <p class="sub">${state.placed[p.id] ? `Standing on C${state.placed[p.id][0]}R${state.placed[p.id][1]} · ${roomAt(...state.placed[p.id])}.` : 'Waiting in the hall.'}</p>`,
+            '<kbd>E</kbd>pick up', 'a guest', p.name);
+        } else {
+          const [c, r] = cellOfPoint(state.hovered.point);
+          tray(`<p>C${c}R${r} — <b>${roomAt(c, r)}</b>. ${state.marks.has(key(c, r)) ? 'Crossed out.' : 'Empty.'}</p>`,
+            '<kbd>F</kbd>mark this square', 'the grid', `C${c}R${r}`);
+        }
+      }
+    } else {
+      crosshair.classList.remove('hot');
+      promptEl.hidden = true;
+    }
+  }
+  crosshair.classList.toggle('carry', !!state.carry);
+
+  // name plates face the camera
+  for (const p of PEOPLE) {
+    const v = visuals[p.id];
+    v.plate.lookAt(camera.position.x, v.plate.getWorldPosition(new THREE.Vector3()).y, camera.position.z);
+  }
+  renderer.render(scene, camera);
+}
+renderer.setAnimationLoop(tick);
+
+/* ------------------------------------------------------------------ start */
+$('#startBtn').addEventListener('click', () => {
+  $('#start').hidden = true;
+  state.started = true;
+  renderPad();
+  camera.position.set(0, P.eye, 7.6);
+  yaw = 0; pitch = -.04;
+  canvas.requestPointerLock?.();
+  setTimeout(() => toast('Five guests and a body. Read the case file on the west wall.', ''), 700);
+});
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ------------------------------------------------------------------ test hook */
+if (new URLSearchParams(location.search).has('test') || new URLSearchParams(location.search).has('debug')) {
+  window.__murdoku = {
+    state, PEOPLE, ROOM_AT, roomAt, cellX, cellZ, key, place, lift, putBack, checkWin, toggleMark,
+    columnsOK, cellOfPoint, visuals, camera, scene, THREE, interact, target, raycaster,
+    BEDS, TABLES, CHAIRS, TVS, WINDOW, FURN, use, readCase, renderPad, trayEl,
+    setCell(id, c, r) { lift(id); return place(id, c, r); },
+    where() { return { x: camera.position.x, z: camera.position.z, yaw, pitch }; },
+    teleport(x, z, y2 = 0, p2 = 0) {
+      camera.position.set(x, P.eye, z);
+      feet = 0; yaw = y2; pitch = p2;
+      camera.rotation.set(pitch, yaw, 0);
+      camera.updateMatrixWorld(true);
+    },
+    keys, syncMarks, markObjs,
+  };
+}
+</script>
+</body>
+</html>

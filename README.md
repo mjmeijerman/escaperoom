@@ -3,6 +3,9 @@
 Two first-person 3D escape rooms, no build step, no CDN, no network calls — three.js is vendored.
 
 - `/` — **the Founders' Chamber**, a wizarding room where every lock is a *spell you draw with the mouse*. Four charms, four digits.
+- `/murdoku.html` — **Murdoku**, a country house you can walk through: the floor is a 6×6 murdoku grid, five guests and
+  a body, and everyone has to be put where their statement says they were. Design notes and the solution in
+  `MURDOKU.md`.
 - `/edo.html` — **the Edo Room**, a Japanese room of the Edo period. Four puzzles, four digits, two of them reading kanji.
 - `/index.html` — **the Locked Study**, the original room. Three digits.
 - `/pcdoc.html` — **PC Doctor**, a repair shop with a shrink ray. Work in progress: the generator, the shrink, the
@@ -14,7 +17,8 @@ Two first-person 3D escape rooms, no build step, no CDN, no network calls — th
 docker compose up --build -d
 ```
 
-Open http://localhost:8080 (the Founders' Chamber), /edo.html, /index.html (the Locked Study) or /classic.html (the point-and-click version of the study).
+Open http://localhost:8080 (the Founders' Chamber), /edo.html, /index.html (the Locked Study), /pcdoc.html (PC
+Doctor) or /murdoku.html (the country house). /classic.html is the point-and-click version of the study.
 
 Stop with `docker compose down`.
 
@@ -222,8 +226,8 @@ That is the room, end to end: five faults, the drive, the login, and BROKEN.
     ghcr.io/puppeteer/puppeteer:latest node test/spells.browser.cjs
   ```
 
-  Swap the last argument for `test/edo.browser.cjs` to test the Edo Room, `test/pcdoc.mobile.cjs` for PC Doctor on a
-  phone viewport, or `test/pcdoc.browser.cjs` for PC Doctor
+  Swap the last argument for `test/edo.browser.cjs` to test the Edo Room, `test/murdoku.browser.cjs` for Murdoku,
+  `test/pcdoc.mobile.cjs` for PC Doctor on a phone viewport, or `test/pcdoc.browser.cjs` for PC Doctor
   (193 checks: torch, generator order, the flood, the shrink, the display cycling, the memory chain, power routing,
   the twin 8-pins refusing each other, the three fans, the padlock, the winch, the card, the notepad, hardware
   ignoring a full-sized person, the HDMI run to the rear panel, the two-way cable span down to the desk, the fall off

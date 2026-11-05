@@ -2,7 +2,7 @@ FROM nginx:1.27-alpine
 
 RUN rm -f /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY hogwarts.html edo.html index.html classic.html pcdoc.html /usr/share/nginx/html/
+COPY hogwarts.html edo.html index.html classic.html pcdoc.html murdoku.html /usr/share/nginx/html/
 COPY vendor /usr/share/nginx/html/vendor
 
 EXPOSE 80
