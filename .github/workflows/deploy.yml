@@ -1,0 +1,58 @@
+name: deploy
+
+# Every push to main publishes the rooms to https://escape.markmeijerman.nl/.
+# The server side (directory, vhost, certificate, CSP) lives in
+# vps1-provisioning, entry nginx_server_templates_static; this workflow only
+# puts files in the directory it created.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time, and a run in progress is never cancelled: rsync --delete
+# interrupted halfway leaves the directory in neither the old nor the new state.
+concurrency:
+  group: deploy-escape
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: push to vps1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # No browser here: this is the shell-level check that the rooms still
+      # parse, and it takes a second.
+      - name: Check the rooms
+        run: node test/rooms.mjs
+
+      - name: Load the deploy key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DEPLOY_SSH_KEY}" ]; then
+            echo "DEPLOY_SSH_KEY is empty or unset" >&2
+            exit 1
+          fi
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # The host key is pinned in the repository, not scanned at deploy time:
+          # a deploy that trusts whatever answers is not pinned at all.
+          install -m 644 .github/known_hosts ~/.ssh/known_hosts
+          # Fail here with a readable message instead of inside rsync.
+          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null
+
+      - name: Push the rooms
+        run: |
+          set -euo pipefail
+          export SSH_CMD="ssh -i $HOME/.ssh/deploy_key \
+            -o UserKnownHostsFile=$HOME/.ssh/known_hosts \
+            -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes -o BatchMode=yes"
+          ./deploy.sh --check

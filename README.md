@@ -29,6 +29,28 @@ docker build -t escaperoom .
 docker run -d -p 8080:80 --name escaperoom escaperoom
 ```
 
+## Deploying
+
+Live at <https://escape.markmeijerman.nl/> — plain files in `/home/websites/escape` on `vps1.markmeijerman.nl`, in
+front of nginx. No container, no PHP, no database.
+
+```sh
+./deploy.sh            # build /tmp/escaperoom-site, rsync it over, done
+./deploy.sh --dry-run  # build and check the file list, push nothing
+./deploy.sh --check    # push, then curl the URL and print the status code
+```
+
+`deploy.sh` copies as the `deploy` account and deletes what is no longer here, so the box mirrors the build instead of
+piling up rooms. It rsyncs when rsync exists and otherwise tars over ssh; same result, no dependency on a laptop having
+the right package. The directory, its owner and the vhost (certificate and CSP included) come from
+[`vps1-provisioning`](../vps1-provisioning), `group_vars/production/websites.yml`, entry
+`nginx_server_templates_static`. Provisioning creates the empty directory; this script fills it.
+
+**Every push to `main` deploys**, in `.github/workflows/deploy.yml`: it checks the rooms (`node test/rooms.mjs`), loads
+`DEPLOY_SSH_KEY` from the repository secrets, pins the host key from `.github/known_hosts` (in the repo, not scanned at
+deploy time) and calls `./deploy.sh --check`, so a run only goes green if the site answers 200 afterwards. One run at a
+time, and a run in progress is never cancelled — a half-finished delete leaves neither the old site nor the new one.
+
 ## Controls
 
 Desktop is keyboard and mouse; a touch screen gets a stick, one finger to look, and four buttons (`E`, jump, notepad,
