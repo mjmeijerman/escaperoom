@@ -631,13 +631,9 @@ const check = (name, ok, detail = '') => {
   await sleep(220);
   const cleaned = await st();
   check('picking the air cleans the window', cleaned.usb.clean === true);
-  check('the mouse goes back on its pad', await page.evaluate(async () => {
-    const d = window.__doctor;
-    d.aimAt('mouse', 0.05, 0.76);
-    d.use();
-    await new Promise(r => setTimeout(r, 120));
-    return d.state.usb.tipped === false;
-  }));
+  await sleep(900);
+  check('and the mouse rights itself once it is clean', (await st()).usb.tipped === false,
+    JSON.stringify(await st().then(s2 => s2.usb)));
 
   const zipUp = await ride('up');
   check('the far grip rides you back to the bench', zipUp.onDesk === false && zipUp.riding === false,

@@ -238,8 +238,7 @@ again to put it back on its pad.
    - Ride down again for the mouse's connector, ride back, `E` the other port. Its sensor glows red and the cursor
      is still a mess.
    - Ride down once more, to the mouse. `E` it to tip it onto its side. Underneath: a hair across the optical window.
-   - `E` the window: the notepad opens. Click **compressed air**. The hair goes.
-   - `E` the mouse again to put it back on its pad.
+   - `E` the window: the notepad opens. Click **compressed air**. The hair goes, and the mouse rights itself.
 11. **`d4` — the card**
    - Padlock: dial **4 5 6** (`↑↓` digit, `←→` next wheel, `E` try). The shop number ends in 123456.
    - Grab the winch drum (`E`, then drag the mouse back) until the card is at the rail.

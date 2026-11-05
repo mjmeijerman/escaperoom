@@ -3498,6 +3498,8 @@ function cleanLens() {
   sfx.pop();
   toast('The hair lifts off. Clean glass.', 'good');
   renderTray();
+  // clean it and it goes back on its pad by itself: a mouse on its side is odd to leave lying
+  setTimeout(() => { if (state.usb.clean && state.usb.tipped) tipMouse(false); }, 700);
 }
 
 /* --- the lights, and what wakes them up -------------------------------- */
