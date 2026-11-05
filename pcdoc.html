@@ -584,6 +584,11 @@ const sfx = {
     hiss({ dur: .05, vol: .11, f: 3600, q: 1.8 });
     tone({ f: 900, f2: 320, type: 'square', dur: .07, vol: .07, filter: 2400 });
   },
+  slam() {                                                 // a quarantine door, and its latch
+    hiss({ dur: .20, vol: .18, f: 700, q: .5, f2: 120 });
+    tone({ f: 74, f2: 36, type: 'sawtooth', dur: .38, vol: .19, filter: 240 });
+    tone({ f: 210, f2: 120, type: 'square', dur: .12, vol: .08, at: .16 });
+  },
 };
 
 /* ------------------------------------------------------------- generator hum */
@@ -1855,6 +1860,7 @@ function doShrink() {
   ledLight.intensity = .5;
   ledLight.decay = 0;
   caseGlow.intensity = .5;
+  caseGlow.distance = 2.4;
   sfx.whoom();
   setTimeout(() => { shrinking = false; }, 600);
   toast('The bench is a country. The tower is a building.', 'good');
@@ -1866,7 +1872,8 @@ function doShrink() {
 const SMALL_ONLY = new Set(['led', 'bag', 'slotA2', 'slotB2', 'psuLabel', 'psuRocker', 'padlock', 'gpu', 'hpcie',
   'h24', 'hcpu', 'hfan', 'plugRear', 'chaFan1', 'sysFan3', 'cpuFanHdr', 'screwdriver', 'gpuDrum',
   'cable_atx', 'cable_eps', 'cable_pcie', 'cable_sata', 'cable_hdmi', 'ioHdmi',
-  'zipBench', 'zipDesk', 'usbKbd', 'usbMouse', 'usbPortA', 'usbPortB', 'airCan', 'mouseLens', 'usbNote']);
+  'zipBench', 'zipDesk', 'usbKbd', 'usbMouse', 'usbPortA', 'usbPortB', 'airCan', 'mouseLens', 'usbNote',
+  'ssdPort', 'ssdBody', 'diskExit', 'wormLever', 'readme']);
 
 function transcriptHTML() {
   if (!voice.lines.length) return '<p class="sub">a message is playing</p>';
@@ -2047,7 +2054,8 @@ function move(dt) {
     nx += (-sin * -fz + cos * fx) * speed * dt;
     nz += (-cos * -fz - sin * fx) * speed * dt;
   }
-  const list = state.phase === 'shrunk' ? SOLID_S : SOLID_H;
+  const inDisk = state.disk.inside;
+  const list = inDisk ? SOLID_D : state.phase === 'shrunk' ? SOLID_S : SOLID_H;
   const pos = { x: nx, z: nz };
   resolve(pos, P.r, feet, P.eye * 1.06, list, P.stepUp);
   const moved = Math.hypot(pos.x - camera.position.x, pos.z - camera.position.z);
@@ -2056,12 +2064,14 @@ function move(dt) {
 
   // gravity, over whatever is actually under you. Shrunk, there are two floors
   // worth standing on — the bench and the desk — and between them, air.
-  const baseGround = state.phase === 'shrunk' ? shrunkGroundAt(pos.x, pos.z) : 0;
+  const baseGround = inDisk ? DISK.y - .50
+    : state.phase === 'shrunk' ? shrunkGroundAt(pos.x, pos.z) : 0;
   const ground = groundAt(pos.x, pos.z, P.r, feet, P.stepUp, list, baseGround);
-  vy -= (state.phase === 'shrunk' ? 1.8 : 9.8) * dt;
+  vy -= (inDisk || state.phase === 'shrunk' ? 1.8 : 9.8) * dt;
   feet += vy * dt;
   if (feet <= ground) { feet = ground; vy = 0; grounded = true; } else grounded = false;
-  if (state.phase === 'shrunk' && feet < .12) catchFall();
+  if (inDisk) { if (feet < DISK.y - .08) ejectFromDisk(); }
+  else if (state.phase === 'shrunk' && feet < .12) catchFall();
   camera.position.y = feet + P.eye + (state.phase === 'shrunk' ? Math.sin(clock.elapsedTime * 6) * .00025 * (moved > 0 ? 1 : 0) : 0);
 
   if (moved > 1e-6) {
@@ -2228,6 +2238,7 @@ function startGenerator() {
 function giveHint() {
   if (!state.gen.running && !state.torch) return toast('Hint · it is dark. The torch is on the counter, blinking green.', '');
   if (!state.gen.running) return toast('Hint · the generator, back yard. Fuel open, choke closed, three pulls on the cord.', '');
+  if (state.disk.inside && !state.disk.sealed) return toast('Hint · it only follows. Get it inside the chamber, leave by the hatch, pull the lever.', '');
   if (state.phase !== 'shrunk') return toast('Hint · stand in the ring on the floor and pull the shrink ray lever.', '');
   if (!state.ram.a2) return toast('Hint · slot A2: that module is leaning out of the socket. Push it home.', '');
   if (!state.ram.seated) {
@@ -2253,7 +2264,8 @@ function giveHint() {
   if (!state.usb.clean) return toast(!state.usb.tipped
     ? 'Hint · the mouse is on the desk, and so is the only way down there: the taped grip on the HDMI cable at the bench edge.'
     : 'Hint · the window under the mouse is filthy. The can of air is standing on the bench, left of the case.', '');
-  return toast('Hint · five faults are clear and the desk is open. b7 — the SSD — is slice 4, and the login screen comes after it.', 'good');
+  if (state.codes.includes('b7')) return toast('Hint · the SSD on the bench beside the case. Its port is a doorway.', '');
+  return toast('Hint · every fault is clear. The monitor wants a password.', 'good');
 }
 
 /* ==================================================================== slice 2
@@ -3516,6 +3528,44 @@ function plugUsb() {
 }
 
 Object.assign(THINGS, {
+  ssdBody: {
+    kicker: 'the bench', title: 'The customer\'s SSD',
+    text: () => state.codes.includes('b7')
+      ? '<p>A 240 GB drive, warm, with a SATA port on the edge and a label: <i>the customer\'s photos</i>.</p>'
+      : '<p>The drive, quiet at last. The label says <b>SATA SSD · 240 GB</b>.</p>',
+    keys: () => '', act() { },
+  },
+  ssdPort: {
+    kicker: 'the bench', title: 'SATA port',
+    text: () => !railLive()
+      ? '<p>A port, a slot, a dead status LED. It wants 12 V.</p>'
+      : state.codes.includes('b7')
+        ? '<p>A slot in the drive\'s edge, wider than it has any right to be from where you are standing.</p>'
+        : '<p>The port. Nothing in there now.</p>',
+    keys: () => railLive() ? '<kbd>E</kbd>step in' : '',
+    act() { enterDisk(); },
+  },
+  diskExit: {
+    kicker: 'the sector grid', title: 'The port mouth',
+    text: () => '<p>The way you came in. The shop is on the other side of it.</p>',
+    keys: () => '<kbd>E</kbd>step back out',
+    act() { leaveDisk(); },
+  },
+  wormLever: {
+    kicker: 'the quarantaine chamber', title: 'The lever',
+    text: () => state.disk.sealed
+      ? '<p>Pulled. The door is down and the chamber is a cell.</p>'
+      : '<p>A lever beside the chamber door. It drops the door, and it drops it on whatever is inside.</p>',
+    keys: () => state.disk.sealed ? '' : '<kbd>E</kbd>drop the door',
+    act() { pullWormLever(); },
+  },
+  readme: {
+    kicker: 'the quarantaine chamber', title: 'LEESMIJ.txt',
+    text: () => `<p><b>FIXMASTER PRO 2019</b> — gratis versie.</p>
+      <p>"Bedankt voor het gebruiken van onze volledig legale diagnosetool."</p>
+      <p class="sub">Three extra things installed. That is the whole repair, and it is what Gerrit keeps finding.</p>`,
+    keys: () => '', act() { state.reads.readme = true; sfx.paper(); },
+  },
   usbNote: {
     kicker: 'the bench, behind the case', title: 'A note in Gerrit\'s hand',
     text: () => '<p><b>KEYBOARD + MOUSE</b> — cable ends · rear panel.</p>',
@@ -3598,6 +3648,228 @@ function takeAir() {
   renderTray();
 }
 
+/* ==================================================================== slice 4
+   The SSD. b7 lives in here, and the drive is a doorway: its SATA port opens
+   into the sector grid. The inside is bigger than the outside — the room is
+   built on a shrink ray, and this is the one place it spends that.
+
+   The grid is a lattice of sector blocks over nothing. Some sectors are gone:
+   step into the hole and the drive spits you out. The worm follows you and eats
+   the block you leave behind. It is slower than you are; the trick is not to
+   outrun it, it is to get it into the quarantaine chamber and close the door. */
+
+const DISK = { x: -1.35, z: -2.30, y: -6.0, cell: .13, cols: 8, rows: 9 };
+DISK.x0 = DISK.x - DISK.cols * DISK.cell / 2;
+DISK.z0 = DISK.z - DISK.rows * DISK.cell / 2;
+DISK.w = DISK.cols * DISK.cell;
+DISK.d = DISK.rows * DISK.cell;
+const SOLID_D = [];
+const diskG = new THREE.Group();
+scene.add(diskG);
+const diskShellMat = new THREE.MeshStandardMaterial({ color: 0x05090b, roughness: .95 });
+const sectorMat = () => new THREE.MeshStandardMaterial({
+  color: 0x0d2a33, emissive: 0x1f7fa0, emissiveIntensity: .30, roughness: .45,
+});
+const HOLES = new Set(['1,6', '4,2', '5,2', '6,6']);
+const sectorBlocks = [];
+for (let c = 0; c < DISK.cols; c++) for (let r = 0; r < DISK.rows; r++) {
+  if (HOLES.has(c + ',' + r)) continue;
+  const x = DISK.x0 + c * DISK.cell, z = DISK.z0 + r * DISK.cell;
+  const mat = sectorMat();
+  box(DISK.cell - .020, .060, DISK.cell - .020, mat, x + DISK.cell / 2, DISK.y - .030, z + DISK.cell / 2, diskG);
+  sectorBlocks.push({ mat, c, r });
+  SOLID_D.push(S(x, x + DISK.cell, DISK.y - .060, DISK.y, z, z + DISK.cell));   // flush, so the seams are not holes
+}
+// the drive's shell: walls and a lid, so the shop is not visible from in here
+const shellH = .17, wallT = .03;
+box(DISK.w, .02, DISK.d, diskShellMat, DISK.x, DISK.y - .55, DISK.z, diskG);      // the floor of the void
+[[DISK.x0, DISK.z0 + DISK.d / 2, wallT, DISK.d, 'x'], [DISK.x0 + DISK.w, DISK.z0 + DISK.d / 2, wallT, DISK.d, 'x'],
+ [DISK.x0 + DISK.w / 2, DISK.z0, DISK.w, wallT, 'z'], [DISK.x0 + DISK.w / 2, DISK.z0 + DISK.d, DISK.w, wallT, 'z']]
+  .forEach(([x, z, w, d, axis]) => {
+    box(axis === 'x' ? w : w, shellH, axis === 'x' ? d : d, diskShellMat, x, DISK.y + shellH / 2, z, diskG);
+    const half = axis === 'x' ? [wallT / 2, d / 2] : [w / 2, wallT / 2];
+    SOLID_D.push(S(x - half[0], x + half[0], DISK.y - .2, DISK.y + shellH, z - half[1], z + half[1]));
+  });
+box(DISK.w + .06, .02, DISK.d + .06, diskShellMat, DISK.x, DISK.y + shellH, DISK.z, diskG);
+// the quarantine chamber, three cells square, with a door and a hatch
+const CH = {
+  x0: DISK.x0 + 3 * DISK.cell, x1: DISK.x0 + 6 * DISK.cell,
+  z0: DISK.z0 + 3 * DISK.cell, z1: DISK.z0 + 6 * DISK.cell,
+};
+const CH_H = .13, CH_T = .02;
+const chMat = new THREE.MeshStandardMaterial({ color: 0x122a33, emissive: 0x0e3a4a, emissiveIntensity: .5, roughness: .6 });
+function chWall(x, z, w, d) {
+  box(w, CH_H, d, chMat, x, DISK.y + CH_H / 2, z, diskG);
+  SOLID_D.push(S(x - w / 2, x + w / 2, DISK.y - .1, DISK.y + CH_H, z - d / 2, z + d / 2));
+}
+const DOOR = { x0: CH.x1 - DISK.cell * .9, x1: CH.x1 - DISK.cell * .1 };   // gap in the +z wall
+chWall((CH.x0 + DOOR.x0) / 2, CH.z1, DOOR.x0 - CH.x0, CH_T);               // +z wall, left of the door
+chWall((DOOR.x1 + CH.x1) / 2, CH.z1, CH.x1 - DOOR.x1, CH_T);               // +z wall, right of the door
+const HATCH = { x0: CH.x0 + DISK.cell * .1, x1: CH.x0 + DISK.cell * .9 };  // gap in the −z wall
+chWall((CH.x0 + HATCH.x0) / 2, CH.z0, HATCH.x0 - CH.x0, CH_T);
+chWall((HATCH.x1 + CH.x1) / 2, CH.z0, CH.x1 - HATCH.x1, CH_T);
+chWall(CH.x0, (CH.z0 + CH.z1) / 2, CH_T, CH.z1 - CH.z0);                   // sides
+chWall(CH.x1, (CH.z0 + CH.z1) / 2, CH_T, CH.z1 - CH.z0);
+// the quarantine door: slides across the gap when the lever is pulled
+const chDoor = box(DOOR.x1 - DOOR.x0, CH_H, CH_T, chMat, (DOOR.x0 + DOOR.x1) / 2, DISK.y + CH_H + .4, CH.z1, diskG);
+const chLamp = new THREE.PointLight(0x2f8faf, .40, 2.0, 1.6);
+chLamp.position.set(DISK.x, DISK.y + .22, DISK.z);
+scene.add(chLamp);
+// a lever on the outside of the door
+const leverG = new THREE.Group();
+leverG.position.set(CH.x1 + .12, DISK.y, CH.z1 + .05);
+diskG.add(leverG);
+box(.05, .012, .05, chMat, 0, .006, 0, leverG);
+box(.014, .07, .014, M.metalDark, 0, .045, 0, leverG);
+const leverArm = box(.012, .012, .075, M.red, 0, .075, .02, leverG);
+leverArm.rotation.x = -.5;
+register(leverG, 'wormLever', 'the quarantine lever');
+SOLID_D.push(S(CH.x1 + .095, CH.x1 + .145, DISK.y - .1, DISK.y + .09, CH.z1 + .025, CH.z1 + .075));
+// the worm
+const worm = new THREE.Group();
+worm.position.set(DISK.x0 + 1.1 * DISK.cell, DISK.y + .02, DISK.z0 + 7.4 * DISK.cell);
+diskG.add(worm);
+const wormMat = new THREE.MeshStandardMaterial({ color: 0x8c2f24, emissive: 0xff4a2a, emissiveIntensity: 1.15, roughness: .45 });
+for (let i = 0; i < 7; i++) sphere(.024 - i * .0022, wormMat, 0, Math.sin(i) * .004, -i * .026, worm, 10);
+const wormEye = sphere(.007, new THREE.MeshStandardMaterial({ color: 0x1a0b08, emissive: 0xffe066, emissiveIntensity: 1.6, roughness: .3 }), .008, .012, .012, worm, 8);
+// the port mouth inside, where you came in and where you leave
+const mouth = new THREE.Group();
+mouth.position.set(DISK.x0 + 4.5 * DISK.cell, DISK.y + .004, DISK.z0 + 8.5 * DISK.cell);
+diskG.add(mouth);
+box(.12, .004, .05, new THREE.MeshStandardMaterial({ color: 0x1a2a30, emissive: 0x2f8faf, emissiveIntensity: .8, roughness: .5 }), 0, 0, 0, mouth);
+register(mouth, 'diskExit', 'the way out of the drive');
+// once b7 is gone: the README, on the inside wall of the chamber
+const readmeTex = tex(512, 640, (g, w, h) => {
+  g.fillStyle = '#dfe6e2'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#1b2328';
+  g.font = '700 34px ui-monospace,monospace';
+  g.fillText('LEESMIJ.txt', 30, 60);
+  g.font = '400 24px ui-monospace,monospace';
+  ['FIXMASTER PRO 2019', 'gratis versie', '', '"Bedankt voor het gebruiken van', 'onze volledig legale', 'diagnosetool."', '',
+   '3 extra\'s geinstalleerd.', '', 'Wij helpen u graag.', ''].forEach((l, i) =>
+    g.fillText(l, 30, 130 + i * 38));
+  g.fillStyle = '#8c2f24';
+  g.font = '700 26px ui-monospace,monospace';
+  g.fillText('-- FIXMASTER SUPPORT', 30, h - 40);
+});
+const readmePanel = plane(.14, .18, new THREE.MeshStandardMaterial({ map: readmeTex, emissive: 0x223a42, emissiveMap: readmeTex, emissiveIntensity: .5, roughness: .6 }),
+  (CH.x0 + CH.x1) / 2, DISK.y + .07, CH.z0 + CH_T / 2 + .001);
+readmePanel.rotation.x = 0;
+readmePanel.visible = false;
+diskG.add(readmePanel);
+register(readmePanel, 'readme', 'LEESMIJ.txt');
+// the drive's own label, on the chamber wall: the character that comes out of b7
+const ssdLabelTex = stickerTex([['SATA SSD', 30, true], ['240 GB', 24, false], ['B', 74, true]],
+  { bg: '#e8e2cf', ink: '#1b2328', h: 260, top: 62, align: 'center' });
+const ssdLabel = decal(.10, .05, ssdLabelTex, (CH.x0 + CH.x1) / 2, DISK.y + .07, CH.z1 - CH_T / 2 - .001, Math.PI);
+ssdLabel.visible = false;
+diskG.add(ssdLabel);
+
+/* the drive itself, on the bench beside the case */
+const SSD = { x: -1.35, z: -2.30 };
+const ssdBody = box(.10, .008, .07, new THREE.MeshStandardMaterial({ color: 0x2b3236, roughness: .6, metalness: .2 }),
+  SSD.x, BENCH.top + .004, SSD.z);
+box(.098, .002, .066, new THREE.MeshStandardMaterial({ color: 0x3d444a, roughness: .7 }), SSD.x, BENCH.top + .009, SSD.z);
+const ssdLed = sphere(.0035, new THREE.MeshStandardMaterial({ color: 0x102018, emissive: 0x000000, roughness: .3 }),
+  SSD.x + .03, BENCH.top + .011, SSD.z + .026, scene, 8);
+const ssdPort = box(.026, .008, .012, new THREE.MeshStandardMaterial({ color: 0x14181b, roughness: .8 }),
+  SSD.x, BENCH.top + .004, SSD.z + .037);
+register(ssdPort, 'ssdPort', 'the SATA port on the drive');
+register(ssdBody, 'ssdBody', 'the customer\'s SSD');
+const ssdTop = decal(.08, .03, stickerTex([['SATA SSD · 240 GB', 26, true], ['b7 lives here', 20, false]],
+  { bg: '#dfe6e2', ink: '#1b2328', h: 150, top: 52, align: 'center' }),
+  SSD.x, BENCH.top + .0105, SSD.z, 0);
+ssdTop.rotation.x = -Math.PI / 2;
+SOLID_S.push(S(SSD.x - .05, SSD.x + .05, BENCH.top, BENCH.top + .01, SSD.z - .035, SSD.z + .035));   // the drive is a step, not air
+
+/* --- going in and coming out ------------------------------------------- */
+state.disk = { inside: false, sealed: false, ate: null };
+function flash(ms = 200) {
+  bloom.style.opacity = '.92';
+  setTimeout(() => { bloom.style.opacity = '0'; }, ms);
+}
+function enterDisk() {
+  if (state.disk.inside) return;
+  if (!railLive()) { sfx.buzz(); toast('The drive is dark. No 12 V.'); return; }
+  if (state.disk.sealed && state.codes.includes('b7')) return;
+  state.disk.inside = true;
+  flash(220);
+  sfx.whoom();
+  camera.position.set(DISK.x0 + 4.5 * DISK.cell, DISK.y + P.eye, DISK.z0 + 8.5 * DISK.cell);
+  feet = DISK.y; vy = 0;
+  yaw = 0; pitch = -.02;                       // facing into the grid
+  if (!state.disk.sealed) {
+    worm.position.set(DISK.x0 + 1.1 * DISK.cell, DISK.y + .02, DISK.z0 + 7.4 * DISK.cell);
+    worm.visible = true;
+  }
+  toast('Inside the drive. Sector grid, b7, and something moving.', '');
+  renderTray();
+}
+function leaveDisk(msg = true) {
+  state.disk.inside = false;
+  flash(200);
+  camera.position.set(SSD.x, BENCH.top + P.eye, SSD.z + .14);
+  feet = BENCH.top; vy = 0;
+  yaw = Math.PI; pitch = -.15;
+  if (msg) toast('Back at the port.');
+  renderTray();
+}
+function ejectFromDisk() {
+  state.disk.inside = false;
+  flash(260);
+  sfx.buzz();
+  camera.position.set(SSD.x, BENCH.top + P.eye, SSD.z + .14);
+  feet = BENCH.top; vy = 0;
+  yaw = Math.PI; pitch = -.15;
+  worm.position.set(DISK.x0 + 1.1 * DISK.cell, DISK.y + .02, DISK.z0 + 7.4 * DISK.cell);
+  for (const b of sectorBlocks) b.mat.emissiveIntensity = .30;      // the eaten sectors grow back
+  if (state.codes.includes('b7')) toast('It got you. The drive spat you out at the port.', 'bad');
+  renderTray();
+}
+function pullWormLever() {
+  if (state.disk.sealed) { toast('The chamber is sealed.'); return; }
+  const inChamber = worm.position.x > CH.x0 && worm.position.x < CH.x1
+    && worm.position.z > CH.z0 && worm.position.z < CH.z1;
+  if (!inChamber) {
+    sfx.buzz();
+    toast('The door comes down on an empty chamber. Nothing in there.', 'bad');
+    return;
+  }
+  state.disk.sealed = true;
+  chDoor.position.y = DISK.y + CH_H / 2;
+  worm.visible = false;
+  for (const b of sectorBlocks) { b.mat.emissive = new THREE.Color(0x36d08a); b.mat.emissiveIntensity = .55; }
+  chLamp.color.setHex(0x36d08a);
+  readmePanel.visible = true;
+  ssdLabel.visible = true;
+  sfx.slam();
+  setTimeout(() => sfx.chime(), 220);
+  clearCode('b7', 'B', 'SSD', 'The door slams. The lattice goes green: b7 clears, and the drive gives up a B.');
+  toast('Quarantined. Whatever is left of b7 is inside that box now.', 'good');
+  renderTray();
+}
+function diskTick(dt) {
+  ssdLed.material.emissive.setHex(railLive() ? 0x46ff7a : 0x000000);
+  ssdLed.material.emissiveIntensity = railLive() ? 1.8 : 0;
+  if (!state.disk.inside || state.disk.sealed) return;
+  const p = camera.position;
+  const dx = p.x - worm.position.x, dz = p.z - worm.position.z;
+  const d = Math.hypot(dx, dz) || 1e-6;
+  worm.rotation.y = Math.atan2(dx, dz);          // nose-first
+  const step = Math.min(.075 * dt, Math.max(0, d - .02));
+  worm.position.x += dx / d * step;
+  worm.position.z += dz / d * step;
+  // the sector it is over goes dark: it eats what it crawls across
+  for (const b of sectorBlocks) {
+    const bx = DISK.x0 + b.c * DISK.cell, bz = DISK.z0 + b.r * DISK.cell;
+    if (worm.position.x > bx && worm.position.x < bx + DISK.cell
+      && worm.position.z > bz && worm.position.z < bz + DISK.cell) {
+      if (b.mat.emissiveIntensity > .2) { b.mat.emissiveIntensity = .05; sfx.tick(); }
+    }
+  }
+  if (d < .045) ejectFromDisk();
+}
+
 /* --- per-frame animation ----------------------------------------------- */
 let fanPhase = 0;
 function slice2Tick(dt, t) {
@@ -3658,6 +3930,7 @@ function tick() {
   const dt = Math.min(clock.getDelta(), .1);   // slow machines should not crawl
   const t = clock.elapsedTime;
 
+  diskTick(dt);
   if (state.zip.riding) rideTick(dt);
   else if (state.running && state.locked && state.phase !== 'shrinking') move(dt);
   camera.rotation.set(pitch, yaw, 0);
@@ -3766,6 +4039,7 @@ if (new URLSearchParams(location.search).has('debug') || new URLSearchParams(loc
     setFeet(f) { feet = f; camera.position.y = f + P.eye; },
     zip: ZIP, startRide, tipMouse, cleanLens, plugUsb, takeUsb, takeAir, usbWire, dropHeld,
     a2Solid, b2Solid, SEATED_Z0, SEATED_Z1, USB, kbKeyMat, kbLegendMat, kbDeckG, kbGlow, mLed, mSensor, checkUsbPower, darkUsb,
+    enterDisk, leaveDisk, ejectFromDisk, pullWormLever, DISK, worm, CH, SSD, SOLID_D, sectorBlocks, readmePanel,
     look(y, pi) { yaw = y; pitch = pi; camera.rotation.set(pitch, yaw, 0); },
     aimAt(id, dist = 1.1, fy = null, at = null) {
       const cands = interact.filter(o => o.userData.interact === id);

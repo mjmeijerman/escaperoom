@@ -92,10 +92,10 @@ seconds. The **manual** lying open on the bench names them. Your job is to make 
 They can be fixed in any order, with one exception: a board with no 12 V says nothing useful, so power comes first
 if you want the display to make sense of itself.
 
-### 5. Now what is left
+### 5. What is left after that
 
-Four of the five faults are in the room right now: `C1`, `F1`, `d4`, and the power underneath them. `A2` (the
-monitor cable) is one cable away, and `b7` (the thing living in the SSD) is the next slice of the build.
+`A2` is one cable away on the bench, and `b7` is not a cable at all: it is living in the SSD on the bench beside the
+case, and the drive's SATA port is a doorway.
 
 ### 6. The desk, and the two devices
 
@@ -160,6 +160,10 @@ Look along the cable from the bench lip. Gerrit taped a grip on it, right where 
 ride it down. Ride the far grip to come back. If you step off an edge instead, the lip catches you and puts you back
 on top — nothing is lost.
 
+**The tail end of the case: b7.**
+The SSD on the bench beside the case is the fault, not the drive's health. `E` its port and go in. The worm is not a
+boss fight — it eats the block you leave, so keep moving, get it into the chamber, and pull the lever from outside.
+
 **The USB ports do nothing.**
 A connector goes in with the power on or off — but the device only wakes up once the board has 12 V: mains switch,
 24-pin, CPU 8-pin. If the keyboard stayed dark, that is why. Both connectors are on the **desk**, by the monitor, at the end of their own cables — pale tops, blue collars, with a
@@ -223,12 +227,19 @@ again to put it back on its pad.
    - `E` the card to seat it.
    - Pick up the **PCIe** 8-pin, plug it into the socket hanging near the bottom of the card.
    - `d4` clears and the serial plate gives up **E**.
+12. **`b7` — the SSD**
+   - The drive lies on the bench beside the case. `E` its SATA port and step in.
+   - Inside: a lattice of sector blocks over a void, some sectors missing entirely. A worm follows you and eats the
+     blocks you leave behind. It is slower than you are — but the grid is not the answer, the chamber is.
+   - Walk into the quarantaine chamber in the middle. Let it follow you in, then leave through the hatch in the far
+     wall and `E` the lever beside the door. The door comes down on it.
+   - `b7` clears, the lattice goes green, and the drive gives up **B**. The chamber now holds **LEESMIJ.txt**, which
+     is the whole story: the customer's "repair", in her own words.
+   - `E` the port mouth inside to step back out. A missing sector spits you out at the port, no harm done.
 
-Codes left on the display afterwards: `b7` — the SSD, slice 4.
-
-The letters you collect are **N** (memory), **K** (power), **O** (fans), **E** (card) and **R** (monitor), in the
-order you fix them. That order is *not* the password order — the notepad says so at the bottom of the list. The
-order lives on the login screen, as a row of six pictograms, one per part.
+The six characters, in the order you find them: **N** (memory), **K** (power), **O** (fans), **E** (card),
+**R** (monitor), **B** (SSD). The password is not in that order — the login screen on the monitor shows six
+pictograms and that is the order. Read right, they spell **BROKEN**.
 
 </details>
 

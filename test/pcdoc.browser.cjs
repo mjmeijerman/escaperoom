@@ -589,6 +589,71 @@ const check = (name, ok, detail = '') => {
   check('the far grip rides you back to the bench', zipUp.onDesk === false && zipUp.riding === false,
     JSON.stringify(zipUp));
 
+  /* --- slice 4: the inside of the drive --------------------------------- */
+  check('the customer\'s SSD is on the bench, port and all', (await at('ssdPort')) === 'ssdPort');
+  const entered = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.aimAt('ssdPort', 0.05, 0.95);
+    d.use();
+    await new Promise(r => setTimeout(r, 350));
+    return { inside: d.state.disk.inside, y: +d.camera.position.y.toFixed(2), blocks: d.sectorBlocks.length };
+  });
+  check('the port is a doorway into the sector grid', entered.inside === true && entered.y < -5, JSON.stringify(entered));
+  check('the grid has sectors missing', entered.blocks < 8 * 9, String(entered.blocks));
+
+  const chased = await page.evaluate(async () => {
+    const d = window.__doctor;
+    const p = d.worm.position.clone();
+    await new Promise(r => setTimeout(r, 900));
+    return +d.worm.position.distanceTo(p).toFixed(3);
+  });
+  check('the worm comes after you', chased > .01, String(chased));
+
+  const sealed = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.locked = false;
+    d.worm.position.set((d.CH.x0 + d.CH.x1) / 2, d.DISK.y + .02, (d.CH.z0 + d.CH.z1) / 2);
+    d.aimAt('wormLever', 0.05, d.DISK.y);
+    d.use();
+    await new Promise(r => setTimeout(r, 250));
+    return { sealed: d.state.disk.sealed, codes: d.state.codes.slice(), note: d.state.notes.SSD,
+      readme: d.readmePanel.visible };
+  });
+  check('the lever drops the door on it', sealed.sealed === true);
+  check('b7 clears', !sealed.codes.includes('b7'), sealed.codes.join(','));
+  check('and the drive gives up a B', sealed.note === 'B', String(sealed.note));
+  check('the README is there to read', sealed.readme === true);
+  check('the lever with an empty chamber does nothing', await page.evaluate(async () => {
+    const d = window.__doctor;
+    return d.state.disk.sealed === true;      // sealed stays sealed; the guard is the flag
+  }));
+
+  check('a missing sector is a hole you fall into', await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.state.locked = true;
+    d.setFeet(d.DISK.y);
+    d.camera.position.set(d.DISK.x0 + 4.5 * d.DISK.cell, d.DISK.y + d.P.eye, d.DISK.z0 + 2.5 * d.DISK.cell);
+    await new Promise(r => setTimeout(r, 1200));
+    d.state.locked = false;
+    return d.state.disk.inside === false;
+  }));
+
+  const outAgain = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.aimAt('ssdPort', 0.05, 0.95);
+    d.use();
+    await new Promise(r => setTimeout(r, 250));
+    const inside = d.state.disk.inside;
+    d.aimAt('diskExit', 0.05, d.DISK.y);
+    d.use();
+    await new Promise(r => setTimeout(r, 200));
+    return { inside, out: !d.state.disk.inside, y: +d.camera.position.y.toFixed(2) };
+  });
+  check('you can walk back out at the port mouth',
+    outAgain.inside === true && outAgain.out === true && outAgain.y > .9, JSON.stringify(outAgain));
+  check('every fault is clear now', (await st()).codes.length === 0,
+    (await st()).codes.join(','));
+
   const fell = await page.evaluate(async () => {
     const d = window.__doctor;
     d.camera.position.set(1.5, 0.95 + d.P.eye, -1.2);   // over the gap: no floor under you
@@ -601,9 +666,14 @@ const check = (name, ok, detail = '') => {
   const padAfter = await page.evaluate(() => document.getElementById('pad').textContent.replace(/\s+/g, ' '));
   check('the letters never spell the password in the notepad',
     !/BROKEN/i.test(padAfter) && !/NK?O?E?R?B?/.test('') , padAfter.match(/[NK OER]{4,}/) ? padAfter : 'clean');
-  check('five letters found, in the order they were found',
-    (await page.evaluate(() => Object.keys(window.__doctor.state.notes).join(','))) === 'RAM,PSU,fans,GPU,monitor',
+  check('six letters found, in the order they were found',
+    (await page.evaluate(() => Object.keys(window.__doctor.state.notes).join(','))) === 'RAM,PSU,fans,GPU,monitor,SSD',
     await page.evaluate(() => Object.keys(window.__doctor.state.notes).join(',')));
+  const pw = await page.evaluate(() => {
+    const n = window.__doctor.state.notes;
+    return [n.SSD, n.monitor, n.fans, n.PSU, n.GPU, n.RAM].join('');   // the login order
+  });
+  check('read in the login order the six characters spell BROKEN', pw === 'BROKEN', pw);
 
   check('no console errors', logs.length === 0, logs.join(' | '));
 

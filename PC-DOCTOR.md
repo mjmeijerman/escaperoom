@@ -189,7 +189,7 @@ Three fans, three different mistakes (three separate "aha"s, not one repeated ch
 All three spinning → airflow sound, dust motes drift, `F1` clears. Character `P` on the fan hub.
 (The screwdriver is used nowhere else. It is a red herring that *feels* like a tool, which is the joke.)
 
-### 5.8 Virus — `b7`
+### 5.8 Virus — `b7` (built, see §13 and the notes below)
 
 Power the SSD (SATA from 5.3), then enter it through the **SATA port** like a doorway. Inside: a lattice of glowing
 blocks (the sector grid) over a black void, missing sectors = holes to jump.
@@ -236,7 +236,10 @@ All five codes clear → LED shows `--` → the monitor wakes with a login windo
    [________________]                    <- 6 tekens
 ```
 
-The pictogram row is the **order**. The characters are on the parts:
+The pictogram row is the **order**. The characters are on the parts, and in this build they are
+**N** RAM · **K** PSU · **O** fans · **E** GPU · **R** monitor · **B** SSD, so the login order the pictograms have to
+give is **SSD · monitor · fans · PSU · GPU · RAM** — which reads **BROKEN**. (The design bible's §12.1 said
+BROKEN; this is the letter assignment that gets there with the letters the slices actually handed out.)
 
 
 
@@ -476,7 +479,26 @@ I/O trek is slice 3. Move it back out when that zone exists.
 
 Known rough edge for slice 5: the keyboard is not yet solid, and its backlight is one flat glow rather than per-key.
 
-### Next slices
+### Slice 4 — built
 
-4. the SSD: the sector grid and the worm (`b7`).
-5. the finale: login window, cursor drag, jump-to-type, un-shrink, the end banner.
+- **the drive**: a 240 GB SSD on the bench beside the case, a status LED that lights on 12 V, and a SATA port that is
+  a doorway. It sits outside the case rather than in it — the case floor is full, and the drive is a place you want
+  to walk up to.
+- **the sector grid**: 68 blocks in an 8 × 9 lattice with four sectors missing, over a void. Fall through one and
+  the drive spits you out at the port; nothing is lost.
+- **the worm**: follows you at 0.075 m/s (you walk at 0.105) and eats the block it crawls over — the lattice goes dark
+  behind it and grows back when you are ejected. Touch it and you are out.
+- **the quarantaine chamber**: three cells square, a door on one wall and a hatch on the other. Get the worm inside,
+  leave by the hatch, pull the lever outside. The door slams, the worm is quarantined, `b7` clears and the drive
+  gives up **B**.
+- **the twist**: `LEESMIJ.txt` appears on the chamber wall — the free "diagnostic tool" from the design's §8, in her
+  own words. The drive's label is beside it.
+- **one deviation, deliberate**: the inside of the drive is bigger than the outside. The design's one-world rule
+  cannot survive a lattice you can walk on inside a 7 mm-thick drive, so the grid is built in its own volume under
+  the shop and the port is a doorway. The shrink ray already asked you to accept one impossible thing; this is the
+  same one, spent once.
+
+### Next slice
+
+5. the finale: login window (**BROKEN**, order SSD · monitor · fans · PSU · GPU · RAM), the physical mouse drag, the
+   jump-to-type keyboard, un-shrink, the end banner.

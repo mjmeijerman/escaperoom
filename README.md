@@ -183,8 +183,13 @@ shipped as files), played through the game's audio bus so `N` mutes it and `M` d
     Plugging the mouse in proves the intake form right: its sensor glows red and reads nothing, because there is a
     hair across the optical window. Tip the mouse onto its side, put the can of air from the bench into the notepad,
     and click it there to blow the window clean. That is the cheapest fix in the trade.
+13. **The SSD** (slice 4, `b7`): the drive on the bench beside the case has a SATA port that is a doorway. Inside is
+    a lattice of sector blocks over a void, missing sectors you can fall through, and a worm that eats the blocks you
+    leave behind. Lure it into the quarantaine chamber, slip out through the hatch, and pull the lever. `b7` clears,
+    the lattice goes green, and the README inside says where the whole repair came from. That is the last fault.
 
-Still a stub: the SSD virus (`b7`, slice 4), and the login/finale after it (slice 5).
+Still a stub: the login screen and the finale (slice 5). The six characters now spell **BROKEN** when they are read
+in the login order the pictograms will give: SSD · monitor · fans · PSU · GPU · RAM.
 
 ## Files
 
@@ -192,8 +197,9 @@ Still a stub: the SSD virus (`b7`, slice 4), and the login/finale after it (slic
 - `edo.html` — the Edo Room (served at `/edo.html`)
 - `index.html` — the Locked Study, 3D (HTML, CSS, ES module inline)
 - `classic.html` — the original 2D point-and-click room
-- `pcdoc.html` — PC Doctor, slices 1–3 (dark shop, generator, shrink ray, the case interior, the memory chain, power
-  routing, the fans, the card, the monitor cable and its span to the desk, the keyboard and the mouse)
+- `pcdoc.html` — PC Doctor, slices 1–4 (dark shop, generator, shrink ray, the case interior, the memory chain, power
+  routing, the fans, the card, the monitor cable and its span to the desk, the keyboard and the mouse, and the inside
+  of the SSD)
 - `PC-DOCTOR.md` — the design bible: story, every fault chain, the finale, the sound design, the decisions
 - `test/rooms.mjs` — shell + collision checks for the study, no browser needed (`node test/rooms.mjs`)
 - `test/spells.browser.cjs` — headless browser test of the Founders' Chamber: no overlays in the DOM, every charm
@@ -209,10 +215,11 @@ Still a stub: the SSD virus (`b7`, slice 4), and the login/finale after it (slic
   ```
 
   Swap the last argument for `test/edo.browser.cjs` to test the Edo Room, or `test/pcdoc.browser.cjs` for PC Doctor
-  (125 checks: torch, generator order, the flood, the shrink, the display cycling, the memory chain, power routing,
+  (160 checks: torch, generator order, the flood, the shrink, the display cycling, the memory chain, power routing,
   the twin 8-pins refusing each other, the three fans, the padlock, the winch, the card, the notepad, hardware
   ignoring a full-sized person, the HDMI run to the rear panel, the two-way cable span down to the desk, the fall off
-  an edge, the keyboard and the mouse's dirty lens, and read-only paper not offering a lie of an `E`). They write
+  an edge, the keyboard and the mouse's dirty lens, the inside of the SSD with its worm and its missing sectors, and
+  that the six characters spell BROKEN). They write
   `test/.shots/spells.png` and `test/.shots/solved.png`; make that directory writable (`mkdir -p test/.shots && chmod 777 test/.shots`) or Puppeteer cannot save it as `pptruser`.
 - `vendor/three.module.min.js` — three.js r160 (MIT, license in `vendor/THREE-LICENSE.txt`)
 - `vendor/voicemail/*.mp3` — Gerrit's six recorded lines, generated once and shipped as files
