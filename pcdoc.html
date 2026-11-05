@@ -1356,10 +1356,12 @@ const THINGS = {
     kicker: 'counter', title: 'A rubber torch',
     text: () => state.torch
       ? 'You are holding it. The beam is the only light in the shop.'
-      : 'A rubber torch, still warm from Gerrit\'s hand. The little battery LED blinks: it is the only thing in here that works.',
-    keys: () => state.torch ? '' : '<kbd>E</kbd>pick it up',
+      : state.gen.running
+        ? 'Back on the counter where it lives, its battery LED a steady green dot. The shop has mains now; a torch is one job behind you.'
+        : 'A rubber torch, still warm from Gerrit\'s hand. The little battery LED blinks: it is the only thing in here that works.',
+    keys: () => state.torch || state.gen.running ? '' : '<kbd>E</kbd>pick it up',
     act() {
-      if (state.torch) return;
+      if (state.torch || state.gen.running) return;
       state.torch = true; state.items.push('torch');
       torchLight.intensity = 26;
       torchLens.material.emissive.setHex(0xffe9b0); torchLens.material.emissiveIntensity = 2;
@@ -2133,15 +2135,19 @@ function startGenerator() {
   lens.material.emissiveIntensity = 1.6;
   padRing.material.opacity = .45;
   powerCase();
-  // the shop is lit now: the torch goes back on its hook and out of the inventory
+  // the shop is lit now: the torch goes back on the counter, lit no more, and
+  // never comes off it again — it had one job and the mains took it over
   setTimeout(() => {
-    if (!state.torch) return;
-    state.torch = false;
-    torch.visible = false; torchLens.visible = false; torchPin.visible = false;
-    torchLight.intensity = 0;
-    state.items = state.items.filter(i => i !== 'torch');
-    renderPad();
-    toast('Shop lights are on. The torch goes back on its hook.', '');
+    if (state.torch) {
+      state.torch = false;
+      torchLight.intensity = 0;
+      state.items = state.items.filter(i => i !== 'torch');
+      renderPad();
+      toast('Shop lights are on. The torch goes back on the counter.', '');
+    }
+    torch.visible = torchLens.visible = torchPin.visible = true;
+    torchLens.material.emissive.setHex(0x000000);          // the lens is dark: it is switched off
+    torchLens.material.emissiveIntensity = 1;
   }, 2200);
   setTimeout(() => toast('Lights, relay, and the case is already complaining.', 'good'), 700);
 }
@@ -3456,7 +3462,8 @@ function tick() {
     torchLight.target.position.set(Math.sin(t * .7) * .06, Math.sin(t * 1.1) * .05, -1);
     torchLight.intensity = 24 + Math.sin(t * 9) * 1.2 + Math.sin(t * 23) * .6;
   }
-  if (!state.torch) torchPin.material.emissiveIntensity = 1.2 + (Math.sin(t * 2.6) > .3 ? 2.4 : 0);
+  if (!state.torch) torchPin.material.emissiveIntensity = state.gen.running ? .55
+    : 1.2 + (Math.sin(t * 2.6) > .3 ? 2.4 : 0);
   if (state.gen.running) {
     shopLight.intensity = 46 + Math.sin(t * 17) * 1.6 + Math.sin(t * 41) * .8;
     shopLight2.intensity = 34 + Math.sin(t * 13 + 2) * 1.2;

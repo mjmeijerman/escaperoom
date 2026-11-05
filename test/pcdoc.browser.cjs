@@ -118,6 +118,20 @@ const check = (name, ok, detail = '') => {
   check('the shop lights come on', gen.phase === 'lit');
   check('the case has no mains yet, so the display stays dark', gen.powered === false);
 
+  /* --- the torch retires when the mains arrive ---------------------------- */
+  await sleep(2400);               // the shop lights up, then the torch goes back down
+  const torchParked = await page.evaluate(() => {
+    const d = window.__doctor;
+    d.aimAt('torch', 1.0);
+    const keys = d.THINGS.torch.keys();
+    d.use();
+    return { held: d.state.torch, keys, items: d.state.items.includes('torch') };
+  });
+  check('the torch goes back on the counter once the lights are on', torchParked.held === false);
+  check('and it leaves the inventory with it', torchParked.items === false);
+  check('it still reads, but it can no longer be picked up',
+    torchParked.keys === '' && torchParked.held === false, JSON.stringify(torchParked));
+
   /* --- the POST display cycles every fault -------------------------------- */
 
   const torchNag = await page.evaluate(() => {
