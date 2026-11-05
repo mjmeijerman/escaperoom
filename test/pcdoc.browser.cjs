@@ -223,6 +223,27 @@ const check = (name, ok, detail = '') => {
   await page.keyboard.press('KeyE');
   await sleep(200);
   check('the loose module pushes home', await page.evaluate(() => window.__doctor.state.ram.a2 === true));
+
+  // the module moved, so its collider has to move with it — front face included
+  const a2Box = await page.evaluate(() => {
+    const d = window.__doctor, s = d.a2Solid;
+    return { z0: +s.z0.toFixed(3), z1: +s.z1.toFixed(3), want0: +d.SEATED_Z0.toFixed(3), want1: +d.SEATED_Z1.toFixed(3) };
+  });
+  check('the A2 collider follows the module home',
+    Math.abs(a2Box.z0 - a2Box.want0) < .002 && Math.abs(a2Box.z1 - a2Box.want1) < .002, JSON.stringify(a2Box));
+  const a2Walk = await page.evaluate(async () => {
+    const d = window.__doctor;
+    d.setFeet(0.95);
+    d.camera.position.set(-2.13, 0.95 + d.P.eye, -2.30);
+    d.look(0, 0);                       // straight at the seated module
+    d.state.locked = true;
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
+    await new Promise(r => setTimeout(r, 1200));
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
+    d.state.locked = false;
+    return +d.camera.position.z.toFixed(3);
+  });
+  check('and there is no walking through its front face', a2Walk > -2.405 && a2Walk < -2.36, String(a2Walk));
   check('C1 stays up, because it is the other module',
     await page.evaluate(() => window.__doctor.state.codes.includes('C1')));
 
@@ -267,6 +288,7 @@ const check = (name, ok, detail = '') => {
   const padText = await page.evaluate(() => document.getElementById('pad').textContent);
   check('the inventory has the character, the fault list and the scrap module',
     padText.includes('N') && padText.includes('d4') && /RMA/.test(padText), padText.slice(0, 120));
+  check('and it does not lecture about the order', !/order they go in|order found/i.test(padText));
 
   /* --- slice 2: power, fans, the card ------------------------------------ */
   const at = (id, d = 0.035) => page.evaluate(([id, d]) => window.__doctor.aimAt(id, d, 0.95), [id, d]);
@@ -451,7 +473,7 @@ const check = (name, ok, detail = '') => {
   check('the mouse is plugged in', (await st()).usb.mouse === true);
   check('and it is malfunctioning, as the intake form said', (await st()).usb.clean === false);
 
-  check('the compressed-air can is in the parts tray', (await at('airCan')) === 'airCan');
+  check('the compressed-air can stands on the bench', (await at('airCan')) === 'airCan');
 
   const walkInto = (x, z, yawV, fy, ms = 900) => page.evaluate(async ([x, z, yawV, fy, ms]) => {
     const d = window.__doctor;
@@ -471,18 +493,16 @@ const check = (name, ok, detail = '') => {
     intoCan.z < -2.30 && intoCan.z > -2.40, JSON.stringify(intoCan));
   await at('airCan');
   await press();
-  check('you can carry the can', (await st()).held === 'air');
-  await page.keyboard.press('KeyQ');
-  await sleep(180);
-  const dropSaid = await page.evaluate(() => {
-    const t = document.querySelectorAll('#toasts .toast');
-    return t.length ? t[t.length - 1].textContent : '';
-  });
-  check('putting the can down says what it is, not "cable end"', /can of air/i.test(dropSaid), dropSaid);
-  check('and the can goes back into the tray', (await st()).held === null);
-  await at('airCan');
-  await press();
-  check('you can pick it up again', (await st()).held === 'air');
+  const inPad = await page.evaluate(() => ({
+    items: window.__doctor.state.items.slice(),
+    held: window.__doctor.state.held,
+    onBench: window.__doctor.scene.children.some(o => o.visible && o.userData && o.userData.interact === 'airCan'),
+  }));
+  check('taking the can puts it in the notepad, not in your hands',
+    inPad.items.includes('compressed air') && inPad.held === null, JSON.stringify(inPad));
+  check('and the can leaves the bench', inPad.onBench === false);
+  check('the notepad shows it as an item', await page.evaluate(() =>
+    !!document.querySelector('#padItems button[data-item="compressed air"]')));
 
 
   const zipDown = await page.evaluate(async () => {
@@ -498,9 +518,8 @@ const check = (name, ok, detail = '') => {
   check('the taped grip at the bench edge is within reach', zipDown.hit === 'zipBench', String(zipDown.hit));
   check('grabbing it starts a ride', zipDown.riding === true && zipDown.after === false,
     `${zipDown.riding}/${zipDown.after}`);
-  check('the ride lands you on the desk, can and all', zipDown.x > 2.1 && zipDown.z > -1.4 && zipDown.y > .77,
+  check('the ride lands you on the desk', zipDown.x > 2.1 && zipDown.z > -1.4 && zipDown.y > .77,
     JSON.stringify(zipDown));
-  check('the can came with you', (await st()).held === 'air');
 
   const deskAt = (id, d = 0.04) => page.evaluate(([id, d]) => window.__doctor.aimAt(id, d, 0.76), [id, d]);
   const intoKb = await walkInto(2.42, -0.85, Math.PI, 0.76, 1500);
@@ -514,8 +533,17 @@ const check = (name, ok, detail = '') => {
   await sleep(220);
   check('the tray says what is wrong with it', /hair/i.test(await page.$eval('#body', el => el.textContent)));
   await press();
+  const pendingAir = await page.evaluate(() => ({
+    pending: window.__doctor.state.invPending,
+    padShown: !document.getElementById('pad').hidden,
+    button: !!document.querySelector('#padItems button[data-item="compressed air"]'),
+  }));
+  check('clicking the dirty window asks for the air out of the inventory',
+    pendingAir.pending === 'air' && pendingAir.padShown && pendingAir.button, JSON.stringify(pendingAir));
+  await page.click('#padItems button[data-item="compressed air"]');
+  await sleep(220);
   const cleaned = await st();
-  check('the air blows the hair out of the window', cleaned.usb.clean === true);
+  check('picking the air cleans the window', cleaned.usb.clean === true);
   check('the mouse goes back on its pad', await page.evaluate(async () => {
     const d = window.__doctor;
     d.aimAt('mouse', 0.05, 0.76);

@@ -180,8 +180,8 @@ shipped as files), played through the game's audio bus so `N` mutes it and `M` d
 12. **The two USB devices** (slice 3): both plugs are lying on the bench behind the case, next to the rear panel's two
     blue USB-A ports. Plugging the keyboard in lights its backlight. Plugging the mouse in proves the intake form
     right — its sensor glows red and reads nothing, because there is a hair across the optical window. Tip the mouse
-    onto its side, carry the compressed-air can down from the parts tub, and blow the window clean. That is the
-    cheapest fix in the trade.
+    onto its side, take the can of air from the bench into the notepad, and click it there to blow the window clean.
+    That is the cheapest fix in the trade.
 
 Still a stub: the SSD virus (`b7`, slice 4), and the login/finale after it (slice 5).
 

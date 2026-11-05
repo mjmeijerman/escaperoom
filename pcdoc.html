@@ -854,11 +854,22 @@ const stickIn = makeDimm(TOWER.x + SLOTS[1], TOWER.z - .03, 0x1d5c3a);
 stickIn.position.y = boardY + DIMM.h / 2 + .012;
 stickIn.rotation.x = .30;                      // half out of the slot, leaning back
 register(stickIn, 'slotA2', 'the module in slot A2');
-SOLID_LATE.push(S(TOWER.x + SLOTS[1] - .007, TOWER.x + SLOTS[1] + .007, .90, boardY + DIMM.h + .014, TOWER.z - .098, TOWER.z + .046));
+const a2Solid = S(TOWER.x + SLOTS[1] - .007, TOWER.x + SLOTS[1] + .007, .90, boardY + DIMM.h + .014, TOWER.z - .098, TOWER.z + .046);
+SOLID_LATE.push(a2Solid);
 // B2: the scorched one, standing in its slot with a burnt chip
 const stickS = makeDimm(TOWER.x + SLOTS[3], TOWER.z - .01, 0x4a3a24);
 register(stickS, 'slotB2', 'the module in slot B2');
-SOLID_LATE.push(S(TOWER.x + SLOTS[3] - .007, TOWER.x + SLOTS[3] + .007, .90, boardY + DIMM.h + .012, TOWER.z - .092, TOWER.z + .052));
+const SEATED_Z0 = TOWER.z - .01 - DIMM.l / 2;      // where a module that is all the way in sits
+const SEATED_Z1 = TOWER.z - .01 + DIMM.l / 2;
+const b2Solid = S(TOWER.x + SLOTS[3] - .007, TOWER.x + SLOTS[3] + .007, .90, boardY + DIMM.h + .012, SEATED_Z0, SEATED_Z1);
+SOLID_LATE.push(b2Solid);
+/* A collider is only right while the thing it stands for is standing there.
+   Seating or pulling a module moves the box with it. */
+function seatA2Collider() {
+  a2Solid.y1 = boardY + DIMM.h + .012;
+  a2Solid.z0 = SEATED_Z0;
+  a2Solid.z1 = SEATED_Z1;
+}
 
 // the CPU cooler: a building with fins
 box(.16, .21, .13, M.metal, TOWER.x - .06, boardY + .105, TOWER.z - .262, board);
@@ -1309,13 +1320,14 @@ function renderPad() {
   const n = Object.entries(state.notes);            // insertion order = the order you found them
   $('#padNotes').innerHTML = n.length
     ? n.map(([k, v]) => `<li><span>${k}</span><b>${v}</b></li>`).join('')
-      + '<li><i>in the order found — not the order they go in</i></li>'
     : '<li><i>nothing yet</i></li>';
 }
 $('#padItems').addEventListener('click', e => {
   const btn = e.target.closest('button[data-item]');
   if (!btn) return;
   const item = btn.dataset.item;
+  if (state.invPending === 'air' && item === 'compressed air') { cleanLens(); sfx.click(); return; }
+  if (state.invPending === 'air') { sfx.buzz(); toast('Not that one. The window wants the compressed air.'); return; }
   if (state.invPending === 'ram' && item === 'ddr4 module') { seatRam(); sfx.click(); return; }
   if (state.invPending === 'ram') { sfx.buzz(); toast('Not that one. The board wants the memory module.'); return; }
   if (item === 'ddr4 module' && state.ram.b2Out && !state.ram.seated) {
@@ -1323,7 +1335,8 @@ $('#padItems').addEventListener('click', e => {
     return;
   }
   sfx.click();
-  toast(item === 'ddr4 module' ? 'A known-good 8 GB module. Look at empty slot B2 and press E.'
+  toast(item === 'compressed air' ? 'A can of compressed air, a straw on the nozzle.'
+    : item === 'ddr4 module' ? 'A known-good 8 GB module. Look at empty slot B2 and press E.'
     : item === 'torch' ? 'A rubber torch.'
     : item === 'screwdriver' ? 'A cross-head. Gerrit has eleven.'
     : item === 'burnt DDR4 (RMA)' ? 'Scorched. Someone wrote RMA on it. Scrap, but worth showing the customer.'
@@ -1499,6 +1512,7 @@ const THINGS = {
       stickIn.rotation.x = 0;
       stickIn.position.y = boardY + DIMM.h / 2 + .004;
       stickIn.position.z = TOWER.z - .01;
+      seatA2Collider();
       sfx.snap(); setTimeout(() => sfx.clack(), 90);
       toast('It slides home and both clips snap down.', 'good');
       setTimeout(() => toast(state.ram.seated ? 'Both modules seated.' : 'C1 is still up — so the fault is the other module.', ''), 1500);
@@ -1524,6 +1538,7 @@ const THINGS = {
       if (!state.ram.b2Out) {
         state.ram.b2Out = true;
         stickS.visible = false;                       // it is scrap; it does not lie around in the machine
+        b2Solid.y1 = .90;                             // and neither does its collider
         state.items.push('burnt DDR4 (RMA)');
         renderPad();
         sfx.snap();
@@ -1645,15 +1660,13 @@ const THINGS = {
   },
   mouse: {
     kicker: 'desk', title: 'Mouse',
-    text: () => !state.usb || !state.usb.mouse
-      ? '<p>On a mousepad, cable trailing off the desk. Not plugged in, so it is a paperweight the size of a car.</p>'
-      : state.usb.tipped
-        ? '<p>Over on its side, feet in the air, its sensor glowing red at you.</p>'
+    text: () => state.usb.tipped
+      ? '<p>Over on its side, feet in the air, its window facing you.</p>'
+      : !state.usb.mouse
+        ? '<p>On a mousepad, cable trailing off the desk. Not plugged in, so it is a paperweight the size of a car.</p>'
         : '<p>On its pad, logo lit. The intake form was right about this one.</p>',
-    keys: () => state.usb && state.usb.mouse && state.phase === 'shrunk'
-      ? (state.usb.tipped
-        ? (state.usb.clean ? '<kbd>E</kbd>put it back on its pad' : '')
-        : '<kbd>E</kbd>tip it onto its side')
+    keys: () => state.phase === 'shrunk'
+      ? (state.usb.tipped ? '<kbd>E</kbd>put it back on its pad' : '<kbd>E</kbd>tip it onto its side')
       : '',
     act() { tipMouse(!state.usb.tipped); },
   },
@@ -2212,7 +2225,7 @@ function giveHint() {
   if (!state.usb.mouse) return toast("Hint · the mouse's plug is beside the keyboard's, same trip.", '');
   if (!state.usb.clean) return toast(!state.usb.tipped
     ? 'Hint · the mouse is on the desk, and so is the only way down there: the taped grip on the HDMI cable at the bench edge.'
-    : 'Hint · the window under the mouse is filthy. The compressed-air can is in the parts tray on the bench, left of the case.', '');
+    : 'Hint · the window under the mouse is filthy. The can of air is standing on the bench, left of the case.', '');
   return toast('Hint · five faults are clear and the desk is open. b7 — the SSD — is slice 4, and the login screen comes after it.', 'good');
 }
 
@@ -2351,10 +2364,6 @@ camera.add(heldPlug);
 const heldBody = box(.052, .036, .042, new THREE.MeshStandardMaterial({ color: 0x2a2f33, roughness: .7 }), 0, 0, 0, heldPlug);
 box(.040, .012, .012, M.gold, 0, -.022, 0, heldPlug);
 box(.020, .014, .046, M.black, 0, .014, -.010, heldPlug);   // the wire leaving the back of it
-const heldCan = cyl(.021, .021, .062, 12, new THREE.MeshStandardMaterial({ color: 0x2b6fb5, roughness: .5 }), 0, 0, 0, heldPlug);
-heldCan.visible = false;
-const heldCanNozzle = cyl(.007, .007, .010, 8, M.red, 0, .036, 0, heldPlug);
-heldCanNozzle.visible = false;
 function showHeld(kind) {
   const s = P.eye / 1.62;
   heldPlug.scale.setScalar(s * 0.95);
@@ -2362,8 +2371,7 @@ function showHeld(kind) {
   heldBody.material = new THREE.MeshStandardMaterial({
     color: kind === 'atx' ? 0x33393d : kind === 'sata' ? 0x22262a : 0x2a2f33, roughness: .7,
   });
-  heldBody.visible = kind !== 'air';
-  heldCan.visible = heldCanNozzle.visible = kind === 'air';
+  heldBody.visible = true;
   heldPlug.visible = true;
 }
 function hideHeld() { heldPlug.visible = false; }
@@ -2580,7 +2588,7 @@ function seatRam() {
   state.items = state.items.filter(i => i !== 'ddr4 module');
   const good = makeDimm(TOWER.x + SLOTS[3], TOWER.z - .01, 0x1d5c3a);
   register(good, 'slotB2', 'slot B2');
-  SOLID_S.push(S(TOWER.x + SLOTS[3] - .007, TOWER.x + SLOTS[3] + .007, .90, boardY + DIMM.h + .012, TOWER.z - .092, TOWER.z + .052));
+  SOLID_S.push(S(TOWER.x + SLOTS[3] - .007, TOWER.x + SLOTS[3] + .007, .90, boardY + DIMM.h + .012, SEATED_Z0, SEATED_Z1));
   sfx.snap(); setTimeout(() => sfx.clack(), 90);
   renderPad();
   checkRam();
@@ -2871,7 +2879,7 @@ function releaseHeld() {
   if (h === 'usbKbd' || h === 'usbMouse' || h === 'air') {
     if (h === 'usbKbd') kbdPlug.visible = true;
     if (h === 'usbMouse') mousePlug.visible = true;
-    if (h === 'air') { airCan.visible = true; airSolid.y1 = BENCH.top + .062; }
+    if (h === 'air') { }   // the can lives in the notepad now
     state.held = null;
     hideHeld();
     dragWire.visible = false;
@@ -2897,7 +2905,6 @@ function releaseHeld() {
 const DROP_SAYS = {
   usbKbd: "You put the keyboard's plug down.",
   usbMouse: "You put the mouse's plug down.",
-  air: 'You put the can of air down.',
   hdmi: 'You put the monitor cable down on the bench.',
   fanRear: 'You let go of the fan plug.',
   fanCpu: 'You let go of the fan plug.',
@@ -3317,29 +3324,10 @@ tube(V3(3.05, DESK.top + .016, -0.706), V3(3.05, DESK.top + .012, -1.350), .0022
 tube(V3(3.05, DESK.top + .012, -1.350), V3(3.20, DESK.top + .012, -1.480), .0022, kbCable);
 tube(V3(3.20, DESK.top + .012, -1.480), V3(3.20, DESK.top - .060, -1.580), .0022, kbCable);
 
-/* the parts tray, left of the case: four thin walls, a bright lip, a label, and
-   the can of air standing in it */
-const trayMat = new THREE.MeshStandardMaterial({ color: 0x2b3236, roughness: .8 });
-const trayLipMat = new THREE.MeshStandardMaterial({ color: 0x424b50, roughness: .65 });
-const TRAY = { x: -2.55, z: -2.30, w: .19, d: .145, h: .022 };
-box(TRAY.w, .003, TRAY.d, trayMat, TRAY.x, BENCH.top + .0015, TRAY.z);
-box(TRAY.w, TRAY.h, .0025, trayMat, TRAY.x, BENCH.top + .011, TRAY.z - TRAY.d / 2);
-box(TRAY.w, TRAY.h, .0025, trayMat, TRAY.x, BENCH.top + .011, TRAY.z + TRAY.d / 2);
-box(.0025, TRAY.h, TRAY.d, trayMat, TRAY.x - TRAY.w / 2, BENCH.top + .011, TRAY.z);
-box(.0025, TRAY.h, TRAY.d, trayMat, TRAY.x + TRAY.w / 2, BENCH.top + .011, TRAY.z);
-[[BENCH.top + TRAY.h, TRAY.z - TRAY.d / 2], [BENCH.top + TRAY.h, TRAY.z + TRAY.d / 2]]
-  .forEach(([y, z]) => box(TRAY.w + .004, .003, .004, trayLipMat, TRAY.x, y, z));
-[[TRAY.x - TRAY.w / 2, TRAY.z], [TRAY.x + TRAY.w / 2, TRAY.z]]
-  .forEach(([x, z]) => box(.004, .003, TRAY.d + .004, trayLipMat, x, BENCH.top + TRAY.h, z));
-decal(.052, .016, stickerTex([['PARTS', 30, true]],
-  { bg: '#e8e2cf', ink: '#1b2328', h: 90, top: 58, align: 'center' }),
-  TRAY.x, BENCH.top + .014, TRAY.z - TRAY.d / 2 - .0018, Math.PI);
-// a few loose bits in the tray, because a parts tray with nothing in it is a dish
-cyl(.0022, .0022, .012, 6, M.metal, TRAY.x - .055, BENCH.top + .007, TRAY.z - .028).rotation.x = Math.PI / 2;
-cyl(.0022, .0022, .010, 6, M.metal, TRAY.x - .040, BENCH.top + .007, TRAY.z - .040).rotation.x = Math.PI / 2;
-box(.030, .002, .014, new THREE.MeshStandardMaterial({ color: 0xd8d2c0, roughness: .9 }), TRAY.x - .045, BENCH.top + .004, TRAY.z + .030);
+/* the can of compressed air, standing on the bench left of the case */
+const CAN = { x: -2.55, z: -2.30 };
 const airCan = new THREE.Group();
-airCan.position.set(TRAY.x, BENCH.top + .003, TRAY.z);
+airCan.position.set(CAN.x, BENCH.top + .001, CAN.z);
 scene.add(airCan);
 cyl(.019, .019, .056, 14, new THREE.MeshStandardMaterial({ color: 0x2b6fb5, roughness: .5 }), 0, .028, 0, airCan);
 cyl(.006, .006, .012, 8, M.red, 0, .060, 0, airCan);
@@ -3347,7 +3335,15 @@ box(.011, .004, .008, M.metalDark, 0, .066, .004, airCan);
 register(airCan, 'airCan', 'a can of compressed air');
 const canLabel = decal(.030, .020, stickerTex([['LUCHT', 26, true]],
   { bg: '#e8e2cf', ink: '#1b2328', h: 100, top: 66, align: 'center', border: false }),
-  TRAY.x, BENCH.top + .036, TRAY.z + .0195);
+  CAN.x, BENCH.top + .034, CAN.z + .0195);
+// a small note on the bench beside it, because a lone can is scenery
+const airNote = plane(.092, .030, new THREE.MeshStandardMaterial({
+  map: stickerTex([['LUCHT', 26, true], ['eerst schoonmaken', 18, false]],
+    { bg: '#e8e2cf', ink: '#1b2328', h: 130, top: 48, align: 'center' }),
+  roughness: .92,
+}), CAN.x + .062, BENCH.top + .0015, CAN.z + .022);
+airNote.rotation.x = -Math.PI / 2;
+airNote.rotation.z = .08;
 
 /* the mouse gets a logo LED, a sensor window, and a hair in it */
 const mLed = box(.010, .0015, .006, new THREE.MeshStandardMaterial({ color: 0x1a2024, emissive: 0x000000, roughness: .4 }),
@@ -3368,7 +3364,7 @@ SOLID_S.push(S(2.57, 2.83, DESK.top, DESK.top + .02, -1.44, -1.24));            
 SOLID_S.push(S(2.20, 2.64, DESK.top, DESK.top + .034, -.74, -.58));             // the keyboard
 const mouseSolid = S(3.022, 3.078, DESK.top, DESK.top + .034, -.702, -.618);   // the mouse, upright
 SOLID_S.push(mouseSolid);
-const airSolid = S(TRAY.x - .019, TRAY.x + .019, BENCH.top, BENCH.top + .062, TRAY.z - .019, TRAY.z + .019);
+const airSolid = S(CAN.x - .019, CAN.x + .019, BENCH.top, BENCH.top + .062, CAN.z - .019, CAN.z + .019);
 SOLID_S.push(airSolid);
 function syncMouseSolid() {
   const t = state.usb.tipped;
@@ -3381,10 +3377,6 @@ function syncMouseSolid() {
 
 /* --- the mouse and its window ------------------------------------------ */
 function tipMouse(over) {
-  if (!state.usb.mouse) {
-    sfx.nope(); toast('It is not plugged in. Start at the back of the case.');
-    return;
-  }
   if (state.phase !== 'shrunk') return;
   state.usb.tipped = over;
   mouse.rotation.z = over ? -Math.PI / 2 : 0;
@@ -3401,11 +3393,12 @@ function cleanLens() {
     return;
   }
   if (state.usb.clean) return;
-  if (state.held !== 'air') {
+  if (!state.items.includes('compressed air')) {
     sfx.buzz();
-    toast('The hair sits there, mocking you. The compressed-air can is in the parts tray on the bench, left of the case.', 'bad');
+    toast('The hair sits there, mocking you. The can of air is standing on the bench, left of the case.', 'bad');
     return;
   }
+  state.invPending = null;
   state.usb.clean = true;
   mHair.visible = false;
   mSensor.material.emissive = new THREE.Color(0x63d68b);
@@ -3498,38 +3491,52 @@ Object.assign(THINGS, {
     act() { plugUsb(); },
   },
   airCan: {
-    kicker: 'the parts tray', title: 'Compressed air',
-    text: () => state.held === 'air'
-      ? '<p>In your arms: a blue can, taller than you, with a straw on the nozzle.</p>'
-      : `<p>A can of compressed air, standing in the parts tray with a few loose screws and a thermal pad.
-         Gerrit's note is taped to the tray: <b>clean it first, then complain that it is broken</b>.</p>`,
-    keys: () => state.held === 'air' ? '' : '<kbd>E</kbd>pick it up',
+    kicker: 'the bench', title: 'Compressed air',
+    text: () => state.items.includes('compressed air')
+      ? '<p>In the notepad: a blue can with a straw on the nozzle.</p>'
+      : `<p>A can of compressed air, standing on the bench with a note beside it:
+         <b>clean it first, then complain that it is broken</b>.</p>`,
+    keys: () => state.items.includes('compressed air') ? '' : '<kbd>E</kbd>take the can',
     act() { takeAir(); },
   },
   mouseLens: {
     kicker: 'the desk', title: "The mouse's optical window",
-    text: () => !state.usb.mouse
-      ? '<p>A dark glass eye in the base of the mouse. Nothing in it is working: the mouse has no power.</p>'
-      : !state.usb.tipped
-        ? '<p>Underneath, where you cannot reach it. The mouse would have to go over onto its side first.</p>'
-        : state.usb.clean
-          ? '<p>Clean glass and a clean red light. That is a working sensor.</p>'
-          : '<p>A hair right across the window, and a felt of dust under it. That is what "the mouse is doing weird things" means.</p>',
-    keys: () => state.usb.mouse && state.usb.tipped && !state.usb.clean
-      ? (state.held === 'air' ? '<kbd>E</kbd>blast it with the air' : '')
-      : '',
-    act() { cleanLens(); },
+    text: () => !state.usb.tipped
+      ? '<p>Underneath, where you cannot reach it. The mouse would have to go over onto its side first.</p>'
+      : state.usb.clean
+        ? '<p>Clean glass. The sensor reads the pad smoothly now.</p>'
+        : '<p>A hair right across the window, and a felt of dust under it. That is what "the mouse is doing weird things" means.</p>',
+    keys: () => state.usb.tipped && !state.usb.clean ? '<kbd>E</kbd>the window is filthy' : '',
+    act() {
+      if (!state.usb.tipped) {
+        sfx.nope(); toast('It is underneath, where you cannot get at it. Tip the mouse over first.');
+        return;
+      }
+      if (state.usb.clean) return;
+      if (!state.items.includes('compressed air')) {
+        sfx.buzz();
+        toast('A hair across the window. You need the can of air — it is standing on the bench, left of the case.', 'bad');
+        return;
+      }
+      // the can lives in the notepad now, so the notepad opens and you pick it
+      state.invPending = 'air';
+      padEl.hidden = false;
+      renderPad();
+      pulsePad();
+      if (document.pointerLockElement) document.exitPointerLock();
+      sfx.click();
+      toast('Pick the compressed air out of the inventory.', '');
+    },
   },
 });
 function takeAir() {
-  if (state.held === 'air') return;
-  releaseHeld();
-  state.held = 'air';
+  if (state.items.includes('compressed air')) return;
+  state.items.push('compressed air');
   airCan.visible = false;
   airSolid.y1 = BENCH.top;             // the can has left the bench
-  showHeld('air');
   sfx.pickup();
-  toast('The can of air. Bring it to whatever needs blowing out.');
+  renderPad();
+  toast('The can of air goes in the notepad. Pick it there when something needs blowing out.');
   renderTray();
 }
 
@@ -3702,6 +3709,7 @@ if (new URLSearchParams(location.search).has('debug') || new URLSearchParams(loc
     interact, camera, scene, THREE, raycaster, ledCanvas, ledCtx, ledTexture, ledMat, led, A, audioInit,
     setFeet(f) { feet = f; camera.position.y = f + P.eye; },
     zip: ZIP, startRide, tipMouse, cleanLens, plugUsb, takeUsb, takeAir, usbWire, dropHeld,
+    a2Solid, b2Solid, SEATED_Z0, SEATED_Z1,
     look(y, pi) { yaw = y; pitch = pi; camera.rotation.set(pitch, yaw, 0); },
     aimAt(id, dist = 1.1, fy = null, at = null) {
       const cands = interact.filter(o => o.userData.interact === id);

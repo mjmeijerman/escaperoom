@@ -105,8 +105,8 @@ taped a grip at each end. At 17 mm that is a rope: `E` the grip and ride it, han
 On the bench behind the case, next to the rear panel, lie the keyboard's and the mouse's USB plugs — Gerrit pulled
 both out at the case end. Either blue port takes either plug. The keyboard's backlight comes up. The mouse lights
 up too, and then proves the intake form right: its sensor glows red and reads nothing, because there is a hair
-across the optical window. Tip it onto its side, take the compressed-air can from the parts tray on the bench
-(left of the case), and blow the window clean. Then put it back on its pad.
+across the optical window. Tip it onto its side, take the can of air from the bench (left of the case) into the
+notepad, then `E` the window — the notepad opens and you click the can. Then put it back on its pad.
 
 ---
 
@@ -163,8 +163,8 @@ of the two cables. Click the plug, or the cable anywhere near it; either picks i
 
 **The mouse lights up but does not work — "the mouse is doing weird things".**
 The sensor reads the pad through a glass window in the base, and there is a hair across it. `E` the mouse to tip it
-onto its side, then blow the window out with the compressed-air can from the parts tray, left of the case. `E` it again to put it
-back.
+onto its side, `E` the window (the notepad opens), then click the **compressed air** in the notepad. `E` the mouse
+again to put it back on its pad.
 
 ---
 
@@ -204,7 +204,8 @@ back.
    - `E` the keyboard's plug, then `E` either blue USB port. The keyboard's backlight comes up.
    - `E` the mouse's plug, then `E` the other blue port. Its sensor glows red and the cursor is still a mess.
    - `E` the mouse to tip it onto its side. Underneath: a hair across the optical window.
-   - `E` the compressed-air can in the parts tray on the bench (left of the case), then `E` the window. The hair goes.
+   - `E` the can of air standing on the bench, left of the case — it goes into the notepad.
+   - `E` the window: the notepad opens. Click **compressed air**. The hair goes.
    - `E` the mouse again to put it back on its pad.
 10. **The way down** — `E` the taped grip on the cable at the bench lip and ride it, hand over hand, to the desk.
     `E` the grip at the desk end to ride back. No other route exists, in either direction. The desk is walkable;

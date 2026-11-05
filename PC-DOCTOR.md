@@ -214,7 +214,8 @@ takes either plug, and both ports are dead until the board has 12 V (the same ga
 - **Mouse**: plug in → its logo LED lights, and the sensor under it glows **red**. Cause: the intake form was right —
   *"de muis doet raar"*. The optical window in the base has a hair and dust in it, and at 17 mm you cannot see under
   it, so `E` the mouse to **tip it onto its side** (it goes over with a rattle), then blow the window out with the
-  **compressed air** from the parts tray on the bench, left of the case, then `E` it once more to put it back on its pad. Gerrit's note:
+  **compressed air** from the notepad — `E` the window to open the notepad, then click the can — then `E` the mouse
+  once more to put it back on its pad. Gerrit's note:
   *"eerst schoonmaken, dan pas zeuren dat het ding stuk is"*. Cheapest real fix in the trade, and the player who has
   ever owned a mouse will laugh.
 
@@ -458,7 +459,8 @@ I/O trek is slice 3. Move it back out when that zone exists.
 - **the keyboard and the mouse**: plugs on the bench behind the case. The keyboard is a tilted deck of individual
   keycaps with a backlight strip that lights when it is plugged in; the mouse has a shell, a band, two buttons and a
   wheel, and its sensor glows red with a hair across the window. Tip it onto its side, blow the window clean with the
-  compressed-air can from the parts tray, right it again;
+  compressed-air can (the can goes into the notepad; the window opens the notepad and you click it there), right it
+  again;
 - **solidity, and the cables**: the keyboard, the (upright and tipped) mouse and the air can are obstacles, not air.
   The monitor cable runs round the outside of the case instead of through its right-hand panel, the unplugged cable is
   one draped run rather than a straight line across the room, and the device cables leave the desk over its back edge
