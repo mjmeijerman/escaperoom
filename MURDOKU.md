@@ -29,7 +29,22 @@ Coordinates are **C**olumn then **R**ow. C1 is the west edge, R1 the north.
 - **keuken** — C5R1, C5R2, C5R3, C6R1, C6R2, C6R3 (6)
 - **woonkamer** — the other ten
 
-No doors: the rooms are told apart by floor colour and a painted name, so you can walk anywhere.
+The house is exactly the grid: the outer walls stand on the grid's edge on the west, north and east, and the hall is
+a strip behind its own wall on the south, so no room bleeds into a margin of bare floor. The window is let into the
+east wall at C6R4.
+
+No doors. Every room is closed in by a knee-high part-wall (1.3 m, the height of the television) that runs unbroken
+along its boundary, and **every wall carries the name of the room behind it** — so the living room alone has a
+`WOONKAMER` plaque on each of its seven partitions plus one facing the hall, and each of the other rooms is likewise
+named wherever you stand, and the outer walls carry the name of the room behind them as well. A plaque is hung as
+low as the wall allows and rides *above* the furniture when there is a table, a plant or a bed against that wall, so
+nothing is left unlabelled.
+The walls are scenery: they have no colliders, so you walk straight through them. The grid is the puzzle, not the
+masonry, and nothing in the house is allowed to make a square unreachable.
+
+Everything in the house can be jumped onto: the floor query takes whatever is under you, and the jump clears the
+tallest thing in the room (the television at 1.35 m). The ceiling is a ceiling — your head stops under it, so you can
+jump onto the furniture but not through the roof.
 
 ### Furniture
 
@@ -46,7 +61,7 @@ No doors: the rooms are told apart by floor colour and a painted name, so you ca
 | table | C5R1, C6R1 |
 | plant | C5R3 |
 | plant | C5R4 |
-| window | the east side of C6R4 |
+| window | the east wall, at C6R4 — a casing, four panes and a sill, let into the wall |
 
 ---
 
@@ -64,12 +79,33 @@ No doors: the rooms are told apart by floor colour and a painted name, so you ca
 Rules, as implemented:
 
 1. one person per square;
-2. one person per **column**;
-3. nobody stands on a squared that has been crossed out;
+2. one person per **column** and one person per **row** — a line can never hold two of them;
+3. nobody stands on a square that has been crossed out, on a **table**, on a **plant** or on the **television**;
 4. every statement has to be true of the person it belongs to;
-5. the victim has no statement of his own — he takes whichever square the rest leave free.
+5. the victim has no statement of his own — he takes whichever square the rest leave free, which with rows and
+   columns both in play is exactly one square;
+6. nobody is the murderer until the grid is full: **the killer is the one nearest the body**, Manhattan-wise.
+
+Furniture you cannot stand on: both tables (C4R3, and C5R1 + C6R1), both plants (C5R3, C5R4) and the television
+(C3R6). Beds, chairs and carpets are fair game — the case itself puts Alexander on a bed.
 
 "Next to" counts the eight surrounding squares (so Diana in C4R5 is next to the television in C3R6).
+
+### The cast
+
+Everyone in the house is a person, not a marker: a body, a head, eyes, a mouth, and hair that says who they are.
+
+| | Who | Hair | Face |
+| --- | --- | --- | --- |
+| **Alexander** | man | short, grey | glasses |
+| **Bas** | man | long, blond | blond beard and moustache |
+| **Clarissa** | woman | long, brown | — |
+| **Diana** | tinted woman | half-long, black | — |
+| **Elsa** | black woman | grey, swept back with a bun | — |
+| **Vladimir** | man (the body) | short, dark blond | eyes shut, curled on his side in his own blood, his head a little away from his shoulders — all of it inside one square |
+
+The colours are in the data (`PEOPLE` carries `skin`, `hair`, `style`, `glasses`, `beard`), so a new cast is a new
+table.
 
 ### The solution
 
@@ -77,16 +113,21 @@ Rules, as implemented:
 A Alexander  C1R1   (on the bed)
 B Bas        C5R2   (kitchen)
 C Clarissa   C3R3   (next to the table in C4R3)
-D Diana      C4R5   (next to the television in C3R6)
+D Diana      C4R6   (next to the television in C3R6 — beside it, same room)
 E Elsa       C6R4   (at the window)
-V Vladimir   C2R5   (the last column, and the last square in it)
+V Vladimir   C2R5   (the last square left over)
 ```
 
-A note on the rules, because it is the one place this room argues with itself. With only clues + *one per column*, a
-lot of layouts fit, and the victim could sit anywhere in the leftover column. Add the classic murdoku rule *one per
-row as well* and the leftover square becomes exactly **C2R6** — the victim is then forced, which is what "lay in the
-last square left over" is supposed to mean. This build implements clues + one per column and accepts the layout
-above; if the row rule is turned on later, the victim moves to C2R6 and nothing else changes.
+It is the only layout that fits. Run the statements over the thirty-six squares with one person per row and per
+column and exactly one survives: Alexander is forced onto a bed in column 1, Bas into the kitchen in column 5,
+Clarissa beside the table in C4R3 from C3R3, Diana beside the television from C4R6 (C4R5 is a corner away and has a
+wall between it), Elsa at the window in C6R4. That leaves row 5 and column 2 for the body: **C2R5**.
+
+**The murderer is Alexander.** The logeerkamer holds exactly two people — Alexander in C1R1 and Vladimir in C2R5 — so
+nobody else was in there with the body. When the grid is full the camera steps onto the square in front of him (C1R2,
+the neighbour toward the body) and turns to face him: a knife appears in his hand — steel with a bright edge, a brass
+guard and a dark handle, the blade still wet — and the banner says so. The deduction is kept out of the placement puzzle on purpose: the
+grid tells you where everyone was, and the murderer is the *reading* of that answer, not another square to fill.
 
 ---
 
@@ -95,19 +136,41 @@ above; if the row rule is turned on later, the victim moves to C2R6 and nothing 
 | Input | Action |
 | --- | --- |
 | `W A S D` / arrows | walk (`Shift` to hurry) |
-| mouse | look (click to capture, `Esc` to release) |
+| `Space` | jump — high enough to land on anything in the house, the television included |
+| mouse | look (click to capture, `Esc` to release) — yaw first, so turning never rolls the room |
 | `E` | pick a guest up, put them down on the square you are looking at, read the case file |
 | `F` | cross a square out (or clear it again) |
 | `Q` | put the guest in your arms back in the hall |
-| `I` | the notes: every statement, ticked or crossed as you place people |
+| `I` | the notes: every statement, ticked or crossed as you place people, and whether rows and columns are still clean. Each guest gets a colour of their own (the colour of their coat) and a line for where they are now, so the six are told apart at a glance — no description of how they look, you are standing in the same room as them |
+| `H` | een hint in het Nederlands: wie er nog staat, welke verklaring niet klopt, of dat Vladimir met precies één ander in een kamer moet |
 | `R` | everyone back to the hall, every mark gone (after the case closes: play again) |
+
+### On a phone
+
+The house opens on a phone too. There is no pointer lock and no keyboard, so the same six actions move to the screen:
+
+- a **stick** in the bottom left corner to walk; push it further to walk faster,
+- **one finger on the scene** to look — drag to turn, and a *tap* uses whatever the crosshair is on, so picking
+  someone up is a tap, not a tap-then-tap-someone-else,
+- **six buttons** bottom right: `E` use, `↑` jump, `▤` notes, `↩` put back, `✗` mark a square, `?` hint.
+- the notes open as one solid sheet that stops above the buttons, and they carry their own reset at the bottom,
+  because a phone has no `R`.
+
+The keyboard legend disappears, toasts are capped at two so they cannot crawl over the buttons, and the crosshair
+prompt says `tap` instead of `E`. Reaching into the notes does not steal the screen: picking someone up redraws them
+but never throws them open.
+
+Room plaques read like the case file: look at one and the tray names the room and lists its squares, so the grid is
+always legible even when a rug is over the floor paint.
 
 Carrying a guest: `E` on them, walk to the square, look at the floor and `E` again. The note pad on the right ticks a
 statement as soon as that person stands somewhere that fits it, so the puzzle is legible while you work — a tick is
 true, a cross is a lie, a dot is nobody placed yet.
 
-The house is always honest: it tells you which room and which square you are standing in (top right), and the case
-file on the west wall is the same text as the notes.
+The house is always honest: it tells you which room and which square you are standing in (top right), the crosshair
+names whatever it is resting on, and the case file on the west wall is the same text as the notes. `H` gives a hint
+in Dutch — who is still in the hall, which statement does not fit, or that the body has to share its room with exactly
+one other person — and it never names a square outright.
 
 ---
 
@@ -118,6 +181,20 @@ file on the west wall is the same text as the notes.
   it, so a new case is a new table and a new set of predicates — not new scenes.
 - `?test` exposes `window.__murdoku` (place, lift, checkWin, the sets of furniture squares) for
   `test/murdoku.browser.cjs`, which walks the whole case: the rooms, the furniture, carrying a guest, crossing a
-  square out, and the solution that closes it (27 checks).
-- Known gap, deliberate for a first case: the checker accepts the layout above but not a *unique* one — see the note
-  on the row rule. A second case should either turn the row rule on or drop the "leftover square" statement.
+  square out, the solution that closes it, a plaque read off the wall, a walk straight through a part-wall to prove
+  it is scenery, the furniture nobody may stand on, the closed wall count, the window's place in the east wall, a
+  plaque on every wall face, the outer shell standing on the grid's edge, and that every piece of furniture is
+  something you can stand on — plus a jump that clears the television, a head that stops at the ceiling, and a
+  crosshair that names what it is on even when the thing is made of several parts, the row rule, "next to" being the
+  square beside you in the same room, the murderer's deduction, the knife in their hand, the camera stepping onto the
+  square in front of them, every one of the six looking the way the cast list says, the victim's head off his
+  shoulders, a Dutch hint from `H`, and six guests in the notes each with their own colour (63 checks).
+- `test/murdoku.mobile.cjs` is the same house at 390 x 844 with a touch screen: the phone layout, the stick moving the
+  camera, a dragged finger turning it, a tap picking a guest up while a drag does not, all six buttons, the notes as a
+  sheet that stops above them, and their own reset (26 checks). Run it the same way, with
+  `node test/murdoku.mobile.cjs`.
+- The case is now unique, not just solvable: with rows, columns and strict adjacency exactly one layout survives, and
+  the victim's square falls out of it. That is checked by brute force over the thirty-six squares, and the statements
+  are tight enough that no second layout sneaks through.
+- A second case is a new `ROOM_DEF`, a new `FURN` and a new `PEOPLE` with its own `test(c, r)` and Dutch `hint`. The
+  rest of the file — the grid, the walls, the plaques, the carrying, the reveal — is generic.

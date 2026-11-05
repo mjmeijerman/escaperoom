@@ -67,6 +67,15 @@
   #pad li b.no{color:var(--bad)}
   #pad li b.none{color:#7e736a}
   #pad li i{font-style:normal;color:#9a8d83;font-size:.68rem;display:block}
+  #pad li.person{display:grid;grid-template-columns:10px 1fr auto;gap:.45em;align-items:start;
+    padding:5px 0 6px 7px;border-top:1px solid rgba(255,255,255,.07);border-left:3px solid transparent}
+  #pad li.person:first-child{border-top:0}
+  #pad li.person .chip{width:10px;height:10px;border-radius:2px;margin-top:6px;
+    box-shadow:0 0 0 1px rgba(0,0,0,.55)}
+  #pad li.person span{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.5}
+  #pad li.person .name{color:#f4ece2;font-weight:600;font-size:.76rem}
+  #pad li.person .clue{color:#cfc2b6;font-size:.68rem;font-style:italic;margin-top:2px}
+  #pad li.person .where{color:#8f8378;font-size:.64rem;margin-top:1px}
   #pad .rule{color:#b9aca1;font-size:.68rem;line-height:1.5}
 
   #legend{position:fixed;right:16px;bottom:16px;z-index:6;display:flex;flex-wrap:wrap;gap:.3em 1em;
@@ -103,6 +112,38 @@
   #pad.pulse{animation:pulsePad .9s ease-out 2}
   @keyframes pulsePad{0%{box-shadow:0 0 0 0 rgba(224,176,114,.55)}100%{box-shadow:0 0 0 18px rgba(224,176,114,0)}}
   #reset{position:fixed;right:16px;bottom:70px;z-index:9;display:none}
+
+  /* ---------- touch: a stick, six buttons, no pointer lock ---------- */
+  #touch{position:fixed;inset:0;z-index:7;pointer-events:none;display:none}
+  body.touch #touch{display:block}
+  #stick{position:absolute;left:14px;bottom:14px;width:126px;height:126px;border-radius:50%;
+    border:1px solid rgba(224,176,114,.34);background:radial-gradient(circle,rgba(26,20,22,.55),rgba(10,8,10,.3));
+    pointer-events:auto;touch-action:none}
+  #stickKnob{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;
+    background:rgba(224,176,114,.26);border:1px solid rgba(224,176,114,.6)}
+  #tbtns{position:absolute;right:12px;bottom:14px;display:grid;grid-template-columns:repeat(3,52px);gap:8px;
+    pointer-events:auto}
+  #tbtns button{width:52px;height:52px;border-radius:50%;font-family:var(--mono);font-size:.86rem;
+    letter-spacing:.02em;color:#ffe8c8;background:rgba(14,10,12,.8);
+    border:1px solid rgba(224,176,114,.45);touch-action:none;padding:0}
+  #tbtns button small{display:block;font-size:.44rem;letter-spacing:.1em;color:#a3968c;margin-top:-2px}
+  #tbtns button:active{background:rgba(224,176,114,.32)}
+  body.touch #legend{display:none}
+  body.touch #tray{left:8px;right:8px;bottom:auto;top:50px;width:auto;font-size:.68rem;max-height:26vh;overflow:auto}
+  body.touch #pad{left:8px;right:8px;top:46px;width:auto;font-size:.64rem;line-height:18px;
+    max-height:calc(100vh - 212px);max-height:calc(100dvh - 212px);overflow:auto;padding:10px 12px;
+    background:linear-gradient(180deg,#1d181a,#12100f);box-shadow:0 18px 50px rgba(0,0,0,.8)}
+  body.touch .toasts{bottom:146px;width:min(400px,92vw)}
+  body.touch .toast{font-size:.68rem;padding:.4em .8em}
+  #pad .padfoot{display:none;margin-top:8px;padding-top:7px;border-top:1px solid rgba(255,255,255,.1)}
+  body.touch #pad .padfoot{display:block}
+  #pad .padfoot button{width:100%;min-height:42px;font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;
+    text-transform:uppercase;color:#dccabd;background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.18);border-radius:2px}
+  #pad .padfoot button:active{background:rgba(224,176,114,.28)}
+  #start .touch-only{display:none}
+  body.touch #start .desk-only{display:none}
+  body.touch #start .touch-only{display:block}
 </style>
 </head>
 <body>
@@ -123,13 +164,15 @@
 
 <aside id="pad"><h2>suspects</h2><ul id="padPeople"></ul>
   <h2>the case</h2><ul id="padClues"></ul>
-  <h2>house rules</h2><div class="rule" id="padRules"></div></aside>
+  <h2>house rules</h2><div class="rule" id="padRules"></div>
+  <div class="padfoot"><button id="padReset" type="button">↺ everyone back to the hall</button></div></aside>
 
 <aside id="legend" aria-label="controls">
   <span><b>W A S D</b> walk</span>
   <span><b>E</b> pick up / put down</span>
   <span><b>F</b> mark a cell</span>
   <span><b>Q</b> put it back</span>
+  <span><b>H</b> hint</span>
   <span><b>I</b> notes</span>
   <span><b>R</b> reset</span>
   <span><b>Esc</b> free cursor</span>
@@ -141,18 +184,32 @@
     <p>A country house, a body in the hall, and five guests who all have an alibi. The floor is a grid of
        thirty-six squares and the whole case is a puzzle: put everyone where the statements say they were.</p>
     <button id="startBtn">Enter the house</button>
-    <small>W A S D walk · E pick up and put down · F mark a cell · I notes · click to look</small>
+    <small class="desk-only">W A S D walk · E pick up and put down · F mark a cell · I notes · click to look</small>
+    <small class="touch-only">stick to walk · one finger to look and tap to use · ▤ notes · ? hint</small>
   </div>
 </div>
 
 <div id="banner" hidden></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
+<div id="touch" aria-hidden="true">
+  <div id="stick"><i id="stickKnob"></i></div>
+  <div id="tbtns">
+    <button data-act="use" aria-label="pick up or put down">E</button>
+    <button data-act="jump" aria-label="jump">↑</button>
+    <button data-act="pad" aria-label="notes">▤</button>
+    <button data-act="back" aria-label="put back">↩</button>
+    <button data-act="mark" aria-label="mark a cell">✗</button>
+    <button data-act="hint" aria-label="hint">?</button>
+  </div>
+</div>
+
 <script type="module">
 import * as THREE from './vendor/three.module.min.js';
 
 const $ = s => document.querySelector(s);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const TOUCH = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;   // a phone, not a mouse
 
 /* ------------------------------------------------------------------ setup */
 const canvas = $('#scene');
@@ -169,6 +226,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0b090c);
 scene.fog = new THREE.FogExp2(0x0b090c, 0.022);
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 90);
+camera.rotation.order = 'YXZ';        // yaw first, then pitch: turning left must not tilt the room
 scene.add(camera);
 
 /* ------------------------------------------------------------------ grid */
@@ -209,6 +267,9 @@ const FURN = [
   { kind: 'plant', cells: [[5, 4]] },
 ];
 const BEDS = new Set(), TABLES = new Set(), CHAIRS = new Set(), TVS = new Set(), RUGS = new Set(), PLANTS = new Set();
+/* Furniture you cannot stand on: a table top, a plant pot, the television. A bed
+   is the exception the case makes for itself — Alexander sat on one. */
+const NO_STAND = new Set();
 FURN.forEach(f => f.cells.forEach(([c, r]) => {
   const k = key(c, r);
   if (f.kind === 'bed') BEDS.add(k);
@@ -218,27 +279,40 @@ FURN.forEach(f => f.cells.forEach(([c, r]) => {
   if (f.kind === 'rug') RUGS.add(k);
   if (f.kind === 'plant') PLANTS.add(k);
 }));
+TABLES.forEach(k => NO_STAND.add(k));
+PLANTS.forEach(k => NO_STAND.add(k));
+TVS.forEach(k => NO_STAND.add(k));
 const WINDOW = [6, 4];
 
 /* ------------------------------------------------------------------ people */
-const n8 = (c, r) => {
-  const out = [];
-  for (let dc = -1; dc <= 1; dc++) for (let dr = -1; dr <= 1; dr++) {
-    if (!dc && !dr) continue;
-    const a = c + dc, b = r + dr;
-    if (a >= 1 && a <= N && b >= 1 && b <= N) out.push([a, b]);
-  }
-  return out;
+/* "Next to" is the square beside it — never a corner, and never through a wall:
+   the neighbour has to be in the same room. */
+const beside = (c, r) => [[c + 1, r], [c - 1, r], [c, r + 1], [c, r - 1]]
+  .filter(([a, b]) => a >= 1 && a <= N && b >= 1 && b <= N);
+const nextToSameRoom = (c, r, set) => {
+  const home = roomAt(c, r);
+  return beside(c, r).some(([a, b]) => roomAt(a, b) === home && set.has(key(a, b)));
 };
-const nearAny = (c, r, set) => n8(c, r).some(([a, b]) => set.has(key(a, b)));
 
 const PEOPLE = [
-  { id: 'A', name: 'Alexander', colour: 0x9a7346, clue: 'Sat on a bed', test: (c, r) => BEDS.has(key(c, r)) },
-  { id: 'B', name: 'Bas', colour: 0x4c7f68, clue: 'Was in the kitchen', test: (c, r) => roomAt(c, r) === 'keuken' },
-  { id: 'C', name: 'Clarissa', colour: 0x86557a, clue: 'Stood next to a table', test: (c, r) => nearAny(c, r, TABLES) },
-  { id: 'D', name: 'Diana', colour: 0x5f6a90, clue: 'Was next to the television', test: (c, r) => nearAny(c, r, TVS) },
-  { id: 'E', name: 'Elsa', colour: 0x8a8750, clue: 'Stood in front of the window', test: (c, r) => c === WINDOW[0] && r === WINDOW[1] },
-  { id: 'V', name: 'Vladimir', colour: 0x8c3a34, victim: true, clue: 'Lay in the last cell left over', test: null },
+  { id: 'A', name: 'Alexander', colour: 0x9a7346, skin: 0xd8b49a, hair: 0x9c9c9c, style: 'short', glasses: true,
+    clue: 'Sat on a bed', hint: 'hij zat op een bed',
+    test: (c, r) => BEDS.has(key(c, r)) },
+  { id: 'B', name: 'Bas', colour: 0x4c7f68, skin: 0xdfc0a2, hair: 0xd8c07a, style: 'long', beard: true,
+    clue: 'Was in the kitchen', hint: 'hij was in de keuken',
+    test: (c, r) => roomAt(c, r) === 'keuken' },
+  { id: 'C', name: 'Clarissa', colour: 0x86557a, skin: 0xd9b193, hair: 0x4a2c1a, style: 'long',
+    clue: 'Stood next to a table', hint: 'zij stond naast een tafel',
+    test: (c, r) => nextToSameRoom(c, r, TABLES) },
+  { id: 'D', name: 'Diana', colour: 0x5f6a90, skin: 0xb07a52, hair: 0x15151a, style: 'halflong',
+    clue: 'Was next to the television', hint: 'zij stond naast de televisie',
+    test: (c, r) => nextToSameRoom(c, r, TVS) },
+  { id: 'E', name: 'Elsa', colour: 0x8a8750, skin: 0x6e4a34, hair: 0xcfcfcf, style: 'updo',
+    clue: 'Stood in front of the window', hint: 'zij stond voor het raam',
+    test: (c, r) => c === WINDOW[0] && r === WINDOW[1] },
+  { id: 'V', name: 'Vladimir', colour: 0x8c3a34, skin: 0xc9a27f, hair: 0xa88a4a, style: 'short', victim: true,
+    clue: 'Lay in the last cell left over, with one other person in that room', hint: 'hij lag in het laatst overgebleven vak',
+    test: null },
 ];
 
 const state = {
@@ -281,7 +355,6 @@ const M = {
   metal: new THREE.MeshStandardMaterial({ color: 0x6a6a70, roughness: .45, metalness: .6 }),
   fabric: new THREE.MeshStandardMaterial({ color: 0x3c2c33, roughness: .95 }),
   linen: new THREE.MeshStandardMaterial({ color: 0xb8ac9c, roughness: .95 }),
-  chalk: new THREE.MeshBasicMaterial({ color: 0xdfe6e2, transparent: true, opacity: .8 }),
   tvScreen: new THREE.MeshStandardMaterial({ color: 0x0b1014, emissive: 0x2a6f8c, emissiveIntensity: .35, roughness: .35 }),
   gold: new THREE.MeshStandardMaterial({ color: 0xb99545, roughness: .35, metalness: .8 }),
   leaf: new THREE.MeshStandardMaterial({ color: 0x2f5a3a, roughness: .8 }),
@@ -326,7 +399,7 @@ function decal(w, h, t, x, y, z, ry = 0, parent) {
 }
 const interact = [];
 function register(obj, id, label) {
-  obj.traverse(o => { if (o.isMesh) o.userData.interact = id; });
+  obj.traverse(o => { if (o.isMesh) { o.userData.interact = id; o.userData.label = label; } });
   obj.userData.interact = id;
   obj.userData.label = label;
   interact.push(obj);
@@ -334,9 +407,10 @@ function register(obj, id, label) {
 }
 
 /* ------------------------------------------------------------------ the house */
-const WALL_H = 3.1;
+const WALL_H = 3.4;
 const HALL = 2.8;                                  // the strip along the south wall
-const X0 = -7, X1 = 7, Z0 = -6.9, Z1 = 6.6 + HALL; // inside faces of the outer walls
+const X0 = -6, X1 = 6, Z0 = -6;                    // the outer walls sit on the grid's edge
+const Z1 = N * CELL / 2 + HALL;                    // and the hall runs to its own south wall
 
 function buildShell() {
   const floor = plane(X1 - X0, Z1 - Z0, new THREE.MeshStandardMaterial({ map: floorTex, roughness: .95 }),
@@ -369,36 +443,9 @@ function buildShell() {
       cellX(c), .017, cellZ(r));
     inner.rotation.x = -Math.PI / 2;
   }
-  // room plates on the floor, so you always know where you stand
-  ROOM_DEF.forEach(([name, tint, list]) => {
-    const cells = list.length ? list : [];
-    if (!cells.length) {
-      const all = [];
-      for (let c = 1; c <= N; c++) for (let r = 1; r <= N; r++) if (roomAt(c, r) === name) all.push([c, r]);
-      cells.push(...all);
-    }
-    const cx = cells.reduce((s, [c]) => s + cellX(c), 0) / cells.length;
-    const cz = cells.reduce((s, [, r]) => s + cellZ(r), 0) / cells.length;
-    const label = decal(2.6, .5, tex(512, 96, (g, w, h) => {
-      g.clearRect(0, 0, w, h);
-      g.fillStyle = 'rgba(240,230,220,.30)';
-      g.font = '600 44px ui-monospace,monospace';
-      g.textAlign = 'center';
-      g.fillText(name.toUpperCase(), w / 2, 64);
-    }), cx, .02, cz);
-    label.rotation.x = -Math.PI / 2;
-  });
   // the hall where everyone starts
   box(X1 - X0, .02, HALL, new THREE.MeshStandardMaterial({ color: 0x211b1f, roughness: .95 }),
-    0, .01, 6.6 + HALL / 2);
-  const hallLabel = decal(3.4, .6, tex(512, 96, (g, w, h) => {
-    g.clearRect(0, 0, w, h);
-    g.fillStyle = 'rgba(240,230,220,.35)';
-    g.font = '600 40px ui-monospace,monospace';
-    g.textAlign = 'center';
-    g.fillText('THE HALL', w / 2, 62);
-  }), 0, .021, 6.9);
-  hallLabel.rotation.x = -Math.PI / 2;
+    0, .01, N * CELL / 2 + HALL / 2);
 }
 
 /* ------------------------------------------------------------------ furniture */
@@ -466,20 +513,139 @@ function tv([c, r]) {
   screen.rotation.y = Math.PI;                       // facing north, into the house
   SOLIDS.push(S(x - .78, x + .78, 0, 1.35, z - .1, z + .48));
 }
+const WINDOW_AT = { x: 0, z: 0, y: 1.8 };
 function window_(c, r) {
   const z = cellZ(r);
-  const glow = new THREE.PointLight(0x9fb7d8, 6, 9, 2);
-  glow.position.set(X1 - .5, 1.9, z);
+  WINDOW_AT.z = z;
+  // a casing let into the inner face of the east wall, centred on its cell
+  box(.05, 1.9, 2.0, M.darkWood, X1 - .025, 1.8, z);                  // the reveal
+  const pane = plane(1.66, 1.5, new THREE.MeshStandardMaterial({
+    color: 0x9fb7d8, emissive: 0x9fb7d8, emissiveIntensity: 1.25, roughness: .2,
+  }), X1 - .055, 1.8, z);
+  pane.rotation.y = -Math.PI / 2;                                     // facing into the room
+  WINDOW_AT.x = X1 - .055;
+  // glazing bars and a sill, all on the room side of the glass
+  box(.03, 1.5, .05, M.darkWood, X1 - .07, 1.8, z);
+  box(.03, .05, 1.7, M.darkWood, X1 - .07, 1.8, z);
+  box(.18, .07, 2.06, M.darkWood, X1 - .09, 1.03, z);
+  const glow = new THREE.PointLight(0x9fb7d8, 11, 11, 2);
+  glow.position.set(X1 - .6, 1.9, z);
   scene.add(glow);
-  box(.12, 1.5, 1.7, new THREE.MeshStandardMaterial({ color: 0x121820, roughness: .3 }),
-    X1 - .08, 1.9, z);
-  const pane = plane(1.5, 1.3, new THREE.MeshStandardMaterial({
-    color: 0x9fb7d8, emissive: 0x9fb7d8, emissiveIntensity: 1.4, roughness: .2,
-  }), X1 - .14, 1.9, z);
-  pane.rotation.y = -Math.PI / 2;
-  box(.16, .12, 1.9, M.darkWood, X1 - .08, 2.02, z);      // glazing bars and sill
-  box(.16, .12, 1.9, M.darkWood, X1 - .08, 1.78, z);
-  box(.26, .1, 2.0, M.darkWood, X1 - .12, 1.12, z);
+}
+
+/* Knee-high part-walls between the rooms. They are scenery: no colliders, you
+   walk straight through the gaps — and through the walls too, if you like. */
+const PART_H = 1.3, WALL_T = .14, WALL_GAP = .9;
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x4a4148, roughness: .92 });
+const wallCap = new THREE.MeshStandardMaterial({ color: 0x2a2226, roughness: .8 });
+
+const WALLS = [];
+function wallRun(x, z, axis, len, rooms = []) {
+  // one unbroken run: every room is closed in. Still scenery — no colliders.
+  if (len <= .05) return;
+  WALLS.push({ x, z, axis, len, rooms });
+  if (axis === 'x') {
+    box(len, PART_H, WALL_T, wallMat, x, PART_H / 2, z);
+    box(len + .04, .06, WALL_T + .04, wallCap, x, PART_H + .03, z);
+  } else {
+    box(WALL_T, PART_H, len, wallMat, x, PART_H / 2, z);
+    box(WALL_T + .04, .06, len + .04, wallCap, x, PART_H + .03, z);
+  }
+}
+function buildWalls() {
+  for (let c = 1; c < N; c++) for (let r = 1; r <= N; r++) {
+    if (roomAt(c, r) !== roomAt(c + 1, r)) {
+      wallRun(cellX(c) + CELL / 2, cellZ(r), 'z', CELL, [roomAt(c, r), roomAt(c + 1, r)]);
+    }
+  }
+  for (let c = 1; c <= N; c++) for (let r = 1; r < N; r++) {
+    if (roomAt(c, r) !== roomAt(c, r + 1)) {
+      wallRun(cellX(c), cellZ(r) + CELL / 2, 'x', CELL, [roomAt(c, r), roomAt(c, r + 1)]);
+    }
+  }
+  // and one between the grid and the hall, in six pieces so each square gets its
+  // room's name on it; the hall's own plaque goes in the middle of the run
+  for (let c = 1; c <= N; c++) {
+    wallRun(cellX(c), cellZ(N) + CELL / 2, 'x', CELL, [roomAt(c, N), null]);
+  }
+}
+
+function wallSign(name, x, z, ry, y, sized = .95) {
+  const t = tex(512, 128, (g, w, h) => {
+    g.fillStyle = '#ddd3c4'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#2a2226'; g.lineWidth = 8; g.strokeRect(6, 6, w - 12, h - 12);
+    g.fillStyle = '#221b1e';
+    g.font = '700 52px ui-monospace,monospace';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(name.toUpperCase(), w / 2, h / 2 + 2);
+    grain(g, w, h, .05);
+  });
+  const m = plane(sized, sized * .3, new THREE.MeshStandardMaterial({ map: t, roughness: .9 }), x, y, z);
+  m.rotation.y = ry;
+  register(m, 'sign_' + name, name);
+  return m;
+}
+
+/* A plaque on every wall, on every face that has a room behind it: the woonkamer
+   alone ends up with one on each of its seven partitions and one facing the hall. */
+function tallFurnitureNear(x, z) {
+  let top = 0;
+  for (const s of SOLIDS) {
+    if (s.y1 <= .3) continue;
+    if (x > s.x0 - .6 && x < s.x1 + .6 && z > s.z0 - .6 && z < s.z1 + .6) top = Math.max(top, s.y1);
+  }
+  return top;
+}
+/* Hung as low as the wall allows, but never behind a table: if there is
+   furniture against the wall the plaque rides above it. */
+function plaqueHeight(x, z) {
+  const top = tallFurnitureNear(x, z);
+  const y = Math.max(.95, top + .28);
+  return y + .15 > PART_H ? null : y;         // no room on a part-wall: skip it
+}
+function buildSigns() {
+  const off = WALL_T / 2 + .012;
+  for (const w of WALLS) {
+    const [neg, pos] = w.rooms;
+    if (w.axis === 'z') {
+      if (neg) { const y = plaqueHeight(w.x - .4, w.z); if (y) wallSign(neg, w.x - off, w.z, -Math.PI / 2, y); }
+      if (pos) { const y = plaqueHeight(w.x + .4, w.z); if (y) wallSign(pos, w.x + off, w.z, Math.PI / 2, y); }
+    } else {
+      if (neg) { const y = plaqueHeight(w.x, w.z - .4); if (y) wallSign(neg, w.x, w.z - off, Math.PI, y); }
+      if (pos) { const y = plaqueHeight(w.x, w.z + .4); if (y) wallSign(pos, w.x, w.z + off, 0, y); }
+    }
+  }
+  // the hall, once, in the middle of its wall
+  wallSign('the hall', 0, cellZ(N) + CELL / 2 + off, 0, .95, 1.3);
+  buildOuterSigns();
+}
+
+/* The outer walls carry the name of the room behind them, one plaque per
+   unbroken stretch of the same room, up at the height of a big wall. */
+function buildOuterSigns() {
+  const y = 1.95;
+  const runs = [
+    { axis: 'z', fixed: X0 + .02, cells: Array.from({ length: N }, (_, i) => [1, i + 1]), ry: Math.PI / 2 },
+    { axis: 'x', fixed: Z0 + .02, cells: Array.from({ length: N }, (_, i) => [i + 1, 1]), ry: 0 },
+    { axis: 'z', fixed: X1 - .02, cells: Array.from({ length: N }, (_, i) => [6, i + 1]), ry: -Math.PI / 2 },
+  ];
+  for (const run of runs) {
+    let start = 0;
+    for (let i = 1; i <= run.cells.length; i++) {
+      const a = run.cells[start], b = run.cells[i];
+      if (b && roomAt(b[0], b[1]) === roomAt(a[0], a[1])) continue;
+      const piece = run.cells.slice(start, i);
+      const first = piece[0], last = piece[piece.length - 1];
+      const mid = run.axis === 'z'
+        ? (cellZ(first[1]) + cellZ(last[1])) / 2
+        : (cellX(first[0]) + cellX(last[0])) / 2;
+      const x = run.axis === 'z' ? run.fixed : mid;
+      const z = run.axis === 'z' ? mid : run.fixed;
+      wallSign(roomAt(a[0], a[1]), x, z, run.ry, y, Math.min(1.6, .95 + piece.length * .12));
+      start = i;
+    }
+  }
+  wallSign('the hall', 0, Z1 - .02, Math.PI, y, 1.3);
 }
 
 function buildFurniture() {
@@ -520,8 +686,10 @@ const caseTex = tex(640, 900, (g, w, h) => {
   g.fillStyle = '#1b1619'; g.font = '700 24px ui-monospace,monospace';
   g.fillText('HOUSE RULES', 40, h - 250);
   g.fillStyle = '#3b3336'; g.font = '400 20px ui-monospace,monospace';
-  ['one person per column, and one per square.', 'nobody stands on a crossed square.',
-    'a weapon, a motive: not your problem.'].forEach((l, i) => g.fillText(l, 40, h - 212 + i * 34));
+  ['one person per column and one per row.', 'nobody stands on a crossed square,',
+    'a table, a plant or the television.', 'next to means beside it, same room.',
+    'the body shares its room with exactly', 'one other person. that is the killer.']
+    .forEach((l, i) => g.fillText(l, 40, h - 236 + i * 30));
   grain(g, w, h, .06);
 });
 function buildPlaque() {
@@ -529,8 +697,8 @@ function buildPlaque() {
   g.position.set(X0 + .04, 1.55, 1.6);
   g.rotation.y = Math.PI / 2;
   scene.add(g);
-  box(.04, 1.1, .8, M.darkWood, 0, 0, 0, g);
-  decal(.72, 1.02, caseTex, 0, 0, .022, 0, g);
+  box(.8, 1.12, .05, M.darkWood, 0, 0, 0, g);           // the board, flat against the wall
+  decal(.72, 1.02, caseTex, 0, 0, .028, 0, g);          // and the paper on it
   register(g, 'casefile', 'the case file');
 }
 
@@ -538,33 +706,127 @@ function buildPlaque() {
 function makePerson(p) {
   const g = new THREE.Group();
   scene.add(g);
-  const mat = new THREE.MeshStandardMaterial({ color: p.colour, roughness: .8 });
-  const skin = new THREE.MeshStandardMaterial({ color: 0xd8b49a, roughness: .7 });
+  const coat = new THREE.MeshStandardMaterial({ color: p.colour, roughness: .85 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: p.skin, roughness: .72 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x221b1e, roughness: .9 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: p.hair, roughness: .88 });
+  const eyeWhite = new THREE.MeshStandardMaterial({ color: 0xf2ece2, roughness: .5 });
+  const pupil = new THREE.MeshStandardMaterial({ color: 0x14181c, roughness: .4 });
+  const lip = new THREE.MeshStandardMaterial({ color: p.victim ? 0x7a4a4a : 0x8a4a48, roughness: .8 });
+
+  const body = new THREE.Group();
   if (p.victim) {
-    // lying down, with a chalk outline around him
-    const body = new THREE.Group();
-    body.rotation.z = Math.PI / 2;
-    body.position.y = .2;
-    g.add(body);
-    cyl(.19, .16, 1.15, 12, mat, 0, 0, 0, body).rotation.z = Math.PI / 2;
-    sphere(.15, skin, 0, 0, -.68, body);
-    cyl(.07, .07, .8, 8, dark, 0, 0, .95, body).rotation.x = Math.PI / 2;
-    const outline = new THREE.Mesh(new THREE.RingGeometry(.42, .5, 24), M.chalk);
-    outline.rotation.x = -Math.PI / 2;
-    outline.position.y = .02;
-    outline.scale.set(1, 1.5, 1);
-    g.add(outline);
-    box(.9, .02, 1.6, new THREE.MeshStandardMaterial({ color: 0x1c161a, roughness: 1 }), 0, .01, 0, g);
+    // lay him down around his own middle, so the whole of him stays on his square
+    const pose = new THREE.Group();
+    pose.rotation.set(0, .7, Math.PI / 2);
+    pose.position.set(0, .2, 0);
+    g.add(pose);
+    body.scale.setScalar(.72);
+    body.position.y = -.9 * .72;
+    pose.add(body);
   } else {
-    const body = new THREE.Group();
     g.add(body);
-    cyl(.21, .29, 1.1, 12, mat, 0, .75, 0, body);
-    sphere(.19, skin, 0, 1.46, 0, body);
-    cyl(.07, .07, .72, 8, dark, -.15, .25, 0, body);
-    cyl(.07, .07, .72, 8, dark, .15, .25, 0, body);
-    body.rotation.y = Math.PI;
   }
+  // legs, coat, arms
+  cyl(.07, .07, .78, 8, dark, -.15, .3, 0, body);
+  cyl(.07, .07, .78, 8, dark, .15, .3, 0, body);
+  cyl(.22, .3, .92, 14, coat, 0, .9, 0, body);
+  // from the shoulder, down and a little away from the body
+  cyl(.06, .055, .64, 8, coat, -.25, .99, 0, body).rotation.z = -.15;
+  cyl(.06, .055, .64, 8, coat, .25, .99, 0, body).rotation.z = .15;
+
+  // head
+  const head = new THREE.Group();
+  sphere(.185, skinMat, 0, 0, 0, head, 18);
+  const faceZ = -.168;
+  if (p.victim) {
+    [-.062, .062].forEach(x => box(.052, .008, .012, pupil, x, .028, faceZ - .012, head));   // eyes shut
+  } else {
+    [-.062, .062].forEach(x => {
+      sphere(.034, eyeWhite, x, .024, faceZ + .004, head, 10);
+      sphere(.017, pupil, x, .024, faceZ - .026, head, 8);     // in front of the white, not behind it
+    });
+  }
+  sphere(.022, skinMat, 0, -.028, faceZ - .026, head, 8);     // nose
+  box(.062, .012, .014, lip, 0, -.088, faceZ + .002, head);   // mouth
+  if (p.glasses) {
+    const frame = new THREE.MeshStandardMaterial({ color: 0x2a2320, roughness: .5, metalness: .3 });
+    [-.062, .062].forEach(x => {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(.044, .004, 5, 16), frame);
+      ring.position.set(x, .024, faceZ - .03);              // in front of the eye, so it reads as a lens
+      head.add(ring);
+    });
+    box(.028, .005, .005, frame, 0, .028, faceZ - .032, head);
+    [-.106, .106].forEach(x => box(.005, .005, .07, frame, x, .03, faceZ + .02, head));
+  }
+
+  // hair: a cap over the crown only, so the eyes and nose stay clear
+  const capGeo = new THREE.SphereGeometry(.197, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.4);
+  const cap = new THREE.Mesh(capGeo, hairMat);
+  cap.position.set(0, .008, 0);
+  cap.scale.set(1.02, 1.02, 1.06);
+  head.add(cap);
+  if (p.style === 'long') {
+    [-.155, .155].forEach(x => {
+      const side = cyl(.055, .04, .5, 8, hairMat, x, -.16, .02, head);
+      side.rotation.z = x < 0 ? .06 : -.06;
+    });
+    const back = cyl(.16, .12, .42, 10, hairMat, 0, -.14, .12, head);
+    back.scale.set(1.05, 1, .5);
+  } else if (p.style === 'halflong') {
+    [-.16, .16].forEach(x => cyl(.05, .038, .3, 8, hairMat, x, -.06, .02, head));
+    const back = cyl(.14, .1, .26, 10, hairMat, 0, -.06, .12, head);
+    back.scale.set(1.05, 1, .5);
+  } else if (p.style === 'updo') {
+    // grey and fancy: swept back, with a bun
+    const sweep = sphere(.16, hairMat, 0, .075, .05, head, 12);
+    sweep.scale.set(1.02, .7, .9);
+    sphere(.075, hairMat, 0, .1, .16, head, 10);
+    [-.09, .09].forEach(x => {
+      const wave = sphere(.075, hairMat, x, .02, .06, head, 10);
+      wave.scale.set(1, .8, .8);
+    });
+  }
+  if (p.beard) {
+    const beard = sphere(.11, hairMat, 0, -.1, -.08, head, 12);
+    beard.scale.set(1, .85, .7);
+    box(.08, .018, .02, hairMat, 0, -.062, faceZ + .006, head);   // moustache
+  }
+
+  if (p.victim) {
+    // no head on the shoulders: a stump, and the head lying where it came to rest
+    const neck = cyl(.06, .07, .1, 8, skinMat, 0, 1.49, 0, body);
+    const bloodMat0 = new THREE.MeshStandardMaterial({ color: 0x4c0808, roughness: .3 });
+    const stump = cyl(.062, .062, .02, 10, bloodMat0, 0, 1.545, 0, body);
+    head.position.set(.62, .17, .5);
+    head.rotation.set(-.3, .5, 1.35);                  // lying on its side, facing the room
+    g.add(head);
+    const neckBlood = new THREE.Mesh(new THREE.CircleGeometry(.09, 12), bloodMat0);
+    neckBlood.rotation.x = -Math.PI / 2;
+    neckBlood.position.set(.62, .022, .5);
+    g.add(neckBlood);
+  } else {
+    head.position.set(0, 1.58, 0);
+    body.add(head);
+  }
+
+  if (p.victim) {
+    const bloodMat = new THREE.MeshStandardMaterial({ color: 0x3f0606, roughness: .28, metalness: .05 });
+    const pool = new THREE.Mesh(new THREE.CircleGeometry(.42, 24), bloodMat);
+    pool.rotation.x = -Math.PI / 2;
+    pool.scale.set(1.15, .8, 1);
+    pool.position.set(-.02, .026, .08);
+    g.add(pool);
+    for (let i = 0; i < 9; i++) {                   // spatter, all of it inside the square
+      const a = i / 9 * Math.PI * 2 + .4;
+      const r = .42 + (i % 3) * .08;
+      const drop = new THREE.Mesh(new THREE.CircleGeometry(.04 + (i % 4) * .016, 10), bloodMat);
+      drop.rotation.x = -Math.PI / 2;
+      drop.position.set(Math.cos(a) * r * 1.05, .028, .08 + Math.sin(a) * r * .8);
+      g.add(drop);
+    }
+  }
+
   // a name plate over their head
   const plateTex = tex(512, 128, (c, w, h) => {
     c.clearRect(0, 0, w, h);
@@ -576,9 +838,11 @@ function makePerson(p) {
   });
   const plate = new THREE.Mesh(new THREE.PlaneGeometry(.72, .18),
     new THREE.MeshBasicMaterial({ map: plateTex, transparent: true, depthWrite: false }));
-  plate.position.set(0, p.victim ? .95 : 2.0, 0);
+  plate.position.set(0, p.victim ? 1.0 : 2.05, 0);
   plate.userData.billboard = true;
   g.add(plate);
+  g.userData.look = { skin: p.skin, hair: p.hair, style: p.style, glasses: !!p.glasses, beard: !!p.beard,
+    beheaded: !!p.victim };
   register(g, 'p_' + p.id, p.name);
   return { g, plate };
 }
@@ -604,7 +868,9 @@ scene.add(winLight, winLight.target);
 
 /* ------------------------------------------------------------------ build */
 buildShell();
+buildWalls();
 buildFurniture();
+buildSigns();
 buildPlaque();
 
 const visuals = {};
@@ -664,7 +930,7 @@ function toast(msg, kind = '') {
   el.className = 'toast ' + kind;
   el.textContent = msg;
   toasts.appendChild(el);
-  while (toasts.children.length > 6) toasts.firstElementChild.remove();
+  while (toasts.children.length > (TOUCH ? 2 : 6)) toasts.firstElementChild.remove();
   const life = Math.min(9000, 2600 + msg.length * 42);
   setTimeout(() => { el.style.transition = 'opacity .5s'; el.style.opacity = '0'; }, life);
   setTimeout(() => el.remove(), life + 560);
@@ -674,20 +940,36 @@ function banner(html) { bannerEl.innerHTML = html; bannerEl.hidden = false; }
 const person = id => PEOPLE.find(p => p.id === id);
 const placedList = () => PEOPLE.filter(p => state.placed[p.id]);
 
-function renderPad() {
+function openPad() {
   padEl.hidden = false;
+  renderPad();
+}
+function togglePad() {
+  // picking someone up redraws the notes but must not throw them open on a phone
+  if (padEl.hidden) openPad(); else padEl.hidden = true;
+}
+function renderPad() {
   $('#padPeople').innerHTML = PEOPLE.map(p => {
     const at = state.placed[p.id];
     const ok = at && p.test ? p.test(at[0], at[1]) : null;
     const tag = !at ? '<b class="none">·</b>' : ok === null ? '<b class="none">?</b>' : ok ? '<b>✓</b>' : '<b class="no">✗</b>';
-    return `<li><span>${p.name}<i>${p.clue}</i>${at ? `C${at[0]}R${at[1]} · ${roomAt(at[0], at[1])}` : 'in the hall'}</span>${tag}</li>`;
+    const where = at ? `C${at[0]}R${at[1]} · ${roomAt(at[0], at[1])}` : 'in the hall';
+    const colour = '#' + p.colour.toString(16).padStart(6, '0');
+    return `<li class="person" style="border-left-color:${colour}">
+      <i class="chip" style="background:${colour}"></i>
+      <span><b class="name">${p.name}</b>
+        <i class="clue">${p.clue}</i>
+        <i class="where">Current location: ${where}</i></span>
+      ${tag}</li>`;
   }).join('');
   $('#padClues').innerHTML = `
     <li><span>placed</span><b class="${placedList().length === 6 ? '' : 'none'}">${placedList().length}/6</b></li>
-    <li><span>columns clear</span><b class="${columnsOK() ? '' : 'no'}">${columnsOK() ? 'yes' : 'no'}</b></li>
+    <li><span>one per column</span><b class="${columnsOK() ? '' : 'no'}">${columnsOK() ? 'yes' : 'no'}</b></li>
+    <li><span>one per row</span><b class="${rowsOK() ? '' : 'no'}">${rowsOK() ? 'yes' : 'no'}</b></li>
     <li><span>marks</span><b class="none">${state.marks.size}</b></li>`;
-  $('#padRules').innerHTML = 'One person per column. One person per square. Nobody on a crossed square. '
-    + 'The victim takes whatever is left. The grid is the confession.';
+  $('#padRules').innerHTML = 'One person per column and one per row, so neither line can hold two of them. '
+    + 'Nobody on a crossed square, a table, a plant or the television. Next to means the square beside you, in the '
+    + 'same room. The victim takes the last square, in a room with exactly one other person: that is the killer.';
 }
 function pulsePad() {
   padEl.classList.remove('pulse');
@@ -704,6 +986,16 @@ function columnsOK() {
   }
   return true;
 }
+function rowsOK() {
+  const used = new Set();
+  for (const p of placedList()) {
+    const at = state.placed[p.id];
+    if (used.has(at[1])) return false;
+    used.add(at[1]);
+  }
+  return true;
+}
+const linesOK = () => columnsOK() && rowsOK();
 
 function tray(html, keys = '', kicker = '', title = '') {
   trayEl.hidden = false;
@@ -725,7 +1017,12 @@ function target() {
     for (let q = h.object; q; q = q.parent) if (q.visible === false) { hidden = true; break; }
     if (hidden) continue;
     let o = h.object;
-    while (o) { if (o.userData && o.userData.interact) return { id: o.userData.interact, object: o, point: h.point }; o = o.parent; }
+    while (o) {
+      if (o.userData && o.userData.interact) {
+        return { id: o.userData.interact, object: o, label: o.userData.label || '', point: h.point };
+      }
+      o = o.parent;
+    }
   }
   return null;
 }
@@ -753,6 +1050,11 @@ function place(id, c, r) {
   const p = person(id);
   const k = key(c, r);
   if (state.marks.has(k)) { toast('That square is crossed out.', 'bad'); return false; }
+  if (NO_STAND.has(k)) {
+    const what = TABLES.has(k) ? 'the table' : PLANTS.has(k) ? 'the plant' : 'the television';
+    toast(`Nobody stands on ${what}.`, 'bad');
+    return false;
+  }
   const other = occupantOf(c, r);
   if (other && other.id !== id) { toast(`${other.name} is standing there.`, 'bad'); return false; }
   state.placed[id] = [c, r];
@@ -765,6 +1067,7 @@ function place(id, c, r) {
     : ok ? `${p.name} on C${c}R${r}. That fits their statement.`
       : `${p.name} on C${c}R${r}. That does not fit their statement.`, ok === false ? 'bad' : ok ? 'good' : '');
   if (!columnsOK()) toast('Two of them are in the same column.', 'bad');
+  else if (!rowsOK()) toast('Two of them are in the same row.', 'bad');
   renderPad();
   checkWin();
   return true;
@@ -778,19 +1081,104 @@ function putBack(id, say = true) {
   if (say) toast(`${person(id).name} goes back to the hall.`);
   renderPad();
 }
+/* Murdoku's own rule: the body is in a room with exactly one other person, and
+   that person is the murderer. Nobody is nearest anything — it is the room. */
+function murdererOf() {
+  const v = state.placed.V;
+  if (!v) return null;
+  const home = roomAt(v[0], v[1]);
+  const others = PEOPLE.filter(p => !p.victim && state.placed[p.id]
+    && roomAt(state.placed[p.id][0], state.placed[p.id][1]) === home);
+  return others.length === 1 ? others[0].id : null;
+}
+function giveKnife(id) {
+  const g = visuals[id].g;
+  if (g.userData.knife) return;
+  g.userData.knife = true;
+  const steel = new THREE.MeshStandardMaterial({ color: 0xb9c2c8, roughness: .16, metalness: .92 });
+  const edge = new THREE.MeshStandardMaterial({ color: 0xe6edf1, roughness: .1, metalness: .95 });
+  const wet = new THREE.MeshStandardMaterial({ color: 0x6e0c0c, roughness: .28, emissive: 0x2a0404, emissiveIntensity: .5 });
+  const handleMat = new THREE.MeshStandardMaterial({ color: 0x1b1715, roughness: .82 });
+  const brass = new THREE.MeshStandardMaterial({ color: 0x9c8150, roughness: .35, metalness: .8 });
+  const knife = new THREE.Group();
+  knife.position.set(.27, 1.12, -.24);        // in front of the body, where the hand is
+  knife.rotation.set(-.3, .15, .45);                      // held up and out, toward whoever is looking
+  knife.scale.setScalar(1.1);
+  g.add(knife);
+  cyl(.017, .019, .12, 10, handleMat, 0, 0, 0, knife);    // handle
+  sphere(.02, brass, 0, -.066, 0, knife, 10);             // pommel
+  box(.062, .012, .022, brass, 0, .066, 0, knife);        // guard
+  box(.009, .21, .052, steel, 0, .18, 0, knife);          // the blade, flat
+  box(.004, .2, .052, edge, .006, .18, 0, knife);         // its bright edge
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(.026, .075, 4), steel);
+  tip.position.set(0, .32, 0);
+  tip.scale.set(.2, 1, 1);
+  tip.rotation.y = Math.PI / 4;
+  knife.add(tip);
+  box(.008, .1, .034, wet, 0, .17, .002, knife);          // blood on the flat
+  box(.006, .05, .022, wet, 0, .26, .002, knife);
+  const drip = sphere(.011, wet, .012, .1, .004, knife, 8);
+  drip.scale.set(1, 1.5, 1);
+  const glow = new THREE.PointLight(0xb01414, 1.2, .9, 1.8);
+  glow.position.set(0, .22, 0);
+  knife.add(glow);
+}
+function revealMurderer(id) {
+  const p = person(id);
+  const at = state.placed[id];
+  const where = roomAt(at[0], at[1]);
+  giveKnife(id);
+  const mx = cellX(at[0]), mz = cellZ(at[1]);
+  // stand on the square in front of them: the neighbour toward the body first,
+  // then any free neighbour, so the murderer is never watched through a wall
+  const v = state.placed.V || at;
+  const dc = Math.sign(v[0] - at[0]), dr = Math.sign(v[1] - at[1]);
+  const dirs = [];
+  if (Math.abs(v[1] - at[1]) >= Math.abs(v[0] - at[0])) { if (dr) dirs.push([0, dr]); if (dc) dirs.push([dc, 0]); }
+  else { if (dc) dirs.push([dc, 0]); if (dr) dirs.push([0, dr]); }
+  dirs.push([0, 1], [1, 0], [0, -1], [-1, 0]);
+  let spot = null;
+  for (const [a, b] of dirs) {
+    const c = at[0] + a, r = at[1] + b;
+    if (c < 1 || c > N || r < 1 || r > N) continue;
+    if (occupantOf(c, r) || NO_STAND.has(key(c, r))) continue;
+    spot = [c, r];
+    break;
+  }
+  if (!spot) spot = at;
+  const cx = cellX(spot[0]), cz = cellZ(spot[1]);
+  state.started = false;
+  visuals[id].g.rotation.y = Math.atan2(-(cx - mx), -(cz - mz));   // the face looks down local −z
+  camera.position.set(cx, 1.62, cz);
+  yaw = Math.atan2(-(mx - cx), -(mz - cz));
+  pitch = Math.atan2(1.3 - 1.62, Math.hypot(mx - cx, mz - cz));
+  camera.rotation.set(pitch, yaw, 0);
+  camera.updateMatrixWorld(true);
+  state.started = true;
+  banner('THE MURDERER IS ' + p.name.toUpperCase()
+    + `<small>${p.name} was alone in the ${where} with the body. Vladimir can rest.</small>`);
+  toast(`${p.name} shared the ${where} with Vladimir — and the knife is still in hand.`, 'good');
+}
 function checkWin() {
   if (state.won) return;
   if (placedList().length < PEOPLE.length) return;
-  if (!columnsOK()) return;
+  if (!linesOK()) return;
   const wrong = PEOPLE.filter(p => p.test && !p.test(...state.placed[p.id]));
   if (wrong.length) {
     toast(`${wrong.length} statement${wrong.length > 1 ? 's do' : ' does'} not fit yet.`, 'bad');
     return;
   }
+  if (!murdererOf()) {
+    toast('Vladimir has to be in a room with exactly one other person.', 'bad');
+    return;
+  }
+  if (state.codes === undefined) { /* not this room's state */ }
   state.won = true;
-  banner('CASE CLOSED<small>everyone accounted for. Vladimir can rest, and the murderer can start the car.</small>');
-  toast('The grid holds. Every statement fits and every column has one of them.', 'good');
-  renderPad();
+  state.murderer = murdererOf();
+  banner('CASE CLOSED<small>everyone accounted for. One of them is holding the knife.</small>');
+  toast('The grid holds: every statement fits, every row and column has one of them — and the body shares its room with one person.', 'good');
+  openPad();
+  if (state.murderer) setTimeout(() => revealMurderer(state.murderer), 1400);
 }
 
 /* ------------------------------------------------------------------ movement */
@@ -816,6 +1204,17 @@ function resolve(pos) {
     }
   }
 }
+/* Whatever is under you: the floor, or the top of anything low enough to stand
+   on from where you are. Everything in the house can be jumped onto. */
+function groundAt(x, z, feet) {
+  let g = 0;
+  for (const s of SOLIDS) {
+    if (s.y1 > feet + P.stepUp) continue;                  // out of reach from here
+    if (x < s.x0 - P.r || x > s.x1 + P.r || z < s.z0 - P.r || z > s.z1 + P.r) continue;
+    if (s.y1 > g) g = s.y1;
+  }
+  return g;
+}
 function move(dt) {
   const fast = keys.has('ShiftLeft') || keys.has('ShiftRight');
   const speed = P.speed * (fast ? 1.5 : 1);
@@ -824,6 +1223,7 @@ function move(dt) {
   if (keys.has('KeyS') || keys.has('ArrowDown')) fz += 1;
   if (keys.has('KeyA') || keys.has('ArrowLeft')) fx -= 1;
   if (keys.has('KeyD') || keys.has('ArrowRight')) fx += 1;
+  if (state.stick) { fx += state.stick.x; fz += state.stick.y; }      // the thumb on a phone
   const sin = Math.sin(yaw), cos = Math.cos(yaw);
   if (fx || fz) {
     const len = Math.hypot(fx, fz);
@@ -839,8 +1239,11 @@ function move(dt) {
   camera.position.z = pos.z;
   vy -= 9.8 * dt;
   feet += vy * dt;
-  if (feet <= 0) { feet = 0; vy = 0; grounded = true; }
+  const ground = groundAt(pos.x, pos.z, feet);
+  if (feet <= ground) { feet = ground; vy = 0; grounded = true; }
   else grounded = false;
+  const roof = WALL_H - 1.72;                       // the ceiling stops you, not the other way round
+  if (feet > roof) { feet = roof; if (vy > 0) vy = 0; }
   camera.position.y = feet + P.eye;
   if (state.carry) {
     const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
@@ -863,6 +1266,14 @@ function use() {
   if (!t) return;
   if (t.id.startsWith('p_')) { lift(t.id.slice(2)); return; }
   if (t.id === 'casefile') { readCase(); return; }
+  if (t.id.startsWith('sign_')) {
+    const name = t.id.slice(5);
+    const cells = [];
+    for (let c = 1; c <= N; c++) for (let r = 1; r <= N; r++) if (roomAt(c, r) === name) cells.push('C' + c + 'R' + r);
+    tray(`<p><b>${name.toUpperCase()}</b> — ${cells.length} square${cells.length > 1 ? 's' : ''}.</p>
+      <p class="sub">${cells.join(' · ')}</p>`, '', 'painted on the wall', name);
+    return;
+  }
   if (t.id === 'cell') {
     const [c, r] = cellOfPoint(t.point);
     const who = occupantOf(c, r);
@@ -870,6 +1281,17 @@ function use() {
     tray(`<p>C${c}R${r} — <b>${roomAt(c, r)}</b>. ${state.marks.has(key(c, r)) ? 'Crossed out.' : 'Empty.'}</p>`,
       '<kbd>F</kbd>mark this square', 'the grid', `C${c}R${r}`);
   }
+}
+function giveHint() {
+  if (state.won) return toast('Hint · de zaak is gesloten. Druk op R om opnieuw te beginnen.');
+  if (!placedList().length) return toast('Hint · pak een gast op met E en zet hem op het vak waar zijn of haar verklaring past.');
+  if (!columnsOK()) return toast('Hint · er staan twee mensen in dezelfde kolom. Dat mag niet.');
+  if (!rowsOK()) return toast('Hint · er staan twee mensen in dezelfde rij. Dat mag niet.');
+  const wrong = PEOPLE.filter(p => p.test && state.placed[p.id] && !p.test(...state.placed[p.id]));
+  if (wrong.length) return toast(`Hint · ${wrong[0].name} klopt niet: ${wrong[0].hint}.`);
+  const loose = PEOPLE.find(p => !state.placed[p.id]);
+  if (loose) return toast(`Hint · ${loose.name} staat nog in de hal — ${loose.hint}.`);
+  return toast('Hint · Vladimir moet met precies één ander in een kamer liggen. Wie was dat?', 'good');
 }
 function readCase() {
   tray(`<p><b>CASE 004 — VLADIMIR.</b> Murder, and the house is a grid.</p>
@@ -896,8 +1318,7 @@ addEventListener('keydown', e => {
   if (!state.started) return;
   if (e.code === 'Tab' || e.code === 'KeyI') {
     e.preventDefault();
-    padEl.hidden = !padEl.hidden;
-    renderPad();
+    togglePad();
     if (document.pointerLockElement) document.exitPointerLock();
     return;
   }
@@ -913,11 +1334,12 @@ addEventListener('keydown', e => {
     if (state.carry) putBack(state.carry);
     return;
   }
+  if (e.code === 'KeyH') { giveHint(); return; }
   if (e.code === 'KeyF') { toggleMark(); return; }
   if (e.code === 'KeyE') { use(); return; }
   if (e.code === 'Space') {
     e.preventDefault();
-    if (grounded) { vy = 3.4; grounded = false; }
+    if (grounded) { vy = 6.6; grounded = false; }          // enough to reach the top of the television, even on a slow frame
     return;
   }
   if (e.code === 'Escape') return;
@@ -926,6 +1348,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => keys.delete(e.code));
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('mousedown', e => {
+  if (TOUCH) return;
   if (!state.locked) { canvas.requestPointerLock?.(); return; }
   use();
 });
@@ -935,6 +1358,92 @@ document.addEventListener('mousemove', e => {
   yaw -= e.movementX * .0026;
   pitch = clamp(pitch - e.movementY * .0026, -1.3, 1.3);
 });
+
+/* ------------------------------------------------------------------ touch
+   A phone has no pointer lock and no WASD. One stick for walking, one finger on
+   the scene to look, and six buttons for the keys that matter. */
+state.stick = { x: 0, y: 0 };
+if (TOUCH) {
+  document.body.classList.add('touch');
+  $('#touch').hidden = false;
+  padEl.hidden = true;
+}
+
+function bindTouch() {
+  const stickEl = $('#stick'), knob = $('#stickKnob'), R = 48;
+  let stickId = null;
+  const setStick = (dx, dy) => {
+    const d = Math.hypot(dx, dy) || 1, k = d > R ? R / d : 1;
+    const x = dx * k, y = dy * k;
+    state.stick.x = x / R; state.stick.y = y / R;
+    knob.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+  };
+  const stickAt = e => {
+    const r = stickEl.getBoundingClientRect();
+    setStick(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+  };
+  stickEl.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    stickId = e.pointerId; stickAt(e);
+    try { stickEl.setPointerCapture?.(e.pointerId); } catch { /* nothing to capture */ }
+  });
+  stickEl.addEventListener('pointermove', e => { if (e.pointerId === stickId) stickAt(e); });
+  const dropStick = e => {
+    if (e.pointerId !== stickId) return;
+    stickId = null; state.stick.x = 0; state.stick.y = 0;
+    knob.style.transform = 'translate(0,0)';
+  };
+  stickEl.addEventListener('pointerup', dropStick);
+  stickEl.addEventListener('pointercancel', dropStick);
+
+  // one finger on the scene: drag to look, tap to use what the crosshair is on
+  let lookId = null, lx = 0, ly = 0, moved = 0, downAt = 0;
+  canvas.addEventListener('pointerdown', e => {
+    if (e.target !== canvas) return;
+    lookId = e.pointerId; lx = e.clientX; ly = e.clientY; moved = 0; downAt = performance.now();
+    try { canvas.setPointerCapture?.(e.pointerId); } catch { /* nothing to capture */ }
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (e.pointerId !== lookId) return;
+    const dx = e.clientX - lx, dy = e.clientY - ly;
+    lx = e.clientX; ly = e.clientY;
+    moved += Math.abs(dx) + Math.abs(dy);
+    yaw -= dx * .005;
+    pitch = clamp(pitch - dy * .005, -1.3, 1.3);
+  });
+  const lookEnd = e => {
+    if (e.pointerId !== lookId) return;
+    lookId = null;
+    if (moved < 14 && performance.now() - downAt < 450) use();      // a tap, not a drag
+  };
+  canvas.addEventListener('pointerup', lookEnd);
+  canvas.addEventListener('pointercancel', e => { if (e.pointerId === lookId) lookId = null; });
+  canvas.addEventListener('dblclick', e => e.preventDefault());
+
+  const act = {
+    use() { use(); },
+    jump() { if (grounded) { vy = 6.6; grounded = false; } },
+    pad() { togglePad(); },
+    back() { if (state.carry) putBack(state.carry); else toast('Your hands are empty.'); },
+    mark() { toggleMark(); },
+    hint() { giveHint(); },
+  };
+  document.querySelectorAll('#touch button[data-act]').forEach(b => {
+    const fire = e => { e.preventDefault(); act[b.dataset.act]?.(); };
+    b.addEventListener('pointerdown', fire);
+    b.addEventListener('contextmenu', e => e.preventDefault());
+  });
+  const resetBtn = $('#padReset');
+  resetBtn?.addEventListener('click', e => {
+    e.preventDefault();
+    if (state.won) { location.reload(); return; }
+    PEOPLE.forEach(p => { delete state.placed[p.id]; visuals[p.id].g.position.copy(visuals[p.id].home); });
+    state.marks.clear(); syncMarks(); state.carry = null;
+    renderPad();
+    toast('Everyone back to the hall, every mark gone.');
+  });
+}
+if (TOUCH) bindTouch();
 
 /* ------------------------------------------------------------------ loop */
 const clock = new THREE.Clock();
@@ -946,7 +1455,7 @@ function roomUnderPlayer() {
   return inGrid ? { room: roomAt(c, r), c, r } : { room: 'the hall', c, r };
 }
 function tick() {
-  const dt = Math.min(clock.getDelta(), .1);
+  const dt = Math.min(clock.getDelta(), .05);   // slow machines should not under-integrate the jump
   if (state.started) move(dt);
   camera.rotation.set(pitch, yaw, 0);
 
@@ -959,7 +1468,7 @@ function tick() {
     state.hovered = target();
     if (state.hovered) {
       crosshair.classList.add('hot');
-      const label = state.hovered.object.userData.label || '';
+      const label = state.hovered.label || '';
       let text = label;
       let actionable = true;
       if (state.hovered.id === 'cell') {
@@ -970,10 +1479,10 @@ function tick() {
       } else if (state.hovered.id.startsWith('p_')) {
         text = state.carry ? `${label} (in your arms)` : `pick up ${label.toLowerCase()}`;
         actionable = !state.carry;
-      } else if (state.hovered.id === 'casefile') {
+      } else if (state.hovered.id === 'casefile' || state.hovered.id.startsWith('sign_')) {
         actionable = false;
       }
-      promptEl.innerHTML = actionable ? `<kbd>E</kbd>${text}` : text;
+      promptEl.innerHTML = actionable ? `<kbd>${TOUCH ? 'tap' : 'E'}</kbd>${text}` : text;
       promptEl.classList.toggle('read', !actionable);
       promptEl.hidden = false;
       if (state.trayId !== state.hovered.id + (state.carry || '')) {
@@ -983,6 +1492,13 @@ function tick() {
             <p class="sub">Q sends them back to the hall.</p>`, '<kbd>E</kbd>put down · <kbd>Q</kbd>put back',
             'in your arms', person(state.carry).name);
         } else if (state.hovered.id === 'casefile') readCase();
+        else if (state.hovered.id.startsWith('sign_')) {
+          const name = state.hovered.id.slice(5);
+          const cells = [];
+          for (let c = 1; c <= N; c++) for (let r = 1; r <= N; r++) if (roomAt(c, r) === name) cells.push('C' + c + 'R' + r);
+          tray(`<p><b>${name.toUpperCase()}</b> — ${cells.length} squares.</p><p class="sub">${cells.join(' · ')}</p>`,
+            '', 'painted on the wall', name);
+        }
         else if (state.hovered.id.startsWith('p_')) {
           const p = person(state.hovered.id.slice(2));
           tray(`<p><b>${p.name}</b> — ${p.clue.toLowerCase()}.</p>
@@ -1014,10 +1530,10 @@ renderer.setAnimationLoop(tick);
 $('#startBtn').addEventListener('click', () => {
   $('#start').hidden = true;
   state.started = true;
-  renderPad();
+  if (!TOUCH) openPad();
   camera.position.set(0, P.eye, 7.6);
   yaw = 0; pitch = -.04;
-  canvas.requestPointerLock?.();
+  if (!TOUCH) canvas.requestPointerLock?.();
   setTimeout(() => toast('Five guests and a body. Read the case file on the west wall.', ''), 700);
 });
 
@@ -1032,7 +1548,12 @@ if (new URLSearchParams(location.search).has('test') || new URLSearchParams(loca
   window.__murdoku = {
     state, PEOPLE, ROOM_AT, roomAt, cellX, cellZ, key, place, lift, putBack, checkWin, toggleMark,
     columnsOK, cellOfPoint, visuals, camera, scene, THREE, interact, target, raycaster,
-    BEDS, TABLES, CHAIRS, TVS, WINDOW, FURN, use, readCase, renderPad, trayEl,
+    BEDS, TABLES, CHAIRS, TVS, RUGS, PLANTS, NO_STAND, WINDOW, WINDOW_AT, FURN, use, readCase, renderPad, openPad, trayEl,
+    SOLIDS, WALLS, buildWalls, wallSign, groundAt, cameraOrder: () => camera.rotation.order,
+    HOUSE: { X0, X1, Z0, Z1, WALL_H, CELL }, plaqueCount: () => interact.filter(o => String(o.userData.interact).startsWith('sign_')).length,
+    rowsOK, linesOK, murdererOf, giveKnife, revealMurderer, checkWinNow: checkWin, beside, nextToSameRoom, giveHint,
+    setFeet(y) { feet = y; camera.position.y = y + P.eye; },
+    feet: () => feet,
     setCell(id, c, r) { lift(id); return place(id, c, r); },
     where() { return { x: camera.position.x, z: camera.position.z, yaw, pitch }; },
     teleport(x, z, y2 = 0, p2 = 0) {

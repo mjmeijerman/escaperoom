@@ -118,16 +118,19 @@ const st = page => page.evaluate(() => ({
   const plaque = await page.evaluate(() => {
     const d = window.__murdoku;
     d.state.locked = false;
-    d.teleport(-6.2, 1.6, Math.PI / 2, 0.05);
+    d.teleport(-5.2, 1.6, Math.PI / 2, 0.05);
     d.camera.position.y = 1.6;
     d.camera.updateMatrixWorld(true);
     const hit = d.target();
     d.state.hovered = hit;
     d.use();
-    return { id: hit && hit.id, text: document.getElementById('body').textContent.replace(/\s+/g, ' ') };
+    return { id: hit && hit.id, label: hit && hit.label,
+      text: document.getElementById('body').textContent.replace(/\s+/g, ' ') };
   });
   check('the case file can be read', plaque.id === 'casefile'
     && /alexander/i.test(plaque.text) && /vladimir/i.test(plaque.text), plaque.id + ' · ' + plaque.text.slice(0, 60));
+  check('and the crosshair names it, even though it is a board with paper on it',
+    plaque.label === 'the case file', String(plaque.label));
 
   // pick a guest up, put them on a square by looking at it
   check('a guest can be picked up', (await aimPerson(page, 'A')) === 'p_A');
@@ -167,7 +170,7 @@ const st = page => page.evaluate(() => ({
   await page.evaluate(() => { const d = window.__murdoku; d.putBack('B'); d.state.marks.clear(); d.syncMarks(); });
 
   // the whole solution, on the real floor
-  const sol = { A: [1, 1], B: [5, 2], C: [3, 3], D: [4, 5], E: [6, 4], V: [2, 5] };
+  const sol = { A: [1, 1], B: [5, 2], C: [3, 3], D: [4, 6], E: [6, 4], V: [2, 5] };
   for (const [id, [c, r]] of Object.entries(sol)) {
     await aimPerson(page, id);
     await page.keyboard.press('KeyE');
@@ -181,10 +184,302 @@ const st = page => page.evaluate(() => ({
     Object.entries(sol).every(([id, [c, r]]) => fin.placed[id] && fin.placed[id][0] === c && fin.placed[id][1] === r),
     JSON.stringify(fin.placed));
   check('which closes the case', fin.won === true);
+  check('one per row as well as one per column', await page.evaluate(() => {
+    const d = window.__murdoku;
+    return d.columnsOK() && d.rowsOK() && d.linesOK();
+  }));
+  check('and the murderer is the one who shared the victim\'s room', await page.evaluate(() => {
+    const d = window.__murdoku;
+    return d.state.murderer === 'A' && d.murdererOf() === 'A';
+  }), await page.evaluate(() => String(window.__murdoku.state.murderer)));
   check('and the sign says so', await page.evaluate(() =>
     !document.getElementById('banner').hidden && /CASE CLOSED/i.test(document.getElementById('banner').textContent)));
+  check('a second person in one row is refused a clean placement', await page.evaluate(() => {
+    const d = window.__murdoku;
+    const keep = { ...d.state.placed };
+    d.lift('E'); d.place('E', 6, 6);                    // E joins D in row 6
+    const after = { rows: d.rowsOK(), cols: d.columnsOK(),
+      said: [...document.querySelectorAll('#toasts .toast')].map(t => t.textContent).join(' | ') };
+    d.state.placed = keep;
+    Object.entries(keep).forEach(([id, [c, r]]) => d.visuals[id].g.position.set(d.cellX(c), 0, d.cellZ(r)));
+    d.renderPad();
+    return { rows: after.rows, cols: after.cols, said: /same row/i.test(after.said) };
+  }).then(r => r.rows === false && r.cols === true && r.said === true));
+
   check('every statement is ticked in the notes', await page.evaluate(() =>
     (document.getElementById('padPeople').textContent.match(/✓/g) || []).length === 5));
+  check('each of them is told apart in the notes by a colour of their own', await page.evaluate(() => {
+    const people = [...document.querySelectorAll('#padPeople li.person')];
+    return people.length === 6
+      && people.every(li => li.querySelector('.chip') && li.querySelector('.clue').textContent.trim())
+      && new Set(people.map(li => li.querySelector('.chip').style.background)).size === 6
+      && !document.querySelector('#padPeople .look');       // you can see them, no need to describe them
+  }));
+  check('I hides and shows the notes, and Tab does the same', await page.evaluate(() => {
+    const pad = document.querySelector('#pad');
+    const before = pad.hidden;
+    dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyI', bubbles: true }));
+    const afterI = pad.hidden;
+    dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyI', bubbles: true }));
+    const back = pad.hidden;
+    dispatchEvent(new KeyboardEvent('keydown', { code: 'Tab', bubbles: true }));
+    const afterTab = pad.hidden;
+    dispatchEvent(new KeyboardEvent('keydown', { code: 'Tab', bubbles: true }));
+    return before === back && afterI === !before && afterTab === !before;
+  }));
+  check('the notes label where each of them is standing', await page.evaluate(() => {
+    const t = document.getElementById('padPeople').textContent.replace(/\s+/g, ' ');
+    return (t.match(/Current location:/g) || []).length >= 5 && /Current location: C1R1/.test(t);
+  }));
+  const revealed = await page.evaluate(async () => {
+    const d = window.__murdoku;
+    await new Promise(r => setTimeout(r, 1700));           // the reveal runs after 1.4 s
+    const g = d.visuals.A.g;
+    const at = d.state.placed.A;
+    const dist = Math.hypot(d.camera.position.x - d.cellX(at[0]), d.camera.position.z - d.cellZ(at[1]));
+    return { knife: !!g.userData.knife, dist: +dist.toFixed(2),
+      banner: document.getElementById('banner').textContent.replace(/\s+/g, ' ') };
+  });
+  check('the murderer is holding a knife', revealed.knife === true);
+  check('and the camera has moved onto the square in front of them',
+    revealed.dist > .8 && revealed.dist < 2.6, JSON.stringify(revealed));
+  check('the banner names the murderer and why it is them',
+    /ALEXANDER/.test(revealed.banner) && /logeerkamer/i.test(revealed.banner) && !/car/i.test(revealed.banner),
+    revealed.banner);
+
+  /* --- the room itself: how it looks, how it walks ----------------------- */
+  check('the camera yaws before it pitches, so turning left does not roll the room',
+    await page.evaluate(() => {
+      const d = window.__murdoku;
+      d.teleport(0, 0, 1.2, -.6);
+      d.camera.updateMatrixWorld(true);
+      const up = new d.THREE.Vector3(0, 1, 0).applyQuaternion(d.camera.quaternion);
+      const right = new d.THREE.Vector3(1, 0, 0).applyQuaternion(d.camera.quaternion);
+      return d.cameraOrder() === 'YXZ' && Math.abs(up.dot(right)) < .01;
+    }));
+
+  const plaques = await page.evaluate(() => {
+    const d = window.__murdoku;
+    const ids = d.interact.map(o => o.userData.interact).filter(id => id && id.startsWith('sign_'));
+    const count = name => ids.filter(id => id === 'sign_' + name).length;
+    return {
+      total: ids.length, woon: count('woonkamer'), hall: count('the hall'),
+      rooms: ['logeerkamer', 'badkamer', 'grote slaapkamer', 'keuken', 'woonkamer'].map(count),
+    };
+  });
+  check('every room has its name on the walls behind it, more than once',
+    plaques.total >= 15 && plaques.rooms.every(n => n >= 2), JSON.stringify(plaques));
+  check('the living room has a plaque on each of its walls',
+    plaques.woon >= 6 && plaques.hall >= 1, JSON.stringify(plaques));
+
+  const signRead = await page.evaluate(() => {
+    const d = window.__murdoku;
+    // the plaque on the west wall, with nothing standing in front of it
+    const signs = d.interact.filter(o => o.userData.interact === 'sign_logeerkamer');
+    const p0 = new d.THREE.Vector3();
+    const sign = signs.reduce((best, o) => {
+      o.getWorldPosition(p0);
+      return (!best || p0.x < best.x) ? { o, x: p0.x } : best;
+    }, null).o;
+    const p = new d.THREE.Vector3();
+    sign.getWorldPosition(p);
+    d.state.locked = false;
+    let hit = null;
+    for (const [ax, az] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      for (const dy of [0, -.35, .35]) {
+        d.teleport(p.x + ax * 1.1, p.z + az * 1.1, Math.atan2(ax, az), Math.atan2(dy, 1.1));
+        d.camera.position.y = p.y + dy;
+        d.camera.updateMatrixWorld(true);
+        hit = d.target();
+        if (hit) break;
+      }
+      if (hit) break;
+    }
+    d.state.hovered = hit;
+    const text = hit ? (d.use(), document.getElementById('body').textContent.replace(/\s+/g, ' ')) : '';
+    return { id: hit && hit.id, text };
+  });
+  check('a plaque can be read and names the room and its squares',
+    signRead.id === 'sign_logeerkamer' && /logeerkamer/i.test(signRead.text) && /C1R1/.test(signRead.text),
+    signRead.id + ' · ' + signRead.text.slice(0, 50));
+
+  const throughWall = await page.evaluate(async () => {
+    const d = window.__murdoku;
+    // the wall between the kitchen and the living room, at x 3.2, away from its doorway
+    d.state.locked = true;
+    d.teleport(3.2, -1.2, Math.PI, 0);
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
+    await new Promise(r => setTimeout(r, 1100));
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
+    d.state.locked = false;
+    return { z: +d.camera.position.z.toFixed(2), solids: d.SOLIDS.length };
+  });
+  check('the part-walls are scenery: you walk straight through them',
+    throughWall.z > .4, JSON.stringify(throughWall));
+
+  /* --- furniture you cannot stand on, closed walls, and the window -------- */
+  const noStand = await page.evaluate(() => {
+    const d = window.__murdoku;
+    d.state.placed = {}; d.state.carry = null; d.state.won = false;
+    const tryCell = (id, c, r) => { d.lift(id); return d.place(id, c, r); };
+    const table = tryCell('B', 4, 3);          // the table in C4R3
+    const plant = tryCell('C', 5, 3);          // the plant in C5R3
+    const tv = tryCell('D', 3, 6);             // the television in C3R6
+    const bed = tryCell('A', 1, 1);            // a bed is allowed: Alexander sat on one
+    d.state.placed = {}; d.state.carry = null;
+    return { table, plant, tv, bed };
+  });
+  check('nobody stands on a table', noStand.table === false);
+  check('nor on a plant', noStand.plant === false);
+  check('nor on the television', noStand.tv === false);
+  check('but a bed is fair game', noStand.bed === true);
+
+  const walls = await page.evaluate(() => {
+    const d = window.__murdoku;
+    let internal = 0;
+    for (let c = 1; c < 6; c++) for (let r = 1; r <= 6; r++) if (d.roomAt(c, r) !== d.roomAt(c + 1, r)) internal++;
+    for (let c = 1; c <= 6; c++) for (let r = 1; r < 6; r++) if (d.roomAt(c, r) !== d.roomAt(c, r + 1)) internal++;
+    return { runs: d.WALLS.length, internal,
+      lengths: [...new Set(d.WALLS.map(w => +w.len.toFixed(2)))].sort((a, b) => a - b) };
+  });
+  check('every room is closed in: one unbroken wall per boundary, and the hall wall in six',
+    walls.runs === walls.internal + 6, JSON.stringify(walls));
+  check('and every run is one full cell, with no doorway cut in it',
+    walls.lengths.length === 1 && walls.lengths[0] === 2, JSON.stringify(walls.lengths));
+
+  check('the window is in the east wall, on C6R4', await page.evaluate(() => {
+    const d = window.__murdoku;
+    return d.WINDOW_AT.x > 5.8 && d.WINDOW_AT.x < 6.01 && Math.abs(d.WINDOW_AT.z - d.cellZ(4)) < .01;
+  }), await page.evaluate(() => JSON.stringify(window.__murdoku.WINDOW_AT)));
+
+  const shell = await page.evaluate(() => {
+    const d = window.__murdoku, h = d.HOUSE;
+    const wall = (pred) => d.SOLIDS.some(pred);
+    return {
+      west: wall(s => Math.abs(s.x1 - h.X0) < .02 && s.y1 > 3),
+      east: wall(s => Math.abs(s.x0 - h.X1) < .02 && s.y1 > 3),
+      north: wall(s => Math.abs(s.z1 - h.Z0) < .02 && s.y1 > 3),
+      south: wall(s => Math.abs(s.z0 - h.Z1) < .02 && s.y1 > 3),
+      h,
+    };
+  });
+  check('the grid is surrounded by full-height walls on all four sides',
+    shell.west && shell.east && shell.north && shell.south, JSON.stringify(shell));
+
+  const roof = await page.evaluate(async () => {
+    const d = window.__murdoku;
+    d.state.locked = false;
+    d.teleport(d.cellX(3), d.cellZ(6), 0, 0);        // standing on the television
+    d.setFeet(1.35);
+    await new Promise(r => setTimeout(r, 250));
+    let top = d.feet();
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    for (let i = 0; i < 28; i++) {
+      await new Promise(r => setTimeout(r, 25));
+      top = Math.max(top, d.feet());
+    }
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space' }));
+    return { top: +top.toFixed(2), head: +(top + 1.7).toFixed(2), wall: d.HOUSE.WALL_H };
+  });
+  check('and the roof stops you: your head stays under the ceiling', roof.head <= roof.wall + .01,
+    JSON.stringify(roof));
+
+  /* --- "next to" is beside it, in the same room --------------------------- */
+  check('next to means beside it: the television is not diagonally next to C4R5',
+    await page.evaluate(() => {
+      const d = window.__murdoku;
+      const tv = new Set(['3,6']);
+      return d.nextToSameRoom(4, 5, tv) === false        // diagonal, and a wall between
+        && d.nextToSameRoom(4, 6, tv) === true           // beside it, same room
+        && d.nextToSameRoom(3, 5, tv) === true
+        && d.nextToSameRoom(2, 6, tv) === false;         // beside it, but the logeerkamer
+    }));
+  check('and the body needs a room with exactly one other person', await page.evaluate(() => {
+    const d = window.__murdoku;
+    const keep = { ...d.state.placed };
+    d.lift('E'); d.place('E', 1, 5);                     // now A and E both in the logeerkamer
+    const crowded = d.murdererOf();
+    d.state.placed = keep;
+    Object.entries(keep).forEach(([id, [c, r]]) => d.visuals[id].g.position.set(d.cellX(c), 0, d.cellZ(r)));
+    d.renderPad();
+    return crowded === null;
+  }));
+
+  /* --- jumping: everything in the house can be stood on ------------------ */
+  const standOn = await page.evaluate(() => {
+    const d = window.__murdoku;
+    const at = (c, r, y) => +d.groundAt(d.cellX(c), d.cellZ(r), y).toFixed(2);
+    return {
+      floor: at(4, 5, 0),                 // empty living room
+      bed: at(1, 1, 1.0),                 // a bed is 0.52 high
+      chair: at(4, 2, 1.0),
+      table: at(4, 3, 1.0),               // the table is 0.78
+      plant: at(5, 3, 1.4),               // the plant pot stands 1.0
+      tv: at(3, 6, 2.0),                  // the television is 1.35
+    };
+  });
+  check('everything in the house is something you can stand on',
+    standOn.bed > .4 && standOn.chair > .4 && standOn.table > .7 && standOn.plant > .9 && standOn.tv > 1.3,
+    JSON.stringify(standOn));
+  check('and the floor is still the floor', standOn.floor === 0, String(standOn.floor));
+
+  const apex = await page.evaluate(async () => {
+    const d = window.__murdoku;
+    d.state.locked = false;
+    d.teleport(0, 8.5, 0, 0);                         // the hall, clear floor
+    await new Promise(r => setTimeout(r, 250));
+    const y0 = d.camera.position.y;
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    let top = y0;
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 25));
+      top = Math.max(top, d.camera.position.y);
+    }
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space' }));
+    return +(top - y0).toFixed(2);
+  });
+  check('and the jump is high enough for the tallest thing in the house (the television)',
+    apex > 1.35, String(apex));
+
+  /* --- hints, in Dutch ---------------------------------------------------- */
+  const hint = await page.evaluate(async () => {
+    const d = window.__murdoku;
+    const keep = { ...d.state.placed };
+    d.state.placed = {}; d.state.carry = null; d.state.won = false;
+    d.giveHint();
+    const first = [...document.querySelectorAll('#toasts .toast')].pop().textContent;
+    d.state.placed = keep;
+    d.renderPad();
+    return first;
+  });
+  check('H gives a Dutch hint', /^Hint · /.test(hint) && /pak een gast op/i.test(hint), hint);
+
+  /* --- the cast looks like the cast --------------------------------------- */
+  const looks = await page.evaluate(() => {
+    const d = window.__murdoku;
+    const hex = n => '#' + n.toString(16).padStart(6, '0');
+    return Object.fromEntries(d.PEOPLE.map(p => {
+      const l = d.visuals[p.id].g.userData.look;
+      return [p.id, { skin: hex(l.skin), hair: hex(l.hair), style: l.style, glasses: l.glasses, beard: l.beard }];
+    }));
+  });
+  check('Alexander: a man with short grey hair and glasses',
+    looks.A.style === 'short' && looks.A.glasses === true && looks.A.hair === '#9c9c9c', JSON.stringify(looks.A));
+  check('Bas: a man with long blond hair and a blond beard',
+    looks.B.style === 'long' && looks.B.beard === true && looks.B.hair === '#d8c07a', JSON.stringify(looks.B));
+  check('Clarissa: a woman with long brown hair',
+    looks.C.style === 'long' && looks.C.hair === '#4a2c1a' && !looks.C.beard, JSON.stringify(looks.C));
+  check('Diana: a tinted woman with black half-long hair',
+    looks.D.style === 'halflong' && looks.D.hair === '#15151a' && looks.D.skin === '#b07a52', JSON.stringify(looks.D));
+  check('Elsa: a black woman with grey, fancy hair',
+    looks.E.style === 'updo' && looks.E.hair === '#cfcfcf' && looks.E.skin === '#6e4a34', JSON.stringify(looks.E));
+  check('Vladimir: a man with short dark-blond hair',
+    looks.V.style === 'short' && looks.V.hair === '#a88a4a', JSON.stringify(looks.V));
+  check('and his head is not on his shoulders', await page.evaluate(() => {
+    const d = window.__murdoku;
+    return d.visuals.V.g.userData.look.beheaded === true
+      && d.visuals.A.g.userData.look.beheaded === false;
+  }));
 
   check('no console errors', logs.length === 0, logs.join(' | '));
 
