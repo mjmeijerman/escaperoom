@@ -384,6 +384,25 @@ const check = (name, ok, detail = '') => {
   check('the display cycles through the faults', codeB !== codeA, `${codeA} -> ${codeB}`);
   check('12 V on the board gives the PSU its character', rail.notes.PSU === 'K', String(rail.notes.PSU));
 
+  // and it belongs to the 12 V, not to the moment a cable goes in: kill the
+  // mains, lose the note, switch it back on and it has to come back
+  const psuAnyOrder = await page.evaluate(async () => {
+    const d = window.__doctor;
+    const snap = { ...d.state.notes };
+    delete d.state.notes.PSU;
+    d.THINGS.psuRocker.act();                    // mains off
+    await new Promise(r => setTimeout(r, 180));
+    const off = d.state.notes.PSU;
+    d.THINGS.psuRocker.act();                    // and back on
+    await new Promise(r => setTimeout(r, 420));
+    const on = d.state.notes.PSU;
+    d.state.notes = snap;                        // put the notepad back as it was
+    d.renderPad && d.renderPad();
+    return { off, on };
+  });
+  check('the PSU character follows the 12 V, not the plug', psuAnyOrder.off === undefined && psuAnyOrder.on === 'K',
+    JSON.stringify(psuAnyOrder));
+
   check('the loose 4-pin can be picked up', (await at('plugRear')) === 'plugRear');
   await press();
   check('CHA_FAN1 is reachable', (await at('chaFan1')) === 'chaFan1');

@@ -216,7 +216,8 @@ again to put it back on its pad.
    - **24-PIN** → the big socket on the board.
    - **EPS 8-PIN** → the CPU socket near the heatsink. (The **PCIe 8-PIN** is refused there — that is the trap.)
    - **SATA** → the fan hub.
-   - The rail label gives up the character **K**.
+   - The rail label gives up the character **K** — the moment the board actually has 12 V, so the order you plug
+     the cables and flip the rocker in does not matter.
 5. **`C1` — memory**
    - Slot **A2**: `E` the leaning module. It slides home. C1 stays up.
    - Slot **B2**: `E` the scorched module. It comes out.
