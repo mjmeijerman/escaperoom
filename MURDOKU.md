@@ -102,7 +102,7 @@ Everyone in the house is a person, not a marker: a body, a head, eyes, a mouth, 
 | **Clarissa** | woman | long, brown | — |
 | **Diana** | tinted woman | half-long, black | — |
 | **Elsa** | black woman | grey, swept back with a bun | — |
-| **Vladimir** | man (the body) | short, dark blond | eyes shut, curled on his side in his own blood, inside one square |
+| **Vladimir** | man (the body) | short, dark blond | eyes shut, curled on his side in his own blood, his head a little away from his shoulders — all of it inside one square |
 
 The colours are in the data (`PEOPLE` carries `skin`, `hair`, `style`, `glasses`, `beard`), so a new cast is a new
 table.
@@ -142,6 +142,7 @@ grid tells you where everyone was, and the murderer is the *reading* of that ans
 | `F` | cross a square out (or clear it again) |
 | `Q` | put the guest in your arms back in the hall |
 | `I` | the notes: every statement, ticked or crossed as you place people, and whether rows and columns are still clean |
+| `H` | een hint in het Nederlands: wie er nog staat, welke verklaring niet klopt, of dat Vladimir met precies één ander in een kamer moet |
 | `R` | everyone back to the hall, every mark gone (after the case closes: play again) |
 
 Room plaques read like the case file: look at one and the tray names the room and lists its squares, so the grid is
@@ -152,7 +153,9 @@ statement as soon as that person stands somewhere that fits it, so the puzzle is
 true, a cross is a lie, a dot is nobody placed yet.
 
 The house is always honest: it tells you which room and which square you are standing in (top right), the crosshair
-names whatever it is resting on, and the case file on the west wall is the same text as the notes.
+names whatever it is resting on, and the case file on the west wall is the same text as the notes. `H` gives a hint
+in Dutch — who is still in the hall, which statement does not fit, or that the body has to share its room with exactly
+one other person — and it never names a square outright.
 
 ---
 
@@ -167,7 +170,12 @@ names whatever it is resting on, and the case file on the west wall is the same 
   it is scenery, the furniture nobody may stand on, the closed wall count, the window's place in the east wall, a
   plaque on every wall face, the outer shell standing on the grid's edge, and that every piece of furniture is
   something you can stand on — plus a jump that clears the television, a head that stops at the ceiling, and a
-  crosshair that names what it is on even when the thing is made of several parts, the row rule, the murderer's
-  deduction, the knife in their hand and the camera turning to them (51 checks).
-- Known gap, deliberate for a first case: the checker accepts the layout above but not a *unique* one — see the note
-  on the row rule. A second case should either turn the row rule on or drop the "leftover square" statement.
+  crosshair that names what it is on even when the thing is made of several parts, the row rule, "next to" being the
+  square beside you in the same room, the murderer's deduction, the knife in their hand, the camera stepping onto the
+  square in front of them, every one of the six looking the way the cast list says, the victim's head off his
+  shoulders, and a Dutch hint from `H` (61 checks).
+- The case is now unique, not just solvable: with rows, columns and strict adjacency exactly one layout survives, and
+  the victim's square falls out of it. That is checked by brute force over the thirty-six squares, and the statements
+  are tight enough that no second layout sneaks through.
+- A second case is a new `ROOM_DEF`, a new `FURN` and a new `PEOPLE` with its own `test(c, r)` and Dutch `hint`. The
+  rest of the file — the grid, the walls, the plaques, the carrying, the reveal — is generic.
