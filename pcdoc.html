@@ -2042,7 +2042,7 @@ canvas.addEventListener('mousedown', e => {
     e.preventDefault();
     audioInit();
     let did = false;
-    if (state.held) { releaseHeld(); did = true; }
+    if (dropHeld()) did = true;
     if (state.grab) { state.grab = null; did = true; }
     if (state.gpu && state.gpu.trying) { state.gpu.trying = false; did = true; }
     if (did) { sfx.click(); renderTray(); }
@@ -2115,7 +2115,7 @@ addEventListener('keydown', e => {
   }
   if (e.code === 'KeyH') { giveHint(); return; }
   if (e.code === 'KeyQ') {
-    if (state.held) { releaseHeld(); renderTray(); toast('You put the cable end down.'); return; }
+    if (dropHeld()) return;
     if (state.grab) { state.grab = null; renderTray(); }
     if (state.gpu && state.gpu.trying) { state.gpu.trying = false; renderTray(); }
     return;
@@ -2894,6 +2894,23 @@ function releaseHeld() {
   hideHeld();
   dragWire.visible = false;
 }
+const DROP_SAYS = {
+  usbKbd: "You put the keyboard's plug down.",
+  usbMouse: "You put the mouse's plug down.",
+  air: 'You put the can of air down.',
+  hdmi: 'You put the monitor cable down on the bench.',
+  fanRear: 'You let go of the fan plug.',
+  fanCpu: 'You let go of the fan plug.',
+};
+/* Letting go of what you carry, and saying the right thing about it. */
+function dropHeld() {
+  const h = state.held;
+  if (!h) return false;
+  releaseHeld();
+  renderTray();
+  toast(DROP_SAYS[h] || 'You put the cable end down.');
+  return true;
+}
 function take(k) {
   const plugged = (k === 'atx' && state.psu.atx) || (k === 'eps' && state.psu.cpu)
     || (k === 'pcie' && state.psu.pcie) || (k === 'sata' && state.psu.sata);
@@ -3259,12 +3276,24 @@ function usbPlug(x, z, id, label, rot) {
 }
 const kbdPlug = usbPlug(-2.02, -2.94, 'usbKbd', "the keyboard's USB plug", -.4);
 const mousePlug = usbPlug(-2.12, -3.01, 'usbMouse', "the mouse's USB plug", .5);
-// their cables run along the back of the bench and drop over the far end
-[[-2.02, -2.94], [-2.12, -3.01]].forEach(([x, z]) => {
-  tube(V3(x, B2 + .009, z), V3(-3.44, B2 + .008, z + .01), .0022, M.black);
-  tube(V3(-3.44, B2 + .008, z + .01), V3(-3.53, B2 + .004, z + .01), .0022, M.black);
-  tube(V3(-3.53, B2 + .004, z + .01), V3(-3.58, B2 - .055, z + .01), .0022, M.black);
+
+/* Each plug keeps its cable. It runs off the far end of the bench, and the part
+   between the plug and that end is redrawn every frame — so the cable follows
+   the plug into your hands, and follows it into the port when it goes in. */
+const USB_ANCHOR = {
+  usbKbd: V3(-3.50, B2 + .006, -2.93),
+  usbMouse: V3(-3.52, B2 + .006, -3.00),
+};
+['usbKbd', 'usbMouse'].forEach(k => {
+  const a = USB_ANCHOR[k];
+  tube(a, V3(-3.56, B2 + .002, a.z), .0022, M.black);
+  tube(V3(-3.56, B2 + .002, a.z), V3(-3.60, B2 - .055, a.z), .0022, M.black);   // over the end, out of sight
 });
+const usbWire = {
+  usbKbd: cyl(.0022, .0022, 1, 6, M.black, -3.2, B2 + .01, -2.9),
+  usbMouse: cyl(.0022, .0022, 1, 6, M.black, -3.2, B2 + .01, -3.0),
+};
+for (const w of Object.values(usbWire)) w.visible = false;
 
 // the two devices' own cables, off the back of the desk and clear of the stand
 const kbCable = new THREE.MeshStandardMaterial({ color: 0x1b2024, roughness: .85 });
@@ -3509,6 +3538,23 @@ function slice2Tick(dt, t) {
     stretchCyl(wireHdmiB, HDMI_DESK, HDMI_DESK);
     wireHdmi.visible = state.held === 'hdmi' && !state.mon.plugged;
     wireHdmiB.visible = false;
+    // the USB cables ride with their plugs: hand, bench, or seated in the port
+    for (const k of ['usbKbd', 'usbMouse']) {
+      const w = usbWire[k];
+      if (state.held === k) {
+        w.visible = true; stretchCyl(w, USB_ANCHOR[k], hand);
+      } else if (k === 'usbKbd' && state.usb.kbd) {
+        w.visible = true; stretchCyl(w, USB_ANCHOR[k], V3(ioUsbA.position.x, ioUsbA.position.y, IO.z - .022));
+      } else if (k === 'usbMouse' && state.usb.mouse) {
+        w.visible = true; stretchCyl(w, USB_ANCHOR[k], V3(ioUsbB.position.x, ioUsbB.position.y, IO.z - .022));
+      } else if ((k === 'usbKbd' ? kbdPlug : mousePlug).visible) {
+        const to = new THREE.Vector3();
+        (k === 'usbKbd' ? kbdPlug : mousePlug).getWorldPosition(to);
+        w.visible = true; stretchCyl(w, USB_ANCHOR[k], to);
+      } else {
+        w.visible = false;
+      }
+    }
   }
   // fans only turn while the board actually has 12 V — kill the mains and they coast to a stop
   const spinning = state.fans.spinning && railLive();
@@ -3635,7 +3681,7 @@ if (new URLSearchParams(location.search).has('debug') || new URLSearchParams(loc
     state, THINGS, sfx, drawLed, use, currentTarget, genPull, pullLever, doShrink, startGenerator, giveHint,
     interact, camera, scene, THREE, raycaster, ledCanvas, ledCtx, ledTexture, ledMat, led, A, audioInit,
     setFeet(f) { feet = f; camera.position.y = f + P.eye; },
-    zip: ZIP, startRide, tipMouse, cleanLens, plugUsb, takeUsb, takeAir,
+    zip: ZIP, startRide, tipMouse, cleanLens, plugUsb, takeUsb, takeAir, usbWire, dropHeld,
     look(y, pi) { yaw = y; pitch = pi; camera.rotation.set(pitch, yaw, 0); },
     aimAt(id, dist = 1.1, fy = null, at = null) {
       const cands = interact.filter(o => o.userData.interact === id);

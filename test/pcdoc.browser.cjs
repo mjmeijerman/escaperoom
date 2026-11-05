@@ -431,9 +431,18 @@ const check = (name, ok, detail = '') => {
   check('the keyboard plug is lying behind the case', (await at('usbKbd')) === 'usbKbd');
   await press();
   check('the plug is in your arms', (await st()).held === 'usbKbd');
+  const usbCable = await page.evaluate(() => {
+    const w = window.__doctor.usbWire.usbKbd;
+    return { visible: w.visible, len: +w.scale.y.toFixed(2) };
+  });
+  check('and its cable comes with it', usbCable.visible === true && usbCable.len > .5, JSON.stringify(usbCable));
   check('a rear USB port is within reach', (await at('usbPortA')) === 'usbPortA');
   await press();
   check('the keyboard is plugged in', (await st()).usb.kbd === true);
+  check('the cable follows the plug into the port', await page.evaluate(() => {
+    const w = window.__doctor.usbWire.usbKbd;
+    return w.visible === true && w.scale.y > .5;
+  }));
 
   check('the mouse plug is beside it', (await at('usbMouse')) === 'usbMouse');
   await press();
@@ -442,7 +451,7 @@ const check = (name, ok, detail = '') => {
   check('the mouse is plugged in', (await st()).usb.mouse === true);
   check('and it is malfunctioning, as the intake form said', (await st()).usb.clean === false);
 
-  check('the compressed-air can is in the tub', (await at('airCan')) === 'airCan');
+  check('the compressed-air can is in the parts tray', (await at('airCan')) === 'airCan');
 
   const walkInto = (x, z, yawV, fy, ms = 900) => page.evaluate(async ([x, z, yawV, fy, ms]) => {
     const d = window.__doctor;
@@ -463,6 +472,18 @@ const check = (name, ok, detail = '') => {
   await at('airCan');
   await press();
   check('you can carry the can', (await st()).held === 'air');
+  await page.keyboard.press('KeyQ');
+  await sleep(180);
+  const dropSaid = await page.evaluate(() => {
+    const t = document.querySelectorAll('#toasts .toast');
+    return t.length ? t[t.length - 1].textContent : '';
+  });
+  check('putting the can down says what it is, not "cable end"', /can of air/i.test(dropSaid), dropSaid);
+  check('and the can goes back into the tray', (await st()).held === null);
+  await at('airCan');
+  await press();
+  check('you can pick it up again', (await st()).held === 'air');
+
 
   const zipDown = await page.evaluate(async () => {
     const d = window.__doctor;
