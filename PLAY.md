@@ -17,7 +17,7 @@ message before he drove off, and the transcript appears in the bottom-left tray 
 
 | Key | What it does |
 | --- | --- |
-| `W A S D` / arrows | walk |
+| `W A S D` / arrows | walk (on a touch screen: the left stick) |
 | `Shift` | hurry |
 | `Space` | jump |
 | mouse (click to capture) | look |
@@ -30,6 +30,11 @@ message before he drove off, and the transcript appears in the bottom-left tray 
 | `Esc` | release the mouse back to the cursor |
 
 The same key legend sits in the bottom-right corner the whole time, so none of this has to be remembered.
+
+On a phone or a tablet the legend is replaced by the controls themselves: a stick at the bottom left to walk, one
+finger anywhere on the scene to look, and four round buttons — `E` (use), `↑` (jump), `▤` (the notepad) and `?` (a
+hint). Everything else works the same, including dragging the mouse, the winch and the generator cord: those are
+drag gestures, so a finger does them too.
 
 The bottom-left panel is the **tray**: it shows whatever the crosshair is on, and it is the only place text lives.
 Read it — the room runs on stickers, notes and manuals.

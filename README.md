@@ -27,6 +27,9 @@ docker run -d -p 8080:80 --name escaperoom escaperoom
 
 ## Controls
 
+Desktop is keyboard and mouse; a touch screen gets a stick, one finger to look, and four buttons (`E`, jump, notepad,
+hint).
+
 | Input | Action |
 | --- | --- |
 | `W A S D` / arrows | Walk (`Shift` to hurry) |
@@ -219,7 +222,8 @@ That is the room, end to end: five faults, the drive, the login, and BROKEN.
     ghcr.io/puppeteer/puppeteer:latest node test/spells.browser.cjs
   ```
 
-  Swap the last argument for `test/edo.browser.cjs` to test the Edo Room, or `test/pcdoc.browser.cjs` for PC Doctor
+  Swap the last argument for `test/edo.browser.cjs` to test the Edo Room, `test/pcdoc.mobile.cjs` for PC Doctor on a
+  phone viewport, or `test/pcdoc.browser.cjs` for PC Doctor
   (192 checks: torch, generator order, the flood, the shrink, the display cycling, the memory chain, power routing,
   the twin 8-pins refusing each other, the three fans, the padlock, the winch, the card, the notepad, hardware
   ignoring a full-sized person, the HDMI run to the rear panel, the two-way cable span down to the desk, the fall off
