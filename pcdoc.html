@@ -2977,12 +2977,21 @@ Object.assign(THINGS, {
    The monitor cable: one end is already in the card, the other end has to
    leave the case, go out the back, and find the monitor. That is what A2 is. */
 
-const IO = { x: TOWER.x + .02, y: B2 + .058, z: TOWER.z - TOWER.d / 2 - .034 };
-const ioMat = new THREE.MeshStandardMaterial({ color: 0x3d444a, roughness: .62, metalness: .3 });
+/* The rear panel is bolted flat to the outside of the back wall — its front face
+   touches the wall, no gap — and it sits to the left of the exhaust fan so the
+   fan is not behind it. */
+const IO = { x: TOWER.x - .10, y: B2 + .058, z: TOWER.z - TOWER.d / 2 - .022 };
+const ioMat = new THREE.MeshStandardMaterial({ color: 0x525d63, roughness: .58, metalness: .3 });
 
-// the rear panel, outside the case: HDMI, two USB-A, and a label
+// the rear panel, bolted to the case: HDMI, two USB-A, and a label
 const ioPlate = box(.26, .105, .014, ioMat, IO.x, IO.y, IO.z);
 box(.24, .014, .010, M.metal, IO.x, IO.y + .038, IO.z - .006);      // a bright lip, so it catches the eye
+[-.10, .10].forEach(dx => box(.014, .014, .010, ioMat, IO.x + dx, IO.y - .030, IO.z + .006));   // stand-offs against the wall
+// a bright edge all round, so the plate reads as a plate on a dark case
+[[IO.x, IO.y + .052, .26, .006], [IO.x, IO.y - .052, .26, .006]].forEach(([x, y, w, h]) =>
+  box(w, h, .016, M.metal, x, y, IO.z));
+[[IO.x - .130, IO.y, .006, .105], [IO.x + .130, IO.y, .006, .105]].forEach(([x, y, w, h]) =>
+  box(w, h, .016, M.metal, x, y, IO.z));
 const ioHdmi = box(.026, .013, .012, new THREE.MeshStandardMaterial({ color: 0x14181b, roughness: .8 }),
   IO.x + .020, IO.y - .012, IO.z - .012);
 box(.020, .002, .003, M.gold, IO.x + .020, IO.y - .018, IO.z - .018);   // just the pin lip, not a gold slab
