@@ -3339,10 +3339,8 @@ cyl(.019, .019, .056, 14, new THREE.MeshStandardMaterial({ color: 0x2b6fb5, roug
 cyl(.006, .006, .012, 8, M.red, 0, .060, 0, airCan);
 box(.011, .004, .008, M.metalDark, 0, .066, .004, airCan);
 register(airCan, 'airCan', 'a can of compressed air');
-const canLabel = decal(.030, .020, stickerTex([['LUCHT', 26, true]],
-  { bg: '#e8e2cf', ink: '#1b2328', h: 100, top: 66, align: 'center', border: false }),
-  CAN.x, BENCH.top + .034, CAN.z + .0195);
-// a small note on the bench beside it, because a lone can is scenery
+// the note stays on the bench, but the can itself carries no label
+
 const airNote = plane(.092, .030, new THREE.MeshStandardMaterial({
   map: stickerTex([['LUCHT', 26, true], ['eerst schoonmaken', 18, false]],
     { bg: '#e8e2cf', ink: '#1b2328', h: 130, top: 48, align: 'center' }),
