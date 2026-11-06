@@ -3,8 +3,13 @@
 Two first-person 3D escape rooms, no build step, no CDN, no network calls — three.js is vendored.
 
 - `/` — **the Founders' Chamber**, a wizarding room where every lock is a *spell you draw with the mouse*. Four charms, four digits.
-- `/murdoku.html` — **Murdoku**, a country house you can walk through (keyboard, or a stick and six buttons on a phone): the floor is a 6×6 murdoku grid, five guests and
-  a body, and everyone has to be put where their statement says they were. Design notes and the solution in
+- `/murdoku.html` — **Murdoku**, three houses you can walk through (keyboard, or a stick and six buttons on a
+  phone): the garden house (7×7), the country house (6×6, the first one) and the restaurant at sea (9×9, with
+  shelves and a sea), picked on the start card, with the `rooms` button in the top bar, or with `?level=<id>`. The floor is the murdoku grid, and everyone has
+  to be put where their statement says they were, with a corridor round the house to park them in while you work it
+  out. Rooms you close are ticked off (in this browser) and the case banner offers the next unfinished one. The engine
+  is `murdoku.html`; each room is a file in `murdoku/levels/`. A level is one `LEVEL` block of data; the rules for writing a new one, and the
+  checker that proves it has exactly one answer, are in `MURDOKU-RULEBOOK.md`. Design notes and the solution in
   `MURDOKU.md`.
 - `/edo.html` — **the Edo Room**, a Japanese room of the Edo period. Four puzzles, four digits, two of them reading kanji.
 - `/index.html` — **the Locked Study**, the original room. Three digits.
@@ -18,7 +23,7 @@ docker compose up --build -d
 ```
 
 Open http://localhost:8080 (the Founders' Chamber), /edo.html, /index.html (the Locked Study), /pcdoc.html (PC
-Doctor) or /murdoku.html (the country house). /classic.html is the point-and-click version of the study.
+Doctor) or /murdoku.html (the garden house). /classic.html is the point-and-click version of the study.
 
 Stop with `docker compose down`.
 

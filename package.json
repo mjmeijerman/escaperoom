@@ -1,0 +1,9 @@
+{
+  "name": "escape-rooms",
+  "private": true,
+  "type": "module",
+  "description": "Browser escape rooms, no build step. The Murdoku engine is murdoku.html; its rooms are in murdoku/levels/.",
+  "scripts": {
+    "test": "node test/rooms.mjs && node test/murdoku.level.mjs"
+  }
+}

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="booting">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -40,6 +40,7 @@
   .clock{font-variant-numeric:tabular-nums;color:#c0b4a9}
 
   #tray{position:fixed;left:16px;bottom:16px;z-index:6;width:min(360px,34vw);padding:11px 13px;
+    max-height:38vh;overflow-y:auto;
     background:linear-gradient(180deg,rgba(18,14,16,.92),rgba(9,7,9,.95));
     border:1px solid rgba(224,176,114,.25);border-left:2px solid rgba(224,176,114,.6);
     box-shadow:0 16px 44px rgba(0,0,0,.6);font-family:var(--mono);font-size:.76rem;line-height:1.55}
@@ -56,6 +57,7 @@
   #tray td.c{color:var(--accent);padding-right:.6em;font-weight:600;white-space:nowrap}
 
   #pad{position:fixed;right:16px;top:56px;z-index:8;width:min(330px,34vw);padding:12px 14px;
+    max-height:calc(100vh - 150px);overflow-y:auto;overscroll-behavior:contain;
     background:repeating-linear-gradient(180deg,rgba(24,19,21,.96) 0 21px,rgba(31,25,27,.96) 21px 22px);
     border:1px solid rgba(255,255,255,.13);box-shadow:0 18px 50px rgba(0,0,0,.65);
     font-family:var(--mono);font-size:.72rem;line-height:22px;color:#e2d7cd}
@@ -86,6 +88,10 @@
 
   #start{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:6vh 5vw;
     background:radial-gradient(1200px 700px at 50% 0%,#241a1d 0%,#08070a 62%)}
+  /* nothing is shown until the room is built and the menu is filled in: the page
+     arrives whole, it never assembles itself in front of you */
+  html.booting #start, html.booting #hud, html.booting #pad, html.booting #tray,
+  html.booting #legend, html.booting #banner{visibility:hidden}
   #start .card{width:min(600px,100%);text-align:center}
   #start h1{margin:0 0 .3em;font-family:var(--mono);font-size:1.7rem;letter-spacing:.32em;
     text-transform:uppercase;color:#f4ece2}
@@ -96,6 +102,39 @@
   #start button:hover{background:#f0c184}
   #start small{display:block;margin-top:1.6em;font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;
     text-transform:uppercase;color:#7e736a}
+  #levelPick{display:flex;gap:.5em;justify-content:center;flex-wrap:wrap;margin-top:1.2em}
+  #levelPick a{font-family:var(--mono);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;
+    padding:.45em .9em;color:#b9aca1;border:1px solid rgba(224,176,114,.25);text-decoration:none}
+  #levelPick a.now{color:#1a1208;background:var(--accent);border-color:var(--accent)}
+  #levelPick a:hover{color:#f0c184;border-color:rgba(224,176,114,.6)}
+  #levelPick a.now:hover{color:#1a1208}
+  .brand + #roomsBtn{margin-left:.2em}
+  #roomsBtn{font-family:var(--mono);font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;
+    padding:.35em .7em;color:#b9aca1;background:rgba(10,8,10,.6);border:1px solid rgba(224,176,114,.3);
+    cursor:pointer;pointer-events:auto}
+  #roomsBtn:hover{color:#ffe8c8;border-color:rgba(224,176,114,.7)}
+  #rooms{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:6vh 5vw;
+    background:radial-gradient(1200px 700px at 50% 0%,#241a1d 0%,#08070a 62%)}
+  #rooms .card{width:min(560px,100%);text-align:center}
+  #rooms h1{margin:0 0 .3em;font-family:var(--mono);font-size:1.2rem;letter-spacing:.3em;
+    text-transform:uppercase;color:#f4ece2}
+  #rooms p{margin:0 0 1.4em;color:#a89a8f;font-size:.86rem;line-height:1.6}
+  #rooms code{color:#d8c9bb}
+  #roomsList{display:grid;gap:.5em;margin-bottom:1.4em}
+  #roomsList a{display:flex;justify-content:space-between;align-items:baseline;gap:1em;
+    font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
+    padding:.75em 1em;color:#d8c9bb;text-decoration:none;border:1px solid rgba(224,176,114,.25);
+    background:rgba(12,9,11,.7)}
+  #roomsList a:hover{border-color:rgba(224,176,114,.7);color:#ffe8c8}
+  #roomsList a.now{border-color:var(--accent);color:#ffe8c8}
+  #roomsList a i{font-style:normal;color:#7e736a;font-size:.62rem}
+  #roomsList a.done i{color:var(--ok)}
+  #roomsClose{font-family:var(--mono);font-size:.8rem;letter-spacing:.2em;text-transform:uppercase;
+    padding:.7em 1.8em;color:#1a1208;background:var(--accent);border:0;border-radius:2px;cursor:pointer}
+  #banner a{display:inline-block;margin-top:.8em;font-family:var(--mono);font-size:.66rem;
+    letter-spacing:.16em;text-transform:uppercase;padding:.55em 1.1em;color:#1a1208;
+    background:var(--accent);text-decoration:none}
+  #banner a:hover{background:#f0c184}
 
   #banner{position:fixed;left:50%;top:56px;transform:translateX(-50%);z-index:9;text-align:center;
     padding:10px 22px;background:rgba(12,9,11,.9);border:1px solid rgba(122,214,160,.55);color:#e8fff1;
@@ -153,6 +192,7 @@
 <div id="hud">
   <div class="topbar">
     <div class="brand"><i>⌗</i>Murdoku</div>
+    <button id="roomsBtn">rooms</button>
     <div class="clock" id="roomNow">the hall</div>
   </div>
   <div id="crosshair" aria-hidden="true"></div>
@@ -175,21 +215,32 @@
   <span><b>H</b> hint</span>
   <span><b>I</b> notes</span>
   <span><b>R</b> reset</span>
+  <span><b>L</b> rooms</span>
   <span><b>Esc</b> free cursor</span>
 </aside>
 
 <div id="start">
   <div class="card">
     <h1>Murdoku</h1>
-    <p>A country house, a body in the hall, and five guests who all have an alibi. The floor is a grid of
-       thirty-six squares and the whole case is a puzzle: put everyone where the statements say they were.</p>
+    <p id="startText">A garden house, a body, and six guests who all have an alibi. The floor is a grid of
+       forty-nine squares and the whole case is a puzzle: put everyone where the statements say they were.</p>
     <button id="startBtn">Enter the house</button>
-    <small class="desk-only">W A S D walk · E pick up and put down · F mark a cell · I notes · click to look</small>
+    <div id="levelPick"></div>
+    <small class="desk-only">W A S D walk · E pick up and put down · F mark a cell · I notes · L rooms · click to look</small>
     <small class="touch-only">stick to walk · one finger to look and tap to use · ▤ notes · ? hint</small>
   </div>
 </div>
 
 <div id="banner" hidden></div>
+
+<div id="rooms" hidden>
+  <div class="card">
+    <h1>the rooms</h1>
+    <p>One file each in <code>murdoku/levels/</code>. A tick means you have closed that case.</p>
+    <div id="roomsList"></div>
+    <button id="roomsClose">back</button>
+  </div>
+</div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
 <div id="touch" aria-hidden="true">
@@ -229,46 +280,89 @@ const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 9
 camera.rotation.order = 'YXZ';        // yaw first, then pitch: turning left must not tilt the room
 scene.add(camera);
 
-/* ------------------------------------------------------------------ grid */
-const N = 6, CELL = 2;
-const cellX = c => (c - 3.5) * CELL;
-const cellZ = r => (r - 3.5) * CELL;
+const CELL = 2;
+
+/* ================================================================== the levels
+   A room is one file in ./murdoku/levels/. Everything here is the engine and is
+   the same for every level, whichever one `?level=` picks. The rulebook
+   (MURDOKU-RULEBOOK.md) explains every field, the
+   rule vocabulary, and how to check a new level before you play it.
+
+   ==== LEVEL START ==== */
+/* The rooms are one file each in ./murdoku/levels/, listed in its index.js.
+   The first room in that list is the one that opens without a parameter;
+   `?level=<id>` opens any other. */
+const { LEVELS } = await import('./murdoku/levels/index.js');
+const WANT = new URLSearchParams(location.search).get('level');
+const LEVEL = LEVELS.find(l => l.id === WANT) || LEVELS[0];
+/* ==== LEVEL END ==== */
+
+
+/* ================================================================== the rules
+   A statement is one entry from this table. Each takes its argument and a small
+   context — roomAt(c, r), furnitureAt(c, r), beside(c, r, kind), window — and
+   returns the test for a square. Add a rule here, document it in the rulebook,
+   and both the house and test/murdoku.level.mjs know it.
+
+   ==== RULES START ==== */
+const RULES = {
+  in: (room, ctx) => (c, r) => Array.isArray(room)
+    ? room.includes(ctx.roomAt(c, r)) : ctx.roomAt(c, r) === room,
+  on: (kind, ctx) => (c, r) => ctx.furnitureAt(c, r) === kind,
+  notOn: (kind, ctx) => (c, r) => ctx.furnitureAt(c, r) !== kind,
+  beside: (kind, ctx) => (c, r) => ctx.beside(c, r, kind),
+  notBeside: (kind, ctx) => (c, r) => !ctx.beside(c, r, kind),
+  column: (n) => (c) => c === n,
+  row: (n) => (c, r) => r === n,
+  at: (what, ctx) => (c, r) => what === 'window' && !!ctx.window && c === ctx.window[0] && r === ctx.window[1],
+  /* the four that look at the rest of the board: `board` is where everyone is
+     standing, id → [c, r], with the people placed so far */
+  northOf: (id) => (c, r, board) => !!board[id] && r < board[id][1],
+  southOf: (id) => (c, r, board) => !!board[id] && r > board[id][1],
+  westOf: (id) => (c, r, board) => !!board[id] && c < board[id][0],
+  eastOf: (id) => (c, r, board) => !!board[id] && c > board[id][0],
+  withPerson: (id, ctx) => (c, r, board) => !!board[id]
+    && ctx.roomAt(c, r) === ctx.roomAt(board[id][0], board[id][1]),
+  onlyOn: (kind, ctx) => (c, r, board) => ctx.furnitureAt(c, r) === kind
+    && Object.entries(board).every(([, q]) => q[0] !== c || q[1] !== r
+      ? ctx.furnitureAt(q[0], q[1]) !== kind : true),
+  leftover: () => () => true,
+};
+/* ==== RULES END ==== */
+
+/* ------------------------------------------------------------------ grid
+   The size is the level's own: a 6 × 6 house has six people, a 7 × 7 one has
+   seven. Everything below is written against N so the same engine builds both. */
+const N = LEVEL.size || 6;
+const cellX = c => (c - (N + 1) / 2) * CELL;
+const cellZ = r => (r - (N + 1) / 2) * CELL;
 const key = (c, r) => c + ',' + r;
-const colOf = (x) => clamp(Math.round(x / CELL + 3.5), 1, N);
-const rowOf = (z) => clamp(Math.round(z / CELL + 3.5), 1, N);
+const colOf = (x) => clamp(Math.round(x / CELL + (N + 1) / 2), 1, N);
+const rowOf = (z) => clamp(Math.round(z / CELL + (N + 1) / 2), 1, N);
 
-const ROOM_DEF = [
-  ['logeerkamer', 0x4a3a52, [[1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [2, 5], [2, 6]]],
-  ['badkamer', 0x2f4652, [[2, 1], [2, 2], [3, 1], [3, 2], [4, 1], [4, 2]]],
-  ['grote slaapkamer', 0x4a2f43, [[2, 3], [2, 4], [3, 3], [3, 4], [4, 3], [4, 4]]],
-  ['keuken', 0x4a4227, [[5, 1], [5, 2], [5, 3], [6, 1], [6, 2], [6, 3]]],
-  ['woonkamer', 0x3a2b26, []],
-];
+const ROOM_DEF = LEVEL.rooms.map(r => [r.name, r.tint, r.cells, r.floor]);
 const ROOM_AT = {};
-const ROOMS = ROOM_DEF.map(([name, tint, list], i) => {
-  const cells = [];
-  for (let c = 1; c <= N; c++) for (let r = 1; r <= N; r++) ROOM_AT[key(c, r)] = name;
-  return { name, tint, cells: list };
-});
-ROOM_DEF.forEach(([name, tint, list]) => list.forEach(([c, r]) => { ROOM_AT[key(c, r)] = name; }));
+{
+  const rest = LEVEL.rooms.filter(r => !r.cells || !r.cells.length);
+  if (rest.length !== 1) throw new Error('the level needs exactly one room with no squares of its own');
+  for (let c = 1; c <= N; c++) for (let r = 1; r <= N; r++) ROOM_AT[key(c, r)] = rest[0].name;
+}
+ROOM_DEF.forEach(([name, tint, list]) => (list || []).forEach(([c, r]) => { ROOM_AT[key(c, r)] = name; }));
+/* `plain` is a room with no floor style of its own: its tint is the floor. */
+const ROOMS = ROOM_DEF.map(([name, tint, list, floor]) => ({ name, tint, cells: list || [], floor: floor || 'plain' }));
 const roomAt = (c, r) => ROOM_AT[key(c, r)];
+const roomFloor = name => (ROOMS.find(r => r.name === name) || ROOMS[0]).floor;
 
-const FURN = [
-  { kind: 'bed', cells: [[1, 1], [1, 2]], axis: 'z' },
-  { kind: 'rug', cells: [[1, 3], [1, 4]], axis: 'z' },
-  { kind: 'chair', cells: [[4, 2]] },
-  { kind: 'table', cells: [[4, 3]] },
-  { kind: 'bed', cells: [[2, 4], [3, 4]], axis: 'x' },
-  { kind: 'rug', cells: [[4, 4]] },
-  { kind: 'chair', cells: [[3, 5]] },
-  { kind: 'tv', cells: [[3, 6]] },
-  { kind: 'table', cells: [[5, 1], [6, 1]], axis: 'x' },
-  { kind: 'plant', cells: [[5, 3]] },
-  { kind: 'plant', cells: [[5, 4]] },
-];
-const BEDS = new Set(), TABLES = new Set(), CHAIRS = new Set(), TVS = new Set(), RUGS = new Set(), PLANTS = new Set();
+const FURN = LEVEL.furniture;
+const BEDS = new Set(), TABLES = new Set(), CHAIRS = new Set(), TVS = new Set(), RUGS = new Set(), PLANTS = new Set(),
+  JACUZZIS = new Set(), SHELVES = new Set(), CRATES = new Set(), TREES = new Set(), BUSHES = new Set(),
+  RUBBLE = new Set(), BOATS = new Set(), CROCS = new Set(),
+  BOAT_Y_AT = {};                     // the deck of each boat: what a guest in it stands on
+/* which way a bed runs, so a body can be laid along it and not across it */
+const BED_AXIS = {};
+FURN.forEach(f => { if (f.kind === 'bed') f.cells.forEach(([c, r]) => { BED_AXIS[key(c, r)] = f.axis || 'z'; }); });
 /* Furniture you cannot stand on: a table top, a plant pot, the television. A bed
-   is the exception the case makes for itself — Alexander sat on one. */
+   is the exception the case makes for itself — Dafne lay on one. */
 const NO_STAND = new Set();
 FURN.forEach(f => f.cells.forEach(([c, r]) => {
   const k = key(c, r);
@@ -278,11 +372,32 @@ FURN.forEach(f => f.cells.forEach(([c, r]) => {
   if (f.kind === 'tv') TVS.add(k);
   if (f.kind === 'rug') RUGS.add(k);
   if (f.kind === 'plant') PLANTS.add(k);
+  if (f.kind === 'jacuzzi') JACUZZIS.add(k);
+  if (f.kind === 'shelf') SHELVES.add(k);
+  if (f.kind === 'crate') CRATES.add(k);
+  if (f.kind === 'tree') TREES.add(k);
+  if (f.kind === 'bush') BUSHES.add(k);
+  if (f.kind === 'rubble') RUBBLE.add(k);
+  if (f.kind === 'boat') BOATS.add(k);
+  if (f.kind === 'crocodile') CROCS.add(k);
 }));
 TABLES.forEach(k => NO_STAND.add(k));
 PLANTS.forEach(k => NO_STAND.add(k));
 TVS.forEach(k => NO_STAND.add(k));
-const WINDOW = [6, 4];
+SHELVES.forEach(k => NO_STAND.add(k));
+CRATES.forEach(k => NO_STAND.add(k));
+TREES.forEach(k => NO_STAND.add(k));
+BUSHES.forEach(k => NO_STAND.add(k));
+RUBBLE.forEach(k => NO_STAND.add(k));
+CROCS.forEach(k => NO_STAND.add(k));
+/* a boat is the one thing in the jungle you may stand on (in) */
+
+/* Water you may stand in — up to your neck. A jacuzzi is a piece; a room whose
+   floor is `water` (a sea, a pool) is water everywhere. Both share one waterline. */
+const JACUZZI_Y = .72;                              // the waterline
+const isWater = (c, r) => roomFloor(roomAt(c, r)) === 'water';
+const WINDOW = LEVEL.window || null;
+document.title = 'Murdoku — ' + LEVEL.title;
 
 /* ------------------------------------------------------------------ people */
 /* "Next to" is the square beside it — never a corner, and never through a wall:
@@ -294,32 +409,138 @@ const nextToSameRoom = (c, r, set) => {
   return beside(c, r).some(([a, b]) => roomAt(a, b) === home && set.has(key(a, b)));
 };
 
-const PEOPLE = [
-  { id: 'A', name: 'Alexander', colour: 0x9a7346, skin: 0xd8b49a, hair: 0x9c9c9c, style: 'short', glasses: true,
-    clue: 'Sat on a bed', hint: 'hij zat op een bed',
-    test: (c, r) => BEDS.has(key(c, r)) },
-  { id: 'B', name: 'Bas', colour: 0x4c7f68, skin: 0xdfc0a2, hair: 0xd8c07a, style: 'long', beard: true,
-    clue: 'Was in the kitchen', hint: 'hij was in de keuken',
-    test: (c, r) => roomAt(c, r) === 'keuken' },
-  { id: 'C', name: 'Clarissa', colour: 0x86557a, skin: 0xd9b193, hair: 0x4a2c1a, style: 'long',
-    clue: 'Stood next to a table', hint: 'zij stond naast een tafel',
-    test: (c, r) => nextToSameRoom(c, r, TABLES) },
-  { id: 'D', name: 'Diana', colour: 0x5f6a90, skin: 0xb07a52, hair: 0x15151a, style: 'halflong',
-    clue: 'Was next to the television', hint: 'zij stond naast de televisie',
-    test: (c, r) => nextToSameRoom(c, r, TVS) },
-  { id: 'E', name: 'Elsa', colour: 0x8a8750, skin: 0x6e4a34, hair: 0xcfcfcf, style: 'updo',
-    clue: 'Stood in front of the window', hint: 'zij stond voor het raam',
-    test: (c, r) => c === WINDOW[0] && r === WINDOW[1] },
-  { id: 'V', name: 'Vladimir', colour: 0x8c3a34, skin: 0xc9a27f, hair: 0xa88a4a, style: 'short', victim: true,
-    clue: 'Lay in the last cell left over, with one other person in that room', hint: 'hij lag in het laatst overgebleven vak',
-    test: null },
-];
+/* what is on a square, and where each kind of furniture is: the context a
+   statement is tested against */
+const KIND_AT = {}, KIND_CELLS = {};
+FURN.forEach(f => f.cells.forEach(([c, r]) => {
+  const k = key(c, r), name = f.kind;
+  KIND_AT[k] = name;
+  (KIND_CELLS[name] = KIND_CELLS[name] || new Set()).add(k);
+}));
+
+/* ------------------------------------------------------------- the house rules
+   Two things the house decides, whatever the level wrote:
+   · touching tables are ONE table (two, three, or three with a corner), and a
+     bed is always two squares long;
+   · a television is never pushed against a wall facing it, nor is a chair: both
+     turn to the open side of their room. A chair may face a window. */
+const MERGED = (() => {
+  const groups = [], seen = new Set();
+  for (const f of FURN) {
+    if (!['table', 'bed', 'shelf', 'rug', 'boat', 'bush', 'rubble'].includes(f.kind)) continue;
+    for (const [c0, r0] of f.cells) {
+      if (seen.has(key(c0, r0))) continue;
+      const group = [], stack = [[c0, r0]];
+      seen.add(key(c0, r0));
+      while (stack.length) {
+        const [c, r] = stack.pop();
+        group.push([c, r]);
+        for (const [a, b] of [[c + 1, r], [c - 1, r], [c, r + 1], [c, r - 1]]) {
+          if (a < 1 || a > N || b < 1 || b > N) continue;
+          const k = key(a, b);
+          if (seen.has(k) || KIND_AT[k] !== f.kind) continue;
+          seen.add(k);
+          stack.push([a, b]);
+        }
+      }
+      groups.push({ kind: f.kind, cells: group });
+    }
+  }
+  for (const f of FURN) if (!['table', 'bed', 'shelf', 'rug', 'boat', 'bush', 'rubble'].includes(f.kind)) groups.push(f);
+  return groups;
+})();
+MERGED.forEach(g => {
+  if (g.kind !== 'bed') return;
+  if (g.cells.length !== 2) throw new Error('a bed is always two squares long: ' + JSON.stringify(g.cells));
+  g.axis = g.cells[0][1] === g.cells[1][1] ? 'x' : 'z';
+  g.cells.forEach(([c, r]) => { BED_AXIS[key(c, r)] = g.axis; });
+});
+
+/* A house has more than one of everything: three chairs, three plants, three
+   televisions, two beds, two tables and three rugs. The variants take turns
+   through the pieces of their kind, so a house shows a spread of them; every one
+   keeps the same footprint and still reads as what it is — a chair has a seat and
+   a back, a table a top you cannot stand on, a bed two squares with a pillow. */
+const VARIANTS = { bed: 3, table: 3, chair: 4, rug: 4, plant: 4, tv: 4, jacuzzi: 2, shelf: 4 };
+const VARIANT_AT = {};
+{
+  const seen = {};
+  for (const g of MERGED) {
+    const n = seen[g.kind] = (seen[g.kind] || 0) + 1;
+    /* the pieces take turns — and each room starts the round at its own place, so
+       two houses do not show the same chair, rug and television */
+    const off = (hash(LEVEL.id + '|' + g.kind) >>> 0) % (VARIANTS[g.kind] || 1);
+    g.variant = (off + n - 1) % (VARIANTS[g.kind] || 1);
+    g.cells.forEach(([c, r]) => { VARIANT_AT[g.kind + '|' + key(c, r)] = g.variant; });
+  }
+}
+const variantOf = (kind, cells) => VARIANT_AT[kind + '|' + key(cells[0][0], cells[0][1])] || 0;
+
+/* Which way a one-square piece looks. It may not face a wall: a direction is fair
+   only if the square beyond it is in the same room. Turning its back to a wall
+   wins, and a chair facing a window would win too — there is no window here. */
+const LOOK = {};
+const DIRS = [[0, 1], [1, 0], [-1, 0], [0, -1]];                 // south, east, west, north
+const openAt = (c, r, dc, dr) => {
+  const a = c + dc, b = r + dr;
+  return a >= 1 && a <= N && b >= 1 && b <= N && roomAt(a, b) === roomAt(c, r);
+};
+function facingOf(c, r) {
+  let best = null, score = -1;
+  for (const [dc, dr] of DIRS) {
+    if (!openAt(c, r, dc, dr)) continue;
+    const s = openAt(c, r, -dc, -dr) ? 0 : 1;                     // a wall behind it is better
+    if (s > score) { best = [dc, dr]; score = s; }
+  }
+  return best || [0, 1];
+}
+/* A chair and a television beside each other face each other — that is what they
+   are for. Everything else turns its back to a wall. */
+const dirTo = (k, set) => {
+  const [c, r] = k.split(',').map(Number);
+  for (const [dc, dr] of DIRS) {
+    if (openAt(c, r, dc, dr) && set.has(key(c + dc, r + dr))) return [dc, dr];
+  }
+  return null;
+};
+for (const k of CHAIRS) { const d = dirTo(k, TVS); if (d) LOOK[k] = d; }
+for (const k of TVS) { const d = dirTo(k, CHAIRS); if (d) LOOK[k] = d; }
+for (const k of [...CHAIRS, ...TVS, ...SHELVES]) {
+  if (LOOK[k]) continue;
+  const [c, r] = k.split(',').map(Number);
+  LOOK[k] = facingOf(c, r);
+}
+
+const ruleCtx = {
+  roomAt,
+  furnitureAt: (c, r) => KIND_AT[key(c, r)],
+  beside: (c, r, kind) => nextToSameRoom(c, r, KIND_CELLS[kind] || new Set()),
+  window: WINDOW,
+};
+/* the level's statements, compiled: a person is their data plus one test. A
+   statement may be two rules joined — `{ in: 'garden', notBeside: 'plant' }` —
+   and then a square has to make all of them true. */
+function compileRule(rule, name) {
+  const parts = Object.entries(rule || {});
+  if (!parts.length) throw new Error('no rule on ' + name);
+  const tests = parts.map(([verb, arg]) => {
+    if (!RULES[verb]) throw new Error('unknown rule on ' + name + ': ' + verb);
+    return RULES[verb](arg, ruleCtx);
+  });
+  /* the third argument is where everyone is; a statement that does not look at
+     the others simply ignores it */
+  return tests.length === 1 ? tests[0] : (c, r, board) => tests.every(t => t(c, r, board));
+}
+const PEOPLE = LEVEL.people.map(p => ({ ...p, test: p.victim ? null : compileRule(p.rule, p.name) }));
+
+const VICTIM = PEOPLE.find(p => p.victim);
 
 const state = {
-  started: false, locked: false, won: false,
+  started: false, seen: false, locked: false, won: false,
   carry: null,                 // person id in your arms
   marks: new Set(),            // "c,r" with a cross on it
   placed: {},                  // id -> [c, r]
+  parked: {},                  // id -> { x, z }: set down in the hall, a note to yourself
   hovered: null, trayId: null,
 };
 
@@ -347,6 +568,154 @@ const floorTex = tex(512, 512, (g, w, h) => {
   }
   grain(g, w, h, .05);
 });
+
+/* ------------------------------------------------------------------ floors
+   A room's floor is its own surface: lawn in the garden, flagstone on the
+   terrace, boards in the living room, carpet in the bedroom, tiles in the
+   kitchen, water in the jacuzzi. One canvas per kind, one material per kind,
+   reused by every square of every room that asks for it. */
+const FLOOR_STYLE = {
+  grass: (g, w, h) => {
+    g.fillStyle = '#3c5531'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 1400; i++) {                       // patches of longer and shorter grass
+      g.fillStyle = `rgba(${40 + Math.random() * 40},${70 + Math.random() * 60},${30 + Math.random() * 35},.5)`;
+      g.beginPath(); g.arc(Math.random() * w, Math.random() * h, 3 + Math.random() * 14, 0, 7); g.fill();
+    }
+    for (let i = 0; i < 2600; i++) {                        // and blades, leaning as they like
+      const x = Math.random() * w, y = Math.random() * h;
+      g.strokeStyle = `rgba(${50 + Math.random() * 60},${95 + Math.random() * 70},${40 + Math.random() * 45},.6)`;
+      g.lineWidth = 1 + Math.random();
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + (Math.random() - .5) * 5, y - 4 - Math.random() * 7); g.stroke();
+    }
+  },
+  stone: (g, w, h) => {
+    g.fillStyle = '#4a443c'; g.fillRect(0, 0, w, h);        // the joints
+    const n = 4, s = w / n;
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const t = 92 + Math.random() * 26;
+      g.fillStyle = `rgb(${t + 10},${t + 4},${t - 8})`;
+      g.fillRect(i * s + 4, j * s + 4, s - 8, s - 8);
+      for (let k = 0; k < 40; k++) {                       // weathering
+        g.fillStyle = `rgba(30,26,22,${Math.random() * .1})`;
+        g.fillRect(i * s + 6 + Math.random() * (s - 12), j * s + 6 + Math.random() * (s - 12),
+          1 + Math.random() * 5, 1 + Math.random() * 2);
+      }
+    }
+    grain(g, w, h, .04);
+  },
+  wood: (g, w, h) => {
+    g.fillStyle = '#5a4029'; g.fillRect(0, 0, w, h);
+    const plank = 64;
+    for (let y = 0; y < h; y += plank) {
+      g.fillStyle = `rgba(${26 + Math.random() * 18},${17 + Math.random() * 12},${10 + Math.random() * 8},.35)`;
+      g.fillRect(0, y, w, plank);
+      g.fillStyle = 'rgba(22,14,9,.55)'; g.fillRect(0, y, w, 2);       // the seam
+      for (let i = 0; i < 26; i++) {                                  // grain
+        g.strokeStyle = `rgba(30,20,12,${.05 + Math.random() * .12})`;
+        g.lineWidth = 1;
+        const yy = y + 6 + Math.random() * (plank - 12);
+        g.beginPath(); g.moveTo(Math.random() * w, yy);
+        g.bezierCurveTo(w * .3, yy + 3, w * .6, yy - 3, w, yy + 1); g.stroke();
+      }
+      const joint = Math.random() * w;                                // and a butt joint per course
+      g.fillStyle = 'rgba(22,14,9,.4)'; g.fillRect(joint, y, 2, plank);
+    }
+    grain(g, w, h, .03);
+  },
+  carpet: (g, w, h) => {
+    g.fillStyle = '#4a3a52'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 9000; i++) {                       // a deep pile, mottled
+      g.fillStyle = `rgba(${60 + Math.random() * 50},${45 + Math.random() * 40},${65 + Math.random() * 50},.5)`;
+      g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+    grain(g, w, h, .04);
+  },
+  tile: (g, w, h) => {
+    const s = w / 4;
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+      g.fillStyle = (i + j) % 2 ? '#6a6152' : '#8d8471';
+      g.fillRect(i * s, j * s, s, s);
+      g.fillStyle = 'rgba(20,17,14,.35)'; g.fillRect(i * s, j * s, s, 2);
+      g.fillRect(i * s, j * s, 2, s);
+    }
+    grain(g, w, h, .03);
+  },
+  jungle: (g, w, h) => {
+    g.fillStyle = '#2c4326'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 900; i++) {
+      g.fillStyle = `rgba(${30 + Math.random() * 40},${60 + Math.random() * 50},${24 + Math.random() * 30},.6)`;
+      g.beginPath(); g.ellipse(Math.random() * w, Math.random() * h, 4 + Math.random() * 16, 2 + Math.random() * 8, Math.random() * 3, 0, 7); g.fill();
+    }
+    for (let i = 0; i < 2200; i++) {
+      const x = Math.random() * w, y = Math.random() * h;
+      g.strokeStyle = `rgba(${40 + Math.random() * 40},${90 + Math.random() * 60},${34 + Math.random() * 40},.55)`;
+      g.lineWidth = 1 + Math.random();
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + (Math.random() - .5) * 8, y - 5 - Math.random() * 9); g.stroke();
+    }
+    for (let i = 0; i < 40; i++) {                 // fallen leaves and twigs
+      g.fillStyle = `rgba(${90 + Math.random() * 60},${60 + Math.random() * 40},${20 + Math.random() * 30},.5)`;
+      g.fillRect(Math.random() * w, Math.random() * h, 3 + Math.random() * 8, 2 + Math.random() * 3);
+    }
+  },
+  dirt: (g, w, h) => {
+    g.fillStyle = '#5a4630'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 700; i++) {
+      g.fillStyle = `rgba(${70 + Math.random() * 50},${52 + Math.random() * 36},${28 + Math.random() * 22},.55)`;
+      g.beginPath(); g.arc(Math.random() * w, Math.random() * h, 2 + Math.random() * 16, 0, 7); g.fill();
+    }
+    for (let i = 0; i < 500; i++) {                // pebbles
+      g.fillStyle = `rgba(${120 + Math.random() * 60},${112 + Math.random() * 50},${96 + Math.random() * 40},.5)`;
+      g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 4, 1 + Math.random() * 3);
+    }
+  },
+  ruins: (g, w, h) => {
+    g.fillStyle = '#4a4a42'; g.fillRect(0, 0, w, h);
+    const s2 = w / 3;
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+      const t = 96 + Math.random() * 34;
+      g.fillStyle = `rgb(${t},${t - 4},${t - 12})`;
+      g.fillRect(i * s2 + 3, j * s2 + 3, s2 - 6, s2 - 6);
+      for (let k = 0; k < 60; k++) {
+        g.fillStyle = `rgba(26,24,20,${Math.random() * .14})`;
+        g.fillRect(i * s2 + 4 + Math.random() * (s2 - 8), j * s2 + 4 + Math.random() * (s2 - 8), 1 + Math.random() * 6, 1 + Math.random() * 2);
+      }
+    }
+    for (let i = 0; i < 26; i++) {                 // moss in the joints
+      g.fillStyle = `rgba(${50 + Math.random() * 40},${90 + Math.random() * 50},${40 + Math.random() * 30},.55)`;
+      g.beginPath(); g.arc(Math.random() * w, Math.random() * h, 4 + Math.random() * 14, 0, 7); g.fill();
+    }
+  },
+  water: (g, w, h) => {
+    const grad = g.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, '#1d4a55'); grad.addColorStop(.5, '#2a6b74'); grad.addColorStop(1, '#173d49');
+    g.fillStyle = grad; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 70; i++) {                         // ripples
+      g.strokeStyle = `rgba(190,235,235,${.03 + Math.random() * .08})`;
+      g.lineWidth = 1 + Math.random() * 2;
+      g.beginPath();
+      const y = Math.random() * h;
+      g.moveTo(0, y);
+      for (let x = 0; x <= w; x += 32) g.lineTo(x, y + Math.sin(x / 48 + i) * 5);
+      g.stroke();
+    }
+  },
+};
+const FLOOR_MAT = {};
+/* A room with no floor style of its own is painted plain in its tint, which is
+   what the first house did for every room. */
+function floorMaterial(room) {
+  const style = FLOOR_STYLE[room.floor] ? room.floor : 'plain';
+  const id = style === 'plain' ? 'plain:' + room.name : style;
+  if (!FLOOR_MAT[id]) {
+    FLOOR_MAT[id] = style === 'plain'
+      ? new THREE.MeshStandardMaterial({ color: room.tint, roughness: .9 })
+      : new THREE.MeshStandardMaterial({
+        map: tex(512, 512, FLOOR_STYLE[style]), roughness: style === 'water' ? .22 : .93,
+        metalness: style === 'water' ? .25 : 0,
+      });
+  }
+  return FLOOR_MAT[id];
+}
 const M = {
   wall: new THREE.MeshStandardMaterial({ color: 0x2b2429, roughness: .95 }),
   wainscot: new THREE.MeshStandardMaterial({ color: 0x241d21, roughness: .8 }),
@@ -409,38 +778,85 @@ function register(obj, id, label) {
 /* ------------------------------------------------------------------ the house */
 const WALL_H = 3.4;
 const HALL = 2.8;                                  // the strip along the south wall
-const X0 = -6, X1 = 6, Z0 = -6;                    // the outer walls sit on the grid's edge
+const X0 = -N * CELL / 2, X1 = N * CELL / 2, Z0 = -N * CELL / 2;   // the house's own walls sit on the grid's edge
 const Z1 = N * CELL / 2 + HALL;                    // and the hall runs to its own south wall
+/* Outside the house walls runs a corridor, so a guest can be parked off the grid
+   on any of the four sides — north, south, east or west. */
+const GALLERY = 1.8;
+const OX0 = X0 - GALLERY, OX1 = X1 + GALLERY, OZ0 = Z0 - GALLERY;
+const OUTER_Z1 = Z1;
+const GRID_Z1 = Z0 + N * CELL;                     // the grid's south edge, where the hall begins
 
 function buildShell() {
-  const floor = plane(X1 - X0, Z1 - Z0, new THREE.MeshStandardMaterial({ map: floorTex, roughness: .95 }),
-    (X0 + X1) / 2, 0, (Z0 + Z1) / 2);
+  const floor = plane(OX1 - OX0, Z1 - OZ0, new THREE.MeshStandardMaterial({ map: floorTex, roughness: .95 }),
+    (OX0 + OX1) / 2, 0, (OZ0 + Z1) / 2);
   floor.rotation.x = -Math.PI / 2;
-  const ceil = plane(X1 - X0, Z1 - Z0, new THREE.MeshStandardMaterial({ color: 0x1b1619, roughness: .95 }),
-    (X0 + X1) / 2, WALL_H, (Z0 + Z1) / 2);
+  const ceil = plane(OX1 - OX0, Z1 - OZ0, new THREE.MeshStandardMaterial({ color: 0x1b1619, roughness: .95 }),
+    (OX0 + OX1) / 2, WALL_H, (OZ0 + Z1) / 2);
   ceil.rotation.x = Math.PI / 2;
-  // walls
-  box(.3, WALL_H, Z1 - Z0, M.wall, X0 - .15, WALL_H / 2, (Z0 + Z1) / 2);
-  box(.3, WALL_H, Z1 - Z0, M.wall, X1 + .15, WALL_H / 2, (Z0 + Z1) / 2);
-  box(X1 - X0 + .6, WALL_H, .3, M.wall, (X0 + X1) / 2, WALL_H / 2, Z0 - .15);
-  box(X1 - X0 + .6, WALL_H, .3, M.wall, (X0 + X1) / 2, WALL_H / 2, Z1 + .15);
+  // the shell: the corridor round the house
+  box(.3, WALL_H, Z1 - OZ0, M.wall, OX0 - .15, WALL_H / 2, (OZ0 + Z1) / 2);
+  box(.3, WALL_H, Z1 - OZ0, M.wall, OX1 + .15, WALL_H / 2, (OZ0 + Z1) / 2);
+  box(OX1 - OX0 + .6, WALL_H, .3, M.wall, (OX0 + OX1) / 2, WALL_H / 2, OZ0 - .15);
+  box(OX1 - OX0 + .6, WALL_H, .3, M.wall, (OX0 + OX1) / 2, WALL_H / 2, Z1 + .15);
+  SOLIDS.push(S(OX0 - 1, OX0, 0, WALL_H, OZ0 - 1, Z1 + 1), S(OX1, OX1 + 1, 0, WALL_H, OZ0 - 1, Z1 + 1),
+    S(OX0 - 1, OX1 + 1, 0, WALL_H, OZ0 - 1, OZ0), S(OX0 - 1, OX1 + 1, 0, WALL_H, Z1, Z1 + 1));
+  /* The house's own walls are knee-high like every other wall in the house, so
+     the rooms can be seen from the corridor. The window is a small one, sized to
+     sit inside them. */
+  /* The house's own wall is two-sided like every other: the face inside wears the
+     colour of the room behind it, the face toward the corridor stays plaster. It
+     runs a cell at a time, so a garden can be hedged on its own side. */
+  const outerWall = (x, z, axis, len, innerStyle, innerSide) => {
+    if (len <= .05) return;
+    const a = WALL_MATS[innerStyle] || WALL_MATS.plaster;
+    const half = WALL_T / 2;
+    if (axis === 'x') {
+      const sgn = innerSide === 'pos' ? 1 : -1;
+      box(len, PART_H, half, a.body, x, PART_H / 2, z + sgn * half / 2);
+      box(len, PART_H, half, WALL_MATS.plaster.body, x, PART_H / 2, z - sgn * half / 2);
+      box(len + .04, .06, WALL_T + .04, wallCap, x, PART_H + .03, z);
+    } else {
+      const sgn = innerSide === 'pos' ? 1 : -1;
+      box(half, PART_H, len, a.body, x + sgn * half / 2, PART_H / 2, z);
+      box(half, PART_H, len, WALL_MATS.plaster.body, x - sgn * half / 2, PART_H / 2, z);
+      box(WALL_T + .04, .06, len + .04, wallCap, x, PART_H + .03, z);
+    }
+  };
+  const bx = X0 - WALL_T / 2, ex = X1 + WALL_T / 2, nz = Z0 - WALL_T / 2;
+  for (let r = 1; r <= N; r++) {                             // west, stopping where the hall begins
+    outerWall(bx, cellZ(r), 'z', CELL, sideStyle(roomAt(1, r)), 'pos');
+  }
+  for (let c = 1; c <= N; c++) {                             // north
+    outerWall(cellX(c), nz, 'x', CELL, sideStyle(roomAt(c, 1)), 'pos');
+  }
+  if (WINDOW) {                              // east: one full run per row, leaving the window square empty
+    for (let r = 1; r <= N; r++) {           // — window_() builds its kerb and head, and the glass in the gap
+      if (r === WINDOW[1]) continue;
+      outerWall(ex, cellZ(r), 'z', CELL, sideStyle(roomAt(N, r)), 'neg');
+    }
+  } else {
+    for (let r = 1; r <= N; r++) {                           // no window: one unbroken wall
+      outerWall(ex, cellZ(r), 'z', CELL, sideStyle(roomAt(N, r)), 'neg');
+    }
+  }
   // skirting
-  box(.06, .12, Z1 - Z0, M.wainscot, X0 + .03, .06, (Z0 + Z1) / 2);
-  box(.06, .12, Z1 - Z0, M.wainscot, X1 - .03, .06, (Z0 + Z1) / 2);
+  box(.06, .12, Z1 - OZ0, M.wainscot, OX0 + .03, .06, (OZ0 + Z1) / 2);
+  box(.06, .12, Z1 - OZ0, M.wainscot, OX1 - .03, .06, (OZ0 + Z1) / 2);
+  box(OX1 - OX0, .12, .06, M.wainscot, 0, .06, OZ0 + .03);
+  box(OX1 - OX0, .12, .06, M.wainscot, 0, .06, Z1 - .03);
+  box(.06, .12, GRID_Z1 - Z0, M.wainscot, X0 + .03, .06, (Z0 + GRID_Z1) / 2);
+  box(.06, .12, GRID_Z1 - Z0, M.wainscot, X1 - .03, .06, (Z0 + GRID_Z1) / 2);
   box(X1 - X0, .12, .06, M.wainscot, 0, .06, Z0 + .03);
-  box(X1 - X0, .12, .06, M.wainscot, 0, .06, Z1 - .03);
-  SOLIDS.push(S(X0 - 1, X0, 0, WALL_H, Z0 - 1, Z1 + 1), S(X1, X1 + 1, 0, WALL_H, Z0 - 1, Z1 + 1),
-    S(X0 - 1, X1 + 1, 0, WALL_H, Z0 - 1, Z0), S(X0 - 1, X1 + 1, 0, WALL_H, Z1, Z1 + 1));
-  // the grid itself: a tile per cell, tinted by room, with an inlaid border
+  // the grid itself: one floor tile per cell, in the surface its room is made of
   for (let c = 1; c <= N; c++) for (let r = 1; r <= N; r++) {
-    const room = ROOM_DEF.find(d => d[0] === roomAt(c, r));
-    const t = plane(CELL - .06, CELL - .06, new THREE.MeshStandardMaterial({ color: room[1], roughness: .9 }),
-      cellX(c), .012, cellZ(r));
+    const room = ROOMS.find(d => d.name === roomAt(c, r));
+    const mat = floorMaterial(room);
+    const t = plane(CELL - .06, CELL - .06, mat, cellX(c), .012, cellZ(r));
     t.rotation.x = -Math.PI / 2;
-    const e = box(CELL - .02, .022, CELL - .02,
+    box(CELL - .02, .022, CELL - .02,
       new THREE.MeshStandardMaterial({ color: 0x1a1418, roughness: .95 }), cellX(c), .004, cellZ(r));
-    const inner = plane(CELL - .12, CELL - .12, new THREE.MeshStandardMaterial({ color: room[1], roughness: .88 }),
-      cellX(c), .017, cellZ(r));
+    const inner = plane(CELL - .12, CELL - .12, mat, cellX(c), .017, cellZ(r));
     inner.rotation.x = -Math.PI / 2;
   }
   // the hall where everyone starts
@@ -448,88 +864,801 @@ function buildShell() {
     0, .01, N * CELL / 2 + HALL / 2);
 }
 
+/* ------------------------------------------------------------------ the corridor floor
+   Outside the grid the floor carries a line out of every row and every column,
+   with its number at the end, so a guest parked in the corridor is beside the row
+   or column you meant. */
+let corridorMarks = 0;
+function floorLine(x, z, w, d) {
+  corridorMarks++;
+  const m = plane(w, d, new THREE.MeshBasicMaterial({ color: 0xb9a891, transparent: true, opacity: .38 }),
+    x, .022, z);
+  m.rotation.x = -Math.PI / 2;
+}
+function floorLabel(text, x, z, turn, width = 1.4) {
+  corridorMarks++;
+  const t = tex(256, 64, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    g.fillStyle = 'rgba(233,223,209,.9)';
+    g.font = '700 34px ui-monospace,monospace';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(text, w / 2, h / 2 + 1);
+  });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(width, width / 4),
+    new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2;
+  m.rotation.z = turn;
+  m.position.set(x, .028, z);
+  scene.add(m);
+}
+function buildCorridorMarks() {
+  // the grid's own lines, carried out of the house to the outer wall — but painted
+  // pale, so they read as chalk marks and not as more grid
+  for (let i = 0; i <= N; i++) {
+    const x = X0 + i * CELL, z = Z0 + i * CELL;
+    floorLine(x, (OZ0 + Z0) / 2, .06, Z0 - OZ0);              // north
+    floorLine(x, (GRID_Z1 + Z1) / 2, .06, Z1 - GRID_Z1);      // south, through the hall
+    floorLine((OX0 + X0) / 2, z, X0 - OX0, .06);              // west
+    floorLine((X1 + OX1) / 2, z, OX1 - X1, .06);              // east
+  }
+  // and the number of each line, in the middle of the band it bounds
+  for (let c = 1; c <= N; c++) {
+    floorLabel('COLUMN ' + c, cellX(c), OZ0 + .42, 0, 1.4);
+    floorLabel('COLUMN ' + c, cellX(c), GRID_Z1 + .62, 0, 1.4);
+  }
+  for (let r = 1; r <= N; r++) {
+    floorLabel('ROW ' + r, OX0 + .42, cellZ(r), Math.PI / 2, 1.0);
+    floorLabel('ROW ' + r, OX1 - .42, cellZ(r), -Math.PI / 2, 1.0);
+  }
+}
+
 /* ------------------------------------------------------------------ furniture */
 function bed(cells, axis) {
-  const [c0, r0] = cells[0];
   const horizontal = axis === 'x';
   const w = horizontal ? CELL * cells.length - .12 : CELL - .12;
   const d = horizontal ? CELL - .12 : CELL * cells.length - .12;
   const cx = cells.reduce((s, [c]) => s + cellX(c), 0) / cells.length;
   const cz = cells.reduce((s, [, r]) => s + cellZ(r), 0) / cells.length;
+  const v = variantOf('bed', cells);
+  /* a bed out in the jungle is a camp bed: a canvas stretcher with a sleeping bag
+     on it, not a four-poster */
+  if (['dirt', 'jungle'].includes(roomFloor(roomAt(cells[0][0], cells[0][1])))) {
+    const canvas = new THREE.MeshStandardMaterial({ color: 0x8a8355, roughness: .95 });
+    const pole = new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: .85 });
+    const bag = new THREE.MeshStandardMaterial({ color: 0x3f5a52, roughness: .95 });
+    const bagIn = new THREE.MeshStandardMaterial({ color: 0x6a5a44, roughness: .95 });
+    /* a camp bed, built to the same height as any other bed: the canvas and the
+       sleeping bag come up to BED_Y, so a body laid on it rests on it */
+    const canvasTop = BED_Y - .045;                          // the canvas, a hand below the bag
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {    // four crossed legs
+      const lx = cx + sx * (w / 2 - .14), lz = cz + sz * (d / 2 - .14);
+      const leg = box(.05, canvasTop + .02, .05, pole, lx, (canvasTop + .02) / 2, lz);
+      leg.rotation.z = sx * .42; leg.rotation.x = sz * .42;
+    }
+    box(w - .06, .05, d - .06, canvas, cx, canvasTop - .025, cz);
+    box(w + .04, .05, .05, pole, cx, canvasTop + .01, cz - d / 2 + .02);
+    box(w + .04, .05, .05, pole, cx, canvasTop + .01, cz + d / 2 - .02);
+    box(.05, .05, d, pole, cx - w / 2 + .02, canvasTop + .01, cz);
+    box(.05, .05, d, pole, cx + w / 2 - .02, canvasTop + .01, cz);
+    /* a sleeping bag rolled out over the canvas, its lining open down the middle */
+    box(w - .3, BED_Y - canvasTop, d - .34, bag, cx, (BED_Y + canvasTop) / 2, cz + d * .03);
+    box(w - .52, .02, d - .7, bagIn, cx, BED_Y - .01, cz + d * .03);
+    const roll = cyl(.09, .09, w - .34, 10, bag, cx, BED_Y - .02, cz - d / 2 + .2);
+    roll.rotation.z = Math.PI / 2;
+    box(.44, .04, .28, M.linen, cx, BED_Y - .01, cz - d / 2 + .16);    // a folded shirt for a pillow
+    SOLIDS.push(S(cx - w / 2, cx + w / 2, 0, BED_Y - .04, cz - d / 2, cz + d / 2));
+    return;
+  }
   box(w, .38, d, M.darkWood, cx, .19, cz);
   box(w - .1, .18, d - .1, M.linen, cx, .47, cz);
-  box(w - .16, .1, d * .55, new THREE.MeshStandardMaterial({ color: 0x6a4a56, roughness: .95 }),
-    cx, .58, cz + (horizontal ? 0 : d * .18));
+  // the blanket and the pillow lie flat, so a body can be put down on top of them
+  box(w - .16, .05, d * .55, new THREE.MeshStandardMaterial({
+    color: v === 1 ? 0x3f5a6a : 0x6a4a56, roughness: .95 }),
+    cx, BED_Y - .03, cz + (horizontal ? 0 : d * .18));
   const px = horizontal ? cx - w * .28 : cx, pz = horizontal ? cz : cz - d * .3;
-  box(.6, .12, .34, new THREE.MeshStandardMaterial({ color: 0xd8cfc0, roughness: .95 }), px, .6, pz);
-  SOLIDS.push(S(cx - w / 2, cx + w / 2, 0, .52, cz - d / 2, cz + d / 2));
+  box(.6, .06, .34, new THREE.MeshStandardMaterial({ color: 0xd8cfc0, roughness: .95 }), px, BED_Y - .012, pz);
+  if (v === 1) {                                   // a wooden frame with a headboard at the pillow
+    if (horizontal) {
+      box(.08, .74, d, M.darkWood, cx - w / 2 + .02, .37, cz);
+      box(.08, .3, d, M.darkWood, cx + w / 2 - .02, .5, cz);
+    } else {
+      box(w, .74, .08, M.darkWood, cx, .37, cz - d / 2 + .02);
+      box(w, .3, .08, M.darkWood, cx, .5, cz + d / 2 - .02);
+    }
+  } else if (v === 2) {                            // a four-poster: four posts and an open frame
+    const post = .08, ph = 1.86;
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      box(post, ph, post, M.darkWood, cx + sx * (w / 2 - .06), ph / 2, cz + sz * (d / 2 - .06));
+    }
+    if (horizontal) {
+      box(w, .06, .06, M.darkWood, cx, ph, cz - d / 2 + .06);
+      box(w, .06, .06, M.darkWood, cx, ph, cz + d / 2 - .06);
+      box(.06, .06, d, M.darkWood, cx - w / 2 + .06, ph, cz);
+      box(.06, .06, d, M.darkWood, cx + w / 2 - .06, ph, cz);
+    } else {
+      box(.06, .06, d, M.darkWood, cx - w / 2 + .06, ph, cz);
+      box(.06, .06, d, M.darkWood, cx + w / 2 - .06, ph, cz);
+      box(w, .06, .06, M.darkWood, cx, ph, cz - d / 2 + .06);
+      box(w, .06, .06, M.darkWood, cx, ph, cz + d / 2 - .06);
+    }
+  }
+  SOLIDS.push(S(cx - w / 2, cx + w / 2, 0, BED_Y - .04, cz - d / 2, cz + d / 2));
 }
-function table(cells, axis) {
-  const horizontal = axis === 'x';
-  const w = horizontal ? CELL * cells.length - .3 : CELL - .4;
-  const d = horizontal ? CELL - .4 : CELL * cells.length - .3;
-  const cx = cells.reduce((s, [c]) => s + cellX(c), 0) / cells.length;
-  const cz = cells.reduce((s, [, r]) => s + cellZ(r), 0) / cells.length;
-  box(w, .08, d, M.wood, cx, .74, cz);
-  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) =>
-    box(.09, .72, .09, M.darkWood, cx + sx * (w / 2 - .12), .36, cz + sz * (d / 2 - .12)));
-  SOLIDS.push(S(cx - w / 2, cx + w / 2, 0, .78, cz - d / 2, cz + d / 2));
+/* Tables are drawn from the merged group, so two tables in a row are one long
+   table, and three with a corner are one table with a corner: a run of squares per
+   row, all at the same height, with a leg at every outside end. */
+function table(cells) {
+  const inGroup = new Set(cells.map(([c, r]) => key(c, r)));
+  const v = variantOf('table', cells);
+  if (v === 1 && cells.length === 1) {             // a round table on a pedestal
+    const [c, r] = cells[0];
+    const x = cellX(c), z = cellZ(r);
+    cyl(.82, .82, .08, 28, M.wood, x, .74, z);
+    cyl(.09, .09, .7, 10, M.darkWood, x, .37, z);
+    cyl(.42, .46, .06, 20, M.darkWood, x, .03, z);
+    SOLIDS.push(S(x - .82, x + .82, 0, .78, z - .82, z + .82));
+    return;
+  }
+  const rows = new Map();
+  for (const [c, r] of cells) {
+    if (!rows.has(r)) rows.set(r, []);
+    rows.get(r).push(c);
+  }
+  const legs = new Set();
+  for (const [r, cs] of rows) {
+    cs.sort((a, b) => a - b);
+    let start = 0;
+    for (let i = 1; i <= cs.length; i++) {
+      if (i < cs.length && cs[i] === cs[i - 1] + 1) continue;
+      const c0 = cs[start], c1 = cs[i - 1];
+      const run = cs.slice(start, i);
+      /* the top runs out to the cell edge where the table continues into the next
+         row, and is inset only where the piece really ends — otherwise two runs of
+         one L would have a strip of floor between them */
+      const gap = .15;
+      const outL = inGroup.has(key(c0 - 1, r)), outR = inGroup.has(key(c1 + 1, r));
+      const outN = run.some(c => inGroup.has(key(c, r - 1)));
+      const outS = run.some(c => inGroup.has(key(c, r + 1)));
+      const x0 = cellX(c0) - CELL / 2 + (outL ? 0 : gap);
+      const x1 = cellX(c1) + CELL / 2 - (outR ? 0 : gap);
+      const z0 = cellZ(r) - CELL / 2 + (outN ? 0 : gap);
+      const z1 = cellZ(r) + CELL / 2 - (outS ? 0 : gap);
+      const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+      const w = x1 - x0, d = z1 - z0;
+      box(w, .08, d, M.wood, cx, .74, cz);
+      if (v === 2) {                               // a cloth over the top, as a restaurant has
+        box(w + .04, .2, d + .04,
+          new THREE.MeshStandardMaterial({ color: 0xd8cfc0, roughness: .95 }), cx, .66, cz);
+      }
+      for (const lx of [cx - w / 2 + .12, cx + w / 2 - .12]) {
+        for (const lz of [cz - d / 2 + .12, cz + d / 2 - .12]) {
+          const k = lx.toFixed(2) + ',' + lz.toFixed(2);
+          if (legs.has(k)) continue;
+          legs.add(k);
+          box(.09, .72, .09, M.darkWood, lx, .36, lz);
+        }
+      }
+      /* one collider per run, not one around the whole group: an L-shaped table
+         must not leave an invisible block on the square inside its corner */
+      SOLIDS.push(S(x0, x1, 0, .78, z0, z1));
+      start = i;
+    }
+  }
+}
+/* A low chair: the seat has to be where a leg can reach the floor from, or a
+   seated guest is left with their feet in the air. */
+function lookAngle(k) {
+  const d = LOOK[k] || [0, 1];
+  return Math.atan2(d[0], d[1]);                 // the chair's front is its +z
 }
 function chair([c, r]) {
   const x = cellX(c), z = cellZ(r);
-  box(.52, .06, .52, M.fabric, x, .45, z);
-  box(.52, .62, .07, M.darkWood, x, .78, z - .23);
-  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) =>
-    box(.05, .44, .05, M.darkWood, x + sx * .2, .22, z + sz * .2));
-  SOLIDS.push(S(x - .28, x + .28, 0, .5, z - .28, z + .28));
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.rotation.y = lookAngle(key(c, r));           // the seat faces the open side
+  scene.add(g);
+  const v = variantOf('chair', [[c, r]]);
+  if (v === 2) {                                       // an armchair: wide, padded, with arms
+    box(.66, .09, .56, M.fabric, 0, SEAT_Y - .04, 0, g);
+    box(.66, .52, .1, M.fabric, 0, SEAT_Y + .26, -.26, g);
+    [-.42, .42].forEach(lx => {
+      box(.1, .28, .56, M.fabric, lx, SEAT_Y + .1, 0, g);
+      box(.12, .05, .58, M.darkWood, lx, SEAT_Y + .25, 0, g);
+    });
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) =>
+      box(.06, SEAT_Y - .08, .06, M.darkWood, sx * .26, (SEAT_Y - .08) / 2, sz * .22, g));
+  } else if (v === 3) {                                // a rocking chair
+    box(.52, .06, .52, M.fabric, 0, SEAT_Y - .03, 0, g);
+    [-.22, .22].forEach(lx => box(.06, .52, .06, M.darkWood, lx, SEAT_Y + .24, -.28, g));
+    box(.5, .07, .08, M.darkWood, 0, SEAT_Y + .5, -.28, g);
+    for (let i = -2; i <= 2; i++) box(.03, .42, .03, M.darkWood, i * .1, SEAT_Y + .23, -.28, g);
+    [-.24, .24].forEach(lx => {
+      for (let i = 0; i < 6; i++) {                    // a rocker, in segments
+        const t = -.3 + i * .12;
+        box(.06, .06, .14, M.darkWood, lx, .05 + .09 * (t / .3) ** 2, t, g);
+      }
+      box(.06, SEAT_Y - .08, .06, M.darkWood, lx, (SEAT_Y - .08) / 2, -.1, g);
+      box(.06, SEAT_Y - .08, .06, M.darkWood, lx, (SEAT_Y - .08) / 2, .16, g);
+    });
+  } else {
+    box(.52, .06, .52, M.fabric, 0, SEAT_Y - .03, 0, g);
+    if (v === 0) {                                     // one solid panel
+      box(.52, .5, .07, M.darkWood, 0, SEAT_Y + .23, -.28, g);
+    } else {                                           // three rails between two uprights
+      [-.225, .225].forEach(lx => box(.07, .5, .07, M.darkWood, lx, SEAT_Y + .23, -.28, g));
+      [.42, .62, .82].forEach(ly => box(.44, .06, .07, M.darkWood, 0, ly, -.28, g));
+    }
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) =>
+      box(.05, SEAT_Y - .07, .05, M.darkWood, sx * .2, (SEAT_Y - .07) / 2, sz * .2, g));
+  }
+  SOLIDS.push(S(x - .28, x + .28, 0, SEAT_Y + .06, z - .28, z + .28));
 }
+/* A rug is carpet, not a painted square: a slab with a pile on it. Two piles —
+   a short flat weave and a deep shaggy one — in four patterns, with a woven edge
+   and a fringe at the ends so it reads as fabric from across the room. */
+const RUG_LOOKS = [
+  { pile: 'short', shape: 'rect', pattern: 'border', bg: '#5a2f33', ink: '#7d4a4e', edge: 0x3b1d20, fringe: true },
+  { pile: 'deep', shape: 'round', pattern: 'plain', bg: '#6a4a5a', ink: '#8a6a7a', edge: 0x3f2a36, fringe: false },
+  { pile: 'short', shape: 'rect', pattern: 'stripe', bg: '#4a4030', ink: '#7a6a4a', edge: 0x2e271c, fringe: true },
+  { pile: 'deep', shape: 'rect', pattern: 'check', bg: '#6d3a3f', ink: '#c9b9a2', edge: 0x3b1d20, fringe: true },
+];
+function rugTex(look, w, d) {
+  /* the canvas keeps the rug's shape, so a check stays a square and the pile is
+     not stretched along the length */
+  const wide = Math.max(w, d), narrow = Math.min(w, d);
+  const W = 1024, H = Math.max(192, Math.round(1024 * narrow / wide));
+  return tex(W, H, (g, cw, ch) => {
+    const deep = look.pile === 'deep';
+    g.fillStyle = look.bg; g.fillRect(0, 0, cw, ch);
+    if (look.pattern === 'border') {
+      g.strokeStyle = look.ink; g.lineWidth = 44; g.strokeRect(34, 34, cw - 68, ch - 68);
+      g.lineWidth = 10; g.strokeRect(96, 96, cw - 192, ch - 192);
+    } else if (look.pattern === 'stripe') {
+      const n = 7;
+      for (let i = 0; i < n; i += 2) {
+        g.fillStyle = look.ink;
+        g.fillRect(0, i * ch / n, cw, ch / n * .62);
+      }
+    } else if (look.pattern === 'check') {
+      const q = Math.max(cw, ch) / 9;
+      g.fillStyle = look.ink;
+      for (let i = 0; i * q < cw; i++) for (let j = 0; j * q < ch; j++) if ((i + j) % 2) g.fillRect(i * q, j * q, q, q);
+    }
+    // the pile: thousands of fibres, light and dark, so it reads as wool
+    const fibres = Math.round((deep ? 90 : 55) * cw * ch / 1024);
+    for (let i = 0; i < fibres; i++) {
+      const x = Math.random() * cw, y = Math.random() * ch, a = Math.random() * Math.PI * 2;
+      const len = deep ? 2 + Math.random() * 5 : 1 + Math.random() * 2.2;
+      g.strokeStyle = Math.random() < .5
+        ? `rgba(255,255,255,${.03 + Math.random() * .1})`
+        : `rgba(0,0,0,${.05 + Math.random() * .14})`;
+      g.lineWidth = deep ? 1 + Math.random() * 1.5 : .7 + Math.random() * .8;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len); g.stroke();
+    }
+    g.strokeStyle = 'rgba(0,0,0,.32)'; g.lineWidth = 16; g.strokeRect(8, 8, cw - 16, ch - 16);
+  });
+}
+/* A carpet covers a group of squares — touching carpets are one carpet — so it is
+   drawn run by run, the way a table is, with a fringe only where the run really
+   ends. */
 function rug(cells) {
-  const horizontal = cells.length > 1 && cells[0][1] === cells[1][1];
-  const w = horizontal ? CELL * cells.length - .2 : CELL - .2;
-  const d = horizontal ? CELL - .2 : CELL * cells.length - .2;
-  const cx = cells.reduce((s, [c]) => s + cellX(c), 0) / cells.length;
-  const cz = cells.reduce((s, [, r]) => s + cellZ(r), 0) / cells.length;
-  const m = plane(w, d, new THREE.MeshStandardMaterial({ color: 0x5a2f33, roughness: .98 }), cx, .022, cz);
-  m.rotation.x = -Math.PI / 2;
-  const inner = plane(w - .3, d - .3, new THREE.MeshStandardMaterial({ color: 0x6d3a3f, roughness: .98 }), cx, .023, cz);
-  inner.rotation.x = -Math.PI / 2;
+  const look = RUG_LOOKS[variantOf('rug', cells) % RUG_LOOKS.length];
+  const inGroup = new Set(cells.map(([c, r]) => key(c, r)));
+  const thick = look.pile === 'deep' ? .075 : .04;
+  const edge = new THREE.MeshStandardMaterial({ color: look.edge, roughness: 1 });
+  const fringeMat = new THREE.MeshStandardMaterial({ color: 0xb9a68a, roughness: 1 });
+
+  if (cells.length === 1 && look.shape === 'round') {   // a round drum of carpet
+    const [c, r] = cells[0];
+    const x = cellX(c), z = cellZ(r), rad = (CELL - .2) / 2;
+    const top = new THREE.MeshStandardMaterial({ map: rugTex(look, CELL, CELL), roughness: .99 });
+    cyl(rad, rad, thick, 36, edge, x, thick / 2 + .004, z);
+    const cap = new THREE.Mesh(new THREE.CircleGeometry(rad, 36), top);
+    cap.rotation.x = -Math.PI / 2;
+    cap.position.set(x, thick + .006, z);
+    cap.receiveShadow = true;
+    scene.add(cap);
+    return;
+  }
+
+  const rows = new Map();
+  for (const [c, r] of cells) {
+    if (!rows.has(r)) rows.set(r, []);
+    rows.get(r).push(c);
+  }
+  for (const [r, cs] of rows) {
+    cs.sort((a, b) => a - b);
+    let start = 0;
+    for (let i = 1; i <= cs.length; i++) {
+      if (i < cs.length && cs[i] === cs[i - 1] + 1) continue;
+      const c0 = cs[start], c1 = cs[i - 1];
+      const run = cs.slice(start, i);
+      const gap = .05;
+      const outL = inGroup.has(key(c0 - 1, r)), outR = inGroup.has(key(c1 + 1, r));
+      const outN = run.some(c => inGroup.has(key(c, r - 1)));
+      const outS = run.some(c => inGroup.has(key(c, r + 1)));
+      const x0 = cellX(c0) - CELL / 2 + (outL ? 0 : gap);
+      const x1 = cellX(c1) + CELL / 2 - (outR ? 0 : gap);
+      const z0 = cellZ(r) - CELL / 2 + (outN ? 0 : gap);
+      const z1 = cellZ(r) + CELL / 2 - (outS ? 0 : gap);
+      const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+      const w = x1 - x0, d = z1 - z0;
+      const top = new THREE.MeshStandardMaterial({ map: rugTex(look, w, d), roughness: .99 });
+      box(w, thick, d, edge, cx, thick / 2 + .004, cz);
+      const face = plane(w, d, top, cx, thick + .006, cz);
+      face.rotation.x = -Math.PI / 2;
+      if (!look.fringe) { start = i; continue; }
+      // the fringe belongs at the ends that are really the edge of the carpet
+      const ends = [];
+      if (!inGroup.has(key(c0 - 1, r))) ends.push([cx - w / 2 - .04, 'z']);
+      if (!inGroup.has(key(c1 + 1, r))) ends.push([cx + w / 2 + .04, 'z']);
+      for (const [fx] of ends) {
+        const n = Math.round(d / .075);
+        for (let k = 0; k < n; k++) {
+          const fz = cz - d / 2 + (k + .5) * (d / n);
+          box(.08, .014, .022, fringeMat, fx, .012, fz);
+        }
+      }
+      start = i;
+    }
+  }
 }
 function plant([c, r]) {
   const x = cellX(c), z = cellZ(r);
-  cyl(.22, .17, .34, 14, M.pot, x, .17, z);
-  cyl(.04, .05, .5, 8, M.leaf, x, .5, z);
-  for (let i = 0; i < 7; i++) {
-    const a = i / 7 * Math.PI * 2;
-    const leaf = sphere(.17, M.leaf, x + Math.cos(a) * .2, .78 + (i % 2) * .14, z + Math.sin(a) * .2, scene, 8);
-    leaf.scale.set(1, .55, .7);
+  const v = variantOf('plant', [[c, r]]);
+  if (v === 0) {                                     // a bushy pot plant
+    cyl(.22, .17, .34, 14, M.pot, x, .17, z);
+    cyl(.04, .05, .5, 8, M.leaf, x, .5, z);
+    for (let i = 0; i < 7; i++) {
+      const a = i / 7 * Math.PI * 2;
+      const leaf = sphere(.17, M.leaf, x + Math.cos(a) * .2, .78 + (i % 2) * .14, z + Math.sin(a) * .2, scene, 8);
+      leaf.scale.set(1, .55, .7);
+    }
+  } else if (v === 1) {                              // a tall palm
+    cyl(.2, .16, .4, 14, M.pot, x, .2, z);
+    cyl(.05, .07, .9, 8, M.leaf, x, .82, z);
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * Math.PI * 2;
+      const frond = sphere(.3, M.leaf, x + Math.cos(a) * .3, 1.24 + (i % 2) * .1, z + Math.sin(a) * .3, scene, 8);
+      frond.scale.set(1.5, .18, .5);
+      frond.rotation.y = -a;
+      frond.rotation.z = .25;
+    }
+  } else if (v === 2) {                              // a cactus
+    const cactusMat = new THREE.MeshStandardMaterial({ color: 0x3f7a4a, roughness: .9 });
+    cyl(.26, .22, .3, 16, M.pot, x, .15, z);
+    cyl(.12, .14, 1.0, 12, cactusMat, x, .8, z);
+    cyl(.07, .07, .34, 10, cactusMat, x + .18, .86, z);
+    cyl(.07, .07, .2, 10, cactusMat, x + .3, .98, z);
+    cyl(.06, .06, .26, 10, cactusMat, x - .16, .78, z);
+    cyl(.06, .06, .16, 10, cactusMat, x - .24, .88, z);
+    sphere(.07, new THREE.MeshStandardMaterial({ color: 0xc45a6a, roughness: .8 }), x, 1.33, z, scene, 8);
+  } else {                                           // a clipped topiary on a stem
+    cyl(.24, .2, .3, 14, M.pot, x, .15, z);
+    cyl(.045, .05, .7, 8, M.darkWood, x, .62, z);
+    const ball = sphere(.38, M.leaf, x, 1.12, z, scene, 14);
+    ball.scale.set(1, .95, 1);
+    const ball2 = sphere(.22, M.leaf, x + .02, .82, z, scene, 12);
+    ball2.scale.set(1, .8, 1);
   }
   SOLIDS.push(S(x - .26, x + .26, 0, 1, z - .26, z + .26));
 }
 function tv([c, r]) {
   const x = cellX(c), z = cellZ(r);
-  box(1.5, .5, .5, M.darkWood, x, .25, z + .24);
-  box(1.4, .82, .09, new THREE.MeshStandardMaterial({ color: 0x11151a, roughness: .55 }), x, .92, z + .1);
-  const screen = plane(1.24, .68, M.tvScreen, x, .92, z + .04);
-  screen.rotation.y = Math.PI;                       // facing north, into the house
-  SOLIDS.push(S(x - .78, x + .78, 0, 1.35, z - .1, z + .48));
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.rotation.y = lookAngle(key(c, r));           // the screen faces the open side
+  scene.add(g);
+  const v = variantOf('tv', [[c, r]]);
+  const shell = new THREE.MeshStandardMaterial({ color: 0x11151a, roughness: .55 });
+  if (v === 0) {                                     // a set on a low cabinet
+    box(1.5, .5, .5, M.darkWood, 0, .25, -.24, g);
+    box(1.4, .82, .09, shell, 0, .92, -.1, g);
+    plane(1.24, .68, M.tvScreen, 0, .92, -.04, g);
+  } else if (v === 1) {                              // a flat panel on a slim stand
+    box(1.44, .82, .06, shell, 0, .95, -.05, g);
+    box(.1, .5, .1, M.darkWood, 0, .5, -.05, g);
+    box(.6, .05, .4, M.darkWood, 0, .03, -.08, g);
+    plane(1.3, .7, M.tvScreen, 0, .95, -.018, g);
+  } else if (v === 2) {                              // an old set with legs
+    box(1.1, .86, .46, M.darkWood, 0, .5, -.12, g);
+    box(.84, .6, .04, shell, 0, .54, .12, g);
+    plane(.74, .5, M.tvScreen, 0, .54, .145, g);
+    [-.42, .42].forEach(lx => box(.07, .3, .07, M.darkWood, lx, .12, -.12, g));
+  } else {                                           // a console set, rabbit ears and all
+    box(1.2, .78, .5, M.darkWood, 0, .44, -.14, g);
+    box(.9, .58, .03, shell, 0, .46, .11, g);
+    plane(.8, .48, M.tvScreen, 0, .46, .13, g);
+    cyl(.05, .05, .18, 8, M.darkWood, 0, .92, -.14, g);
+    [-1, 1].forEach(sx => {
+      const rod = cyl(.012, .012, .62, 6, M.metal, 0, 0, 0, g);
+      rod.position.set(sx * .14, 1.16, -.14);
+      rod.rotation.z = sx * .5;
+      rod.rotation.x = .18;
+    });
+    for (let i = 0; i < 3; i++) sphere(.045, M.metal, -.34 + i * .16, .3, .12, g, 6);
+  }
+  SOLIDS.push(S(x - .78, x + .78, 0, 1.35, z - .48, z + .48));
 }
-const WINDOW_AT = { x: 0, z: 0, y: 1.8 };
+/* Water you may stand in: the sea, a river, a tub. The surface is see-through, so
+   whoever is in it is seen below the waterline rather than cut off at it. */
+/* The sea is a room made of water: every square of it gets a surface at the same
+   waterline as the jacuzzi, with the joints drawn on it so the grid still counts.
+   The water is see-through, so a guest standing in it is seen under the surface —
+   feet on the bottom, head out — rather than cut off at the waterline. */
+function buildWaterRooms() {
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x2f6f78, roughness: .1, metalness: .35, transparent: true, opacity: .52,
+    emissive: 0x1d5a63, emissiveIntensity: .22,
+  });
+  const joint = new THREE.MeshStandardMaterial({ color: 0x14303a, roughness: .9 });
+  for (let c = 1; c <= N; c++) for (let r = 1; r <= N; r++) {
+    if (!isWater(c, r) || KIND_AT[key(c, r)] === 'jacuzzi') continue;
+    const x = cellX(c), z = cellZ(r);
+    const surface = plane(CELL - .05, CELL - .05, mat, x, JACUZZI_Y, z);
+    surface.rotation.x = -Math.PI / 2;
+    box(.05, .012, CELL, joint, x - CELL / 2, JACUZZI_Y + .004, z);
+    box(CELL, .012, .05, joint, x, JACUZZI_Y + .004, z - CELL / 2);
+  }
+}
+
+/* A shelf is a tall piece against a wall: a bookcase, a wardrobe, a dresser or a
+   display cabinet. Nobody stands on it, and like a chair or a television it turns
+   its back to a wall and faces the room. It runs along its squares, so a bookcase
+   can be two squares wide. */
+const SHELF_H = [1.9, 2.02, .96, 1.86];          // bookcase, wardrobe, dresser, display cabinet
+function shelf(cells, axis) {
+  const xs = cells.map(([c]) => cellX(c)), zs = cells.map(([, r]) => cellZ(r));
+  const cx = xs.reduce((a, b) => a + b, 0) / xs.length;
+  const cz = zs.reduce((a, b) => a + b, 0) / zs.length;
+  const runX = Math.max(...xs) - Math.min(...xs) + CELL;
+  const runZ = Math.max(...zs) - Math.min(...zs) + CELL;
+  const horizontal = axis === 'x' || (axis !== 'z' && runX >= runZ);
+  const w = (horizontal ? runX : runZ) - .2;
+  const dep = CELL - .5;
+  /* The front has to be across the run: a bookcase does not look along itself. Its
+     back goes to a wall whenever one of the four sides of the run is a wall; with
+     no wall to stand against it is an open shelf, never a closed back. */
+  const prefs = cells.length === 1 ? DIRS : horizontal ? [[0, 1], [0, -1]] : [[1, 0], [-1, 0]];
+  const wallBehind = ([dc, dr]) => cells.every(([c, r]) => {
+    const a = c - dc, b = r - dr;
+    return a < 1 || a > N || b < 1 || b > N || roomAt(a, b) !== roomAt(c, r);
+  });
+  const facesRoom = ([dc, dr]) => cells.some(([c, r]) => {
+    const a = c + dc, b = r + dr;
+    return a >= 1 && a <= N && b >= 1 && b <= N;
+  });
+  const face = prefs.find(wallBehind) || prefs.find(facesRoom) || prefs[0];
+  const freestanding = !wallBehind(face);
+
+  const g = new THREE.Group();
+  g.position.set(cx, 0, cz);
+  g.rotation.y = Math.atan2(face[0], face[1]);    // the front is the model's +z
+  g.userData.shelf = { face, freestanding, cells };
+  scene.add(g);
+
+  const v0 = variantOf('shelf', cells);
+  const v = freestanding ? (v0 % 2 ? 3 : 0) : v0;   // open shelves when there is no wall behind
+  g.userData.shelf.variant = v;
+  const H = SHELF_H[v];
+  const wood = new THREE.MeshStandardMaterial({ color: v === 1 ? 0x3f2f22 : v === 3 ? 0x2f2a26 : 0x4a3527, roughness: .8 });
+  const doorMat = new THREE.MeshStandardMaterial({ color: v === 1 ? 0x6a4a30 : 0x5a4029, roughness: .7 });
+  const backMat = new THREE.MeshStandardMaterial({ color: 0x241a14, roughness: .95 });
+
+  if (v === 0 || v === 3) {                       // open shelves: a carcass, with books on it
+    box(w, .06, dep, wood, 0, H - .03, 0, g);                       // top
+    box(w, .06, dep, wood, 0, .03, 0, g);                           // plinth
+    [-1, 1].forEach(sx => box(.06, H, dep, wood, sx * (w / 2 - .03), H / 2, 0, g));
+    box(w - .12, H - .12, .05, backMat, 0, H / 2, -dep / 2 + .025, g);   // the back
+    const n = v === 0 ? 4 : 3;
+    for (let i = 1; i <= n; i++) {
+      const y = .06 + i * ((H - .12) / (n + 1));
+      box(w - .14, .04, dep - .1, wood, 0, y, .01, g);
+      if (v === 0) {                              // books: coloured spines, at the front
+        let bx = -w / 2 + .12;
+        while (bx < w / 2 - .12) {
+          const bw = .05 + Math.random() * .05, bh = .17 + Math.random() * .1;
+          const col = [0x8c3a34, 0x3f5a7a, 0x6a5a2a, 0x4a6a4a, 0x7a4a6a, 0x9a7a3a][Math.floor(Math.random() * 6)];
+          const lean = Math.random() < .12 ? .18 : 0;
+          const book = box(bw, bh, dep * .62, new THREE.MeshStandardMaterial({ color: col, roughness: .9 }),
+            bx + bw / 2, y + .02 + bh / 2, .06, g);
+          book.rotation.z = lean;
+          bx += bw + .018;
+        }
+      } else {                                    // a display cabinet: a few objects
+        [-.3, .1, .38].forEach((ox, k) => {
+          const col = [0x8c8155, 0x5a6a7a, 0x7a5a4a][(i + k) % 3];
+          const h = .1 + (k % 2) * .06;
+          const o = sphere(.055 + (k % 2) * .015, new THREE.MeshStandardMaterial({ color: col, roughness: .6 }),
+            ox, y + .05 + h, .06, g, 10);
+          o.scale.y = 1.4;
+        });
+      }
+    }
+  } else if (v === 1) {                           // a wardrobe: two doors, a cornice, handles
+    box(w, H, dep, wood, 0, H / 2, 0, g);
+    box(w + .06, .08, dep + .06, backMat, 0, H - .04, 0, g);
+    box(w + .02, .06, dep + .02, backMat, 0, .03, 0, g);
+    [-1, 1].forEach(sx => {
+      box(w / 2 - .06, H - .22, .04, doorMat, sx * (w / 4), H / 2 + .02, dep / 2 + .015, g);
+      cyl(.026, .026, .05, 10, M.gold, sx * .055, 1.12, dep / 2 + .055, g).rotation.x = Math.PI / 2;
+    });
+    box(.02, H - .22, .02, backMat, 0, H / 2 + .02, dep / 2 + .04, g);          // the seam
+  } else {                                        // a dresser: three drawers and knobs
+    box(w, H, dep, wood, 0, H / 2, 0, g);
+    box(w + .04, .06, dep + .04, backMat, 0, H + .01, 0, g);
+    for (let i = 0; i < 3; i++) {
+      const y = .18 + i * ((H - .28) / 3);
+      box(w - .12, (H - .34) / 3, .04, doorMat, 0, y + ((H - .34) / 6), dep / 2 + .015, g);
+      cyl(.03, .03, .05, 10, M.gold, 0, y + ((H - .34) / 6), dep / 2 + .05, g).rotation.x = Math.PI / 2;
+    }
+  }
+  SOLIDS.push(S(cx - (horizontal ? w : dep) / 2, cx + (horizontal ? w : dep) / 2, 0, H + .06,
+    cz - (horizontal ? dep : w) / 2, cz + (horizontal ? dep : w) / 2));
+}
+
+/* The jungle: a crate nobody climbs, a tree, a clump of bush, a pile of rubble, a
+   crocodile — and a boat you may stand in, which grows when two are side by side. */
+function crate([c, r]) {
+  const x = cellX(c), z = cellZ(r), s2 = .8;
+  const wood = new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: .92 });
+  const iron = new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: .5, metalness: .6 });
+  box(s2, s2, s2, wood, x, s2 / 2, z);
+  [.26, .56].forEach(hy => box(s2 + .02, .06, s2 + .02, iron, x, hy, z));
+  [-1, 1].forEach(sx => [-1, 1].forEach(sz =>
+    box(.07, s2 + .03, .07, iron, x + sx * s2 / 2, s2 / 2, z + sz * s2 / 2)));
+  SOLIDS.push(S(x - s2 / 2, x + s2 / 2, 0, s2, z - s2 / 2, z + s2 / 2));
+}
+function tree([c, r]) {
+  const x = cellX(c), z = cellZ(r);
+  const bark = new THREE.MeshStandardMaterial({ color: 0x4a3a26, roughness: .95 });
+  cyl(.16, .24, 1.6, 10, bark, x, .8, z);
+  for (let i = 0; i < 3; i++) {
+    const a = i * 2.1;
+    const root = cyl(.05, .1, .55, 6, bark, x + Math.cos(a) * .2, .22, z + Math.sin(a) * .2);
+    root.rotation.z = Math.cos(a) * .55;
+    root.rotation.x = -Math.sin(a) * .55;
+  }
+  [[0, 2.15, 0, 1.05], [.6, 1.8, .25, .68], [-.55, 1.85, -.2, .72], [.1, 2.0, .55, .62], [-.15, 2.1, -.55, .58]]
+    .forEach(([ox, y, oz, rad]) => {
+      const leaf = sphere(rad, M.leaf, x + ox, y, z + oz, scene, 10);
+      leaf.scale.set(1, .82, 1);
+    });
+  SOLIDS.push(S(x - .3, x + .3, 0, 1.6, z - .3, z + .3));
+}
+function bush(cells) {
+  for (const [c, r] of cells) {
+    const x = cellX(c), z = cellZ(r);
+    [[0, 0, .55], [.4, .12, .42], [-.38, .1, .45], [.12, .3, .38], [-.15, -.25, .4], [.32, -.3, .34]]
+      .forEach(([ox, oz, rad], i) => {
+        const b = sphere(rad, M.leaf, x + ox, .42 + (i % 2) * .12, z + oz, scene, 10);
+        b.scale.set(1, .8, 1);
+      });
+    SOLIDS.push(S(x - .62, x + .62, 0, .9, z - .62, z + .62));
+  }
+}
+function rubble(cells) {
+  const stone = new THREE.MeshStandardMaterial({ color: 0x8a8478, roughness: .95 });
+  const moss = new THREE.MeshStandardMaterial({ color: 0x4a6a3a, roughness: .95 });
+  for (const [c, r] of cells) {
+    const x = cellX(c), z = cellZ(r);
+    box(.95, .3, .95, stone, x, .15, z).rotation.y = .4;
+    for (let i = 0; i < 7; i++) {
+      const a = i / 7 * Math.PI * 2;
+      const rad = .1 + (i % 3) * .07;
+      const b = box(rad * 2, rad * 2, rad * 2, i % 4 ? stone : moss,
+        x + Math.cos(a) * .36, .3 + rad, z + Math.sin(a) * .36);
+      b.rotation.set(a, a * 1.3, a * .7);
+    }
+    SOLIDS.push(S(x - .55, x + .55, 0, .6, z - .55, z + .55));
+  }
+}
+function boat(cells) {
+  const xs = cells.map(([c]) => cellX(c)), zs = cells.map(([, r]) => cellZ(r));
+  const horizontal = Math.max(...xs) - Math.min(...xs) >= Math.max(...zs) - Math.min(...zs);
+  const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cz = (Math.min(...zs) + Math.max(...zs)) / 2;
+  const len = (horizontal ? Math.max(...xs) - Math.min(...xs) : Math.max(...zs) - Math.min(...zs)) + CELL - .34;
+  const w = .95;
+  const afloat = cells.some(([c, r]) => isWater(c, r));
+  /* The boards sit a hair above the waterline, never in the water: the hull around
+     them hangs down into it, so the boat still floats as a boat should. */
+  const deck = afloat ? JACUZZI_Y + .012 : .12;
+  const bottom = afloat ? deck - .34 : .02;
+  const top = afloat ? deck + .4 : .46;
+  for (const [c, r] of cells) BOAT_Y_AT[key(c, r)] = deck;
+
+  const wood = new THREE.MeshStandardMaterial({ color: 0x8a5c33, roughness: .74, side: THREE.DoubleSide,
+    emissive: 0x2a1a10, emissiveIntensity: .55 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x8a6038, roughness: .88, side: THREE.DoubleSide,
+    emissive: 0x2a1a0e, emissiveIntensity: .5 });
+  const trim = new THREE.MeshStandardMaterial({ color: 0xa87f4d, roughness: .6 });
+
+  const g = new THREE.Group();
+  g.position.set(cx, bottom, cz);
+  if (!horizontal) g.rotation.y = Math.PI / 2;
+  scene.add(g);
+
+  /* the hull: a pointed bow and a square-ish stern, hollowed out, so it is a shell
+     with walls and an open top rather than a block of wood */
+  const outline = (L, W) => {
+    const p = new THREE.Shape();
+    p.moveTo(-L / 2, -W / 2 * .78);
+    p.quadraticCurveTo(-L / 2 - .05, 0, -L / 2, W / 2 * .78);       // the transom
+    p.quadraticCurveTo(-L * .1, W / 2 * 1.02, L / 2, 0);            // out to the bow
+    p.quadraticCurveTo(-L * .1, -W / 2 * 1.02, -L / 2, -W / 2 * .78);
+    return p;
+  };
+  const hullH = top - bottom, innerL = len - .13, innerW = w - .15;
+  const shell = outline(len, w);
+  shell.holes.push(outline(innerL, innerW));
+  const geo = new THREE.ExtrudeGeometry(shell, { depth: hullH, bevelEnabled: true,
+    bevelSize: .012, bevelThickness: .012, bevelSegments: 1, curveSegments: 16 });
+  geo.rotateX(-Math.PI / 2);
+  const hull = new THREE.Mesh(geo, wood);
+  hull.castShadow = true; hull.receiveShadow = false;      // or the inside goes black
+  g.add(hull);
+
+  /* how wide the hull is at a point along its length, sampled from the same curve
+     the planking is built from, so no fitting can ever poke through it */
+  const halfW = (x, L, W) => {
+    const p0 = [-L / 2, W / 2 * .78], p1 = [-L * .1, W / 2 * 1.02], p2 = [L / 2, 0];
+    let best = 0, bd = Infinity;
+    for (let i = 0; i <= 64; i++) {
+      const t = i / 64, u = 1 - t;
+      const qx = u * u * p0[0] + 2 * u * t * p1[0] + t * t * p2[0];
+      const qy = u * u * p0[1] + 2 * u * t * p1[1] + t * t * p2[1];
+      const d = Math.abs(qx - x);
+      if (d < bd) { bd = d; best = qy; }
+    }
+    return best;
+  };
+
+  /* the boards: the inside of the hull filled to the waterline, so the floor of the
+     boat has the hull's own form and never dips into the water */
+  const bgeo = new THREE.ExtrudeGeometry(outline(innerL, innerW),
+    { depth: deck - bottom, bevelEnabled: false, curveSegments: 16 });
+  bgeo.rotateX(-Math.PI / 2);
+  const floor = new THREE.Mesh(bgeo, dark);
+  floor.receiveShadow = false;
+  g.add(floor);
+
+  const put = (gm, mat, x, y, z) => {
+    const m = new THREE.Mesh(gm, mat); m.position.set(x, y - bottom, z); g.add(m); return m;
+  };
+  /* two thwarts, each cut to the width of the hull where it crosses, and an oar
+     lying along the boards: everything inside the planking */
+  [-.18, .16].forEach(t => {
+    const x = t * len, hw = Math.max(.1, halfW(x, innerL, innerW) - .05);
+    put(new THREE.BoxGeometry(.15, .04, hw * 2), trim, x, deck + .21, 0);
+  });
+  put(new THREE.BoxGeometry(len * .38, .045, .085), trim, -.05, deck + .045, .1).rotation.y = .1;
+
+  SOLIDS.push(horizontal
+    ? S(cx - len / 2, cx + len / 2, bottom, top, cz - w / 2, cz + w / 2)
+    : S(cx - w / 2, cx + w / 2, bottom, top, cz - len / 2, cz + len / 2));
+}
+function crocodile([c, r]) {
+  const x = cellX(c), z = cellZ(r);
+  /* in the water the crocodile lies half under the surface: back, eyes and snout
+     show, the rest is seen through the water. On land it lies on the ground. */
+  const y = isWater(c, r) ? JACUZZI_Y - .18 : 0;      // half the body above the surface
+  const skin = new THREE.MeshStandardMaterial({ color: 0x3f5a2a, roughness: .9 });
+  const scute = new THREE.MeshStandardMaterial({ color: 0x2e421e, roughness: .95 });
+  const belly = new THREE.MeshStandardMaterial({ color: 0x6a7a4a, roughness: .9 });
+  const eye = new THREE.MeshStandardMaterial({ color: 0xc9c07a, roughness: .45 });
+  const body = sphere(.3, skin, x, y + .22, z + .05, scene, 12);
+  body.scale.set(1, .55, 1.7);
+  const tail = sphere(.16, skin, x, y + .18, z + .72, scene, 10);
+  tail.scale.set(.8, .45, 1.9);
+  for (let i = 0; i < 5; i++) {                        // the ridge of scutes down the back
+    const s2 = .06 + (i % 2) * .02;
+    const b = box(s2 * 1.6, s2 * 1.5, s2 * 2, scute, x, y + .38, z - .28 + i * .17);
+    b.rotation.x = .2;
+  }
+  box(.3, .16, .44, skin, x, y + .2, z - .52);         // the snout
+  box(.26, .06, .3, belly, x, y + .13, z - .52);
+  [-.075, .075].forEach(sx => {                        // eyes on top, out of the water
+    sphere(.05, eye, x + sx, y + .38, z - .36, scene, 8);
+    sphere(.022, new THREE.MeshStandardMaterial({ color: 0x0d0d0d, roughness: .3 }),
+      x + sx, y + .4, z - .39, scene, 6);
+  });
+  [-1, 1].forEach(sx => {
+    box(.1, .12, .16, skin, x + sx * .3, y + .1, z - .18);
+    box(.1, .12, .16, skin, x + sx * .3, y + .1, z + .38);
+  });
+  SOLIDS.push(S(x - .35, x + .35, y, y + .42, z - .78, z + .92));
+}
+
+/* A jacuzzi: a low basin of water on its own patch of terrace. A guest standing in
+   it stands on the bottom of the tub, seen through the water, with the head clear. */
+function jacuzzi(cells) {
+  const cs = cells.map(([c]) => c), rs = cells.map(([, r]) => r);
+  const x0 = cellX(Math.min(...cs)) - CELL / 2, x1 = cellX(Math.max(...cs)) + CELL / 2;
+  const z0 = cellZ(Math.min(...rs)) - CELL / 2, z1 = cellZ(Math.max(...rs)) + CELL / 2;
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, w = x1 - x0, d = z1 - z0;
+  const rim = .2, top = JACUZZI_Y + .06;
+  const v = variantOf('jacuzzi', cells);
+  const basin = v === 1
+    ? new THREE.MeshStandardMaterial({ color: 0x6a4a30, roughness: .85 })   // a wooden tub
+    : new THREE.MeshStandardMaterial({ color: 0x7d766a, roughness: .9 });
+  // the tub: a rim round the edge, the water just inside it
+  box(w, JACUZZI_Y - .06, d, basin, cx, (JACUZZI_Y - .06) / 2, cz);
+  box(w, .1, rim, basin, cx, top - .05, z0 + rim / 2);
+  box(w, .1, rim, basin, cx, top - .05, z1 - rim / 2);
+  box(rim, .1, d - rim * 2, basin, x0 + rim / 2, top - .05, cz);
+  box(rim, .1, d - rim * 2, basin, x1 - rim / 2, top - .05, cz);
+  if (v === 1) {                                     // barrel staves and two iron bands
+    const band = new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: .45, metalness: .8 });
+    const seam = new THREE.MeshStandardMaterial({ color: 0x402a1a, roughness: .9 });
+    box(w + .05, .07, d + .05, band, cx, .26, cz);
+    box(w + .05, .07, d + .05, band, cx, .56, cz);
+    const n = Math.max(4, Math.round(w / .22));
+    for (let i = 1; i < n; i++) {
+      const sx = x0 + i * (w / n);
+      box(.02, JACUZZI_Y - .1, .02, seam, sx, (JACUZZI_Y - .1) / 2, z0 - .012);
+      box(.02, JACUZZI_Y - .1, .02, seam, sx, (JACUZZI_Y - .1) / 2, z1 + .012);
+    }
+  }
+  const water = plane(w - rim * 2, d - rim * 2, new THREE.MeshStandardMaterial({
+    color: 0x63b6bd, roughness: .12, metalness: .35, transparent: true, opacity: .6,
+    emissive: 0x1d5a63, emissiveIntensity: .2,
+  }), cx, JACUZZI_Y, cz);
+  water.rotation.x = -Math.PI / 2;
+  /* the grid does not stop at the water: the joints between the tub's squares are
+     drawn on the surface, so every square is still a square you can count */
+  const jointMat = new THREE.MeshStandardMaterial({ color: 0x1a1418, roughness: .95 });
+  for (let c = Math.min(...cs) + 1; c <= Math.max(...cs); c++) {
+    box(.07, .014, d - rim * 2, jointMat, cellX(c) - CELL / 2, JACUZZI_Y + .007, cz);
+  }
+  for (let r = Math.min(...rs) + 1; r <= Math.max(...rs); r++) {
+    box(w - rim * 2, .014, .07, jointMat, cx, JACUZZI_Y + .007, cellZ(r) - CELL / 2);
+  }
+  // a ring of bubbles, so the water reads as moving
+  for (let i = 0; i < 14; i++) {
+    const a = i / 14 * Math.PI * 2 + .3;
+    const b = sphere(.035, new THREE.MeshStandardMaterial({ color: 0xdff4f2, roughness: .3 }),
+      cx + Math.cos(a) * (w / 2 - rim - .12), JACUZZI_Y + .01, cz + Math.sin(a) * (d / 2 - rim - .12), scene, 6);
+    b.scale.y = .4;
+  }
+  SOLIDS.push(S(x0, x1, 0, top, z0, z1));
+}
+
+const WINDOW_AT = { x: 0, z: 0, y: 0, top: 1.13 };
+/* The window fills the knee-high wall: from just above the floor to just under
+   the cap, four panes, with the sill as its bottom rail. */
+/* The window is a hole in the knee-high wall, not a picture of one: the wall runs
+   below it and over it, the glass sits in the gap, and it is lit, so it reads from
+   the room and from the corridor alike. */
 function window_(c, r) {
   const z = cellZ(r);
-  WINDOW_AT.z = z;
-  // a casing let into the inner face of the east wall, centred on its cell
-  box(.05, 1.9, 2.0, M.darkWood, X1 - .025, 1.8, z);                  // the reveal
-  const pane = plane(1.66, 1.5, new THREE.MeshStandardMaterial({
-    color: 0x9fb7d8, emissive: 0x9fb7d8, emissiveIntensity: 1.25, roughness: .2,
-  }), X1 - .055, 1.8, z);
-  pane.rotation.y = -Math.PI / 2;                                     // facing into the room
-  WINDOW_AT.x = X1 - .055;
-  // glazing bars and a sill, all on the room side of the glass
-  box(.03, 1.5, .05, M.darkWood, X1 - .07, 1.8, z);
-  box(.03, .05, 1.7, M.darkWood, X1 - .07, 1.8, z);
-  box(.18, .07, 2.06, M.darkWood, X1 - .09, 1.03, z);
-  const glow = new THREE.PointLight(0x9fb7d8, 11, 11, 2);
-  glow.position.set(X1 - .6, 1.9, z);
+  const sill = .09, h = 1.14, y = sill + h / 2, head = sill + h;   // .09 → 1.23, under the cap at 1.3
+  const x = X1 + WALL_T / 2;                                       // the wall's own centre line
+  WINDOW_AT.z = z; WINDOW_AT.x = X1; WINDOW_AT.top = head; WINDOW_AT.y = y; WINDOW_AT.open = true;
+
+  // the wall, in three pieces: a kerb under the window, the head over it, the cap
+  box(WALL_T, sill, CELL, wallMat, x, sill / 2, z);
+  box(WALL_T, PART_H - head, CELL, wallMat, x, head + (PART_H - head) / 2, z);
+  box(WALL_T + .04, .06, CELL + .04, wallCap, x, PART_H + .03, z);
+
+  // the frame, through the wall, so both sides look finished
+  box(WALL_T + .08, .07, CELL, M.darkWood, x, sill + .035, z);           // bottom rail
+  box(WALL_T + .08, .07, CELL, M.darkWood, x, head - .035, z);           // top rail
+  box(WALL_T + .08, h, .07, M.darkWood, x, y, z - CELL / 2 + .035);      // stiles
+  box(WALL_T + .08, h, .07, M.darkWood, x, y, z + CELL / 2 - .035);
+  box(WALL_T + .05, h - .14, .05, M.darkWood, x, y, z);                  // mullion
+  box(WALL_T + .05, .05, CELL - .12, M.darkWood, x, y, z);               // transom
+  box(.34, .06, CELL - .04, M.darkWood, x, sill - .03, z);               // and a sill through the wall
+
+  // glass: a tint and a sheen, not a screen — you see through it to the other side
+  const pane = plane(CELL - .2, h - .16, new THREE.MeshStandardMaterial({
+    color: 0xbcd2ea, emissive: 0x8fb0d0, emissiveIntensity: .22, roughness: .12, metalness: .1,
+    transparent: true, opacity: .26, side: THREE.DoubleSide, depthWrite: false,
+  }), x, y, z);
+  pane.rotation.y = -Math.PI / 2;
+  WINDOW_AT.pane = pane;
+
+  const glow = new THREE.PointLight(0x9fb7d8, 3, 6, 2);
+  glow.position.set(x + .6, y + .1, z);
   scene.add(glow);
 }
 
@@ -538,41 +1667,71 @@ function window_(c, r) {
 const PART_H = 1.3, WALL_T = .14, WALL_GAP = .9;
 const wallMat = new THREE.MeshStandardMaterial({ color: 0x4a4148, roughness: .92 });
 const wallCap = new THREE.MeshStandardMaterial({ color: 0x2a2226, roughness: .8 });
+/* A wall belongs to two rooms and wears the material of the wilder of them: a
+   hedge along the garden, a stone parapet where the terrace meets the house,
+   plaster between two indoor rooms. */
+const WALL_MATS = {
+  plaster: { body: wallMat, cap: wallCap },
+  stone: { body: new THREE.MeshStandardMaterial({ color: 0x6b6459, roughness: .95 }),
+    cap: new THREE.MeshStandardMaterial({ color: 0x474138, roughness: .9 }) },
+  hedge: { body: new THREE.MeshStandardMaterial({ color: 0x2f4a2c, roughness: 1 }),
+    cap: new THREE.MeshStandardMaterial({ color: 0x243a22, roughness: 1 }) },
+};
+/* A wall face wears the colour of the room behind it, so one wall can be a green
+   hedge on the garden side and plaster on the living-room side. */
+function sideStyle(name) {
+  if (!name) return 'plaster';
+  const f = roomFloor(name);
+  if (f === 'grass') return 'hedge';
+  if (f === 'stone' || f === 'water') return 'stone';
+  return 'plaster';
+}
 
 const WALLS = [];
-function wallRun(x, z, axis, len, rooms = []) {
+function wallRun(x, z, axis, len, rooms = [], negStyle = 'plaster', posStyle = 'plaster') {
   // one unbroken run: every room is closed in. Still scenery — no colliders.
   if (len <= .05) return;
-  WALLS.push({ x, z, axis, len, rooms });
-  if (axis === 'x') {
-    box(len, PART_H, WALL_T, wallMat, x, PART_H / 2, z);
+  WALLS.push({ x, z, axis, len, rooms, negStyle, posStyle });
+  const neg = WALL_MATS[negStyle] || WALL_MATS.plaster;
+  const pos = WALL_MATS[posStyle] || WALL_MATS.plaster;
+  const half = WALL_T / 2;
+  if (axis === 'x') {                        // runs east-west: neg = north face, pos = south face
+    box(len, PART_H, half, neg.body, x, PART_H / 2, z - half / 2);
+    box(len, PART_H, half, pos.body, x, PART_H / 2, z + half / 2);
     box(len + .04, .06, WALL_T + .04, wallCap, x, PART_H + .03, z);
-  } else {
-    box(WALL_T, PART_H, len, wallMat, x, PART_H / 2, z);
+  } else {                                   // runs north-south: neg = west face, pos = east face
+    box(half, PART_H, len, neg.body, x - half / 2, PART_H / 2, z);
+    box(half, PART_H, len, pos.body, x + half / 2, PART_H / 2, z);
     box(WALL_T + .04, .06, len + .04, wallCap, x, PART_H + .03, z);
   }
 }
 function buildWalls() {
   for (let c = 1; c < N; c++) for (let r = 1; r <= N; r++) {
     if (roomAt(c, r) !== roomAt(c + 1, r)) {
-      wallRun(cellX(c) + CELL / 2, cellZ(r), 'z', CELL, [roomAt(c, r), roomAt(c + 1, r)]);
+      wallRun(cellX(c) + CELL / 2, cellZ(r), 'z', CELL, [roomAt(c, r), roomAt(c + 1, r)],
+        sideStyle(roomAt(c, r)), sideStyle(roomAt(c + 1, r)));
     }
   }
   for (let c = 1; c <= N; c++) for (let r = 1; r < N; r++) {
     if (roomAt(c, r) !== roomAt(c, r + 1)) {
-      wallRun(cellX(c), cellZ(r) + CELL / 2, 'x', CELL, [roomAt(c, r), roomAt(c, r + 1)]);
+      wallRun(cellX(c), cellZ(r) + CELL / 2, 'x', CELL, [roomAt(c, r), roomAt(c, r + 1)],
+        sideStyle(roomAt(c, r)), sideStyle(roomAt(c, r + 1)));
     }
   }
-  // and one between the grid and the hall, in six pieces so each square gets its
+  // and one between the grid and the hall, in N pieces so each square gets its
   // room's name on it; the hall's own plaque goes in the middle of the run
   for (let c = 1; c <= N; c++) {
-    wallRun(cellX(c), cellZ(N) + CELL / 2, 'x', CELL, [roomAt(c, N), null]);
+    wallRun(cellX(c), cellZ(N) + CELL / 2, 'x', CELL, [roomAt(c, N), null], sideStyle(roomAt(c, N)), 'plaster');
   }
 }
 
+const roomTint = name => { const room = ROOMS.find(r => r.name === name); return room ? room.tint : 0xcfc4b2; };
 function wallSign(name, x, z, ry, y, sized = .95) {
+  const tint = roomTint(name);
   const t = tex(512, 128, (g, w, h) => {
     g.fillStyle = '#ddd3c4'; g.fillRect(0, 0, w, h);
+    g.fillStyle = `rgba(${(tint >> 16) & 255},${(tint >> 8) & 255},${tint & 255},.28)`;
+    g.fillRect(0, 0, w, h);
     g.strokeStyle = '#2a2226'; g.lineWidth = 8; g.strokeRect(6, 6, w - 12, h - 12);
     g.fillStyle = '#221b1e';
     g.font = '700 52px ui-monospace,monospace';
@@ -586,8 +1745,8 @@ function wallSign(name, x, z, ry, y, sized = .95) {
   return m;
 }
 
-/* A plaque on every wall, on every face that has a room behind it: the woonkamer
-   alone ends up with one on each of its seven partitions and one facing the hall. */
+/* A plaque on every wall, on every face that has a room behind it: the living
+   room alone ends up with one on each of its partitions and one facing the hall. */
 function tallFurnitureNear(x, z) {
   let top = 0;
   for (const s of SOLIDS) {
@@ -623,11 +1782,11 @@ function buildSigns() {
 /* The outer walls carry the name of the room behind them, one plaque per
    unbroken stretch of the same room, up at the height of a big wall. */
 function buildOuterSigns() {
-  const y = 1.95;
+  const y = .95;                                  // the outer walls are knee-high now
   const runs = [
     { axis: 'z', fixed: X0 + .02, cells: Array.from({ length: N }, (_, i) => [1, i + 1]), ry: Math.PI / 2 },
     { axis: 'x', fixed: Z0 + .02, cells: Array.from({ length: N }, (_, i) => [i + 1, 1]), ry: 0 },
-    { axis: 'z', fixed: X1 - .02, cells: Array.from({ length: N }, (_, i) => [6, i + 1]), ry: -Math.PI / 2 },
+    { axis: 'z', fixed: X1 - .02, cells: Array.from({ length: N }, (_, i) => [N, i + 1]), ry: -Math.PI / 2 },
   ];
   for (const run of runs) {
     let start = 0;
@@ -649,15 +1808,47 @@ function buildOuterSigns() {
 }
 
 function buildFurniture() {
-  FURN.forEach(f => {
+  MERGED.forEach(f => {
     if (f.kind === 'bed') bed(f.cells, f.axis);
-    else if (f.kind === 'table') table(f.cells, f.axis);
+    else if (f.kind === 'table') table(f.cells);
     else if (f.kind === 'chair') chair(f.cells[0]);
     else if (f.kind === 'rug') rug(f.cells);
     else if (f.kind === 'plant') plant(f.cells[0]);
     else if (f.kind === 'tv') tv(f.cells[0]);
+    else if (f.kind === 'jacuzzi') jacuzzi(f.cells);
+    else if (f.kind === 'shelf') shelf(f.cells, f.axis);
+    else if (f.kind === 'crate') crate(f.cells[0]);
+    else if (f.kind === 'tree') tree(f.cells[0]);
+    else if (f.kind === 'bush') bush(f.cells);
+    else if (f.kind === 'rubble') rubble(f.cells);
+    else if (f.kind === 'boat') boat(f.cells);
+    else if (f.kind === 'crocodile') crocodile(f.cells[0]);
   });
-  window_(...WINDOW);
+  buildWaterRooms();
+  if (WINDOW) window_(...WINDOW);
+}
+
+/* ------------------------------------------------------------------ north, south, east, west
+   The outer walls are tall, so they are where the compass goes: one big word on
+   each, facing into the room, above head height. R1 is north, the hall is south. */
+function buildCompass() {
+  const mark = (name, x, z, ry) => {
+    const t = tex(768, 192, (g, w, h) => {
+      g.clearRect(0, 0, w, h);
+      g.fillStyle = 'rgba(224,176,114,.85)';
+      g.font = '700 112px ui-monospace,monospace';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(name, w / 2, h / 2 + 4);
+    });
+    const m = plane(2.6, .65, new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false }),
+      x, 2.45, z);
+    m.rotation.y = ry;
+    register(m, 'compass_' + name.toLowerCase(), name.toLowerCase());
+  };
+  mark('NORTH', 0, OZ0 + .03, 0);
+  mark('SOUTH', 0, Z1 - .03, Math.PI);
+  mark('WEST', OX0 + .03, (OZ0 + Z1) / 2, Math.PI / 2);
+  mark('EAST', OX1 - .03, (OZ0 + Z1) / 2, -Math.PI / 2);
 }
 
 /* ------------------------------------------------------------------ the case file */
@@ -666,22 +1857,20 @@ const caseTex = tex(640, 900, (g, w, h) => {
   g.strokeStyle = '#1b1619'; g.lineWidth = 8; g.strokeRect(16, 16, w - 32, h - 32);
   g.fillStyle = '#1b1619';
   g.font = '700 34px ui-monospace,monospace';
-  g.fillText('CASE 004 — VLADIMIR', 40, 74);
+  g.fillText('CASE — ' + VICTIM.name.toUpperCase(), 40, 74);
   g.font = '400 22px ui-monospace,monospace';
   g.fillStyle = '#6a2a26'; g.fillText('MURDER. THE HOUSE IS A GRID.', 40, 112);
-  const lines = [
-    ['ALEXANDER', 'sat on a bed.'],
-    ['BAS', 'was in the kitchen.'],
-    ['CLARISSA', 'stood next to a table.'],
-    ['DIANA', 'was next to the television.'],
-    ['ELSA', 'stood in front of the window.'],
-    ['VLADIMIR', 'lay in the last cell left over.'],
-  ];
+  const lines = PEOPLE.map(p => [p.name.toUpperCase(), p.clue.charAt(0).toLowerCase() + p.clue.slice(1) + '.']);
   lines.forEach(([who, what], i) => {
     g.fillStyle = '#1b1619'; g.font = '700 25px ui-monospace,monospace';
-    g.fillText(who, 40, 190 + i * 70);
-    g.fillStyle = '#3b3336'; g.font = '400 22px ui-monospace,monospace';
-    g.fillText(what, 40, 222 + i * 70);
+    g.fillText(who, 40, 168 + i * 66);
+    g.fillStyle = '#3b3336'; g.font = '400 20px ui-monospace,monospace';
+    let line = '';
+    what.split(' ').forEach(word => {                       // a long statement takes two lines
+      if ((line + ' ' + word).trim().length > 52) { g.fillText(line, 40, 194 + i * 66); line = word; }
+      else line = (line ? line + ' ' : '') + word;
+    });
+    g.fillText(line, 40, (what.length > 52 ? 214 : 194) + i * 66);
   });
   g.fillStyle = '#1b1619'; g.font = '700 24px ui-monospace,monospace';
   g.fillText('HOUSE RULES', 40, h - 250);
@@ -692,9 +1881,11 @@ const caseTex = tex(640, 900, (g, w, h) => {
     .forEach((l, i) => g.fillText(l, 40, h - 236 + i * 30));
   grain(g, w, h, .06);
 });
+/* The case file hangs on the outer wall of the corridor now: that is where you
+   stand while you work out who goes where, so that is where the list belongs. */
 function buildPlaque() {
   const g = new THREE.Group();
-  g.position.set(X0 + .04, 1.55, 1.6);
+  g.position.set(OX0 + .05, 1.55, 6.4);
   g.rotation.y = Math.PI / 2;
   scene.add(g);
   box(.8, 1.12, .05, M.darkWood, 0, 0, 0, g);           // the board, flat against the wall
@@ -703,37 +1894,68 @@ function buildPlaque() {
 }
 
 /* ------------------------------------------------------------------ people */
+/* A guest is a rig, not a statue: hips, a torso, a head, two arms with elbows
+   and two legs with knees. Their square decides the pose — stood on the floor,
+   sat on a chair, lain on a bed — and the pose is dropped onto whatever is
+   under it, so nobody sinks into a mattress or hangs through a seat. */
+const HIP_Y = .70, THIGH = .39, SHIN = .39, SHOULDER = .61, ARM = .32, FORE = .32;
+const COAT_TOP = .66, COAT_H = .82;                 // the coat ends .16 below the hip
+const SEAT_Y = .39;                                 // the top of a chair
+const BED_Y = .60;                                  // the top of a bed
+
 function makePerson(p) {
   const g = new THREE.Group();
   scene.add(g);
   const coat = new THREE.MeshStandardMaterial({ color: p.colour, roughness: .85 });
   const skinMat = new THREE.MeshStandardMaterial({ color: p.skin, roughness: .72 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x221b1e, roughness: .9 });
+  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x17131a, roughness: .78 });
   const hairMat = new THREE.MeshStandardMaterial({ color: p.hair, roughness: .88 });
   const eyeWhite = new THREE.MeshStandardMaterial({ color: 0xf2ece2, roughness: .5 });
   const pupil = new THREE.MeshStandardMaterial({ color: 0x14181c, roughness: .4 });
   const lip = new THREE.MeshStandardMaterial({ color: p.victim ? 0x7a4a4a : 0x8a4a48, roughness: .8 });
 
+  /* the rig: a pivot per joint. `body` is the whole figure — it is what gets
+     laid down or turned on its hands — and `rig` is the joint at the hips. */
   const body = new THREE.Group();
-  if (p.victim) {
-    // lay him down around his own middle, so the whole of him stays on his square
-    const pose = new THREE.Group();
-    pose.rotation.set(0, .7, Math.PI / 2);
-    pose.position.set(0, .2, 0);
-    g.add(pose);
-    body.scale.setScalar(.72);
-    body.position.y = -.9 * .72;
-    pose.add(body);
-  } else {
-    g.add(body);
-  }
-  // legs, coat, arms
-  cyl(.07, .07, .78, 8, dark, -.15, .3, 0, body);
-  cyl(.07, .07, .78, 8, dark, .15, .3, 0, body);
-  cyl(.22, .3, .92, 14, coat, 0, .9, 0, body);
-  // from the shoulder, down and a little away from the body
-  cyl(.06, .055, .64, 8, coat, -.25, .99, 0, body).rotation.z = -.15;
-  cyl(.06, .055, .64, 8, coat, .25, .99, 0, body).rotation.z = .15;
+  g.add(body);
+  const rig = new THREE.Group();
+  rig.position.y = HIP_Y;
+  body.add(rig);
+  const torso = new THREE.Group();
+  rig.add(torso);
+  // hem to shoulder, so the legs are not hidden by a long coat
+  const coatMesh = cyl(.24, .27, COAT_H, 14, coat, 0, COAT_TOP - COAT_H / 2, 0, torso);
+
+  const arm = side => {
+    const upper = new THREE.Group();
+    upper.position.set(side * .28, SHOULDER, 0);          // from the shoulder, down and a little out
+    torso.add(upper);
+    cyl(.06, .055, ARM, 8, coat, 0, -ARM / 2, 0, upper);
+    const lower = new THREE.Group();
+    lower.position.set(0, -ARM, 0);
+    upper.add(lower);
+    cyl(.055, .05, FORE, 8, coat, 0, -FORE / 2, 0, lower);
+    sphere(.052, skinMat, 0, -FORE, 0, lower, 8);          // a hand on the end
+    return [upper, lower];
+  };
+  const [armL, foreL] = arm(-1), [armR, foreR] = arm(1);
+
+  const leg = side => {
+    const thigh = new THREE.Group();
+    thigh.position.set(side * .15, 0, 0);
+    rig.add(thigh);
+    cyl(.075, .075, THIGH, 8, dark, 0, -THIGH / 2, 0, thigh);
+    const shin = new THREE.Group();
+    shin.position.set(0, -THIGH, 0);
+    thigh.add(shin);
+    cyl(.07, .06, SHIN, 8, dark, 0, -SHIN / 2, 0, shin);
+    box(.14, .05, .25, shoeMat, 0, -SHIN + .005, -.055, shin);
+    return [thigh, shin];
+  };
+  const [thighL, shinL] = leg(-1), [thighR, shinR] = leg(1);
+  const j = { torso, al: armL, ar: armR, fl: foreL, fr: foreR,
+    tl: thighL, tr: thighR, sl: shinL, sr: shinR };
 
   // head
   const head = new THREE.Group();
@@ -760,12 +1982,15 @@ function makePerson(p) {
     [-.106, .106].forEach(x => box(.005, .005, .07, frame, x, .03, faceZ + .02, head));
   }
 
-  // hair: a cap over the crown only, so the eyes and nose stay clear
-  const capGeo = new THREE.SphereGeometry(.197, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.4);
-  const cap = new THREE.Mesh(capGeo, hairMat);
-  cap.position.set(0, .008, 0);
-  cap.scale.set(1.02, 1.02, 1.06);
-  head.add(cap);
+  // hair: a cap over the crown only, so the eyes and nose stay clear. `bald` has
+  // no cap at all and `balding` keeps only the sides and the back.
+  if (p.style !== 'bald' && p.style !== 'balding') {
+    const capGeo = new THREE.SphereGeometry(.197, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.4);
+    const cap = new THREE.Mesh(capGeo, hairMat);
+    cap.position.set(0, .008, 0);
+    cap.scale.set(1.02, 1.02, 1.06);
+    head.add(cap);
+  }
   if (p.style === 'long') {
     [-.155, .155].forEach(x => {
       const side = cyl(.055, .04, .5, 8, hairMat, x, -.16, .02, head);
@@ -777,6 +2002,33 @@ function makePerson(p) {
     [-.16, .16].forEach(x => cyl(.05, .038, .3, 8, hairMat, x, -.06, .02, head));
     const back = cyl(.14, .1, .26, 10, hairMat, 0, -.06, .12, head);
     back.scale.set(1.05, 1, .5);
+  } else if (p.style === 'bob') {
+    // a bob: a straight fringe and two panels down to the jaw
+    box(.3, .07, .03, hairMat, 0, .1, faceZ - .005, head);
+    [-.17, .17].forEach(x => {
+      const side = cyl(.075, .06, .38, 10, hairMat, x, -.1, .01, head);
+      side.rotation.z = x < 0 ? .05 : -.05;
+    });
+    const back = cyl(.17, .13, .34, 12, hairMat, 0, -.09, .1, head);
+    back.scale.set(1.05, 1, .55);
+  } else if (p.style === 'crop') {
+    // very short and spiky: the cap, plus a few tufts standing up
+    for (let i = 0; i < 9; i++) {
+      const a = i / 9 * Math.PI * 2;
+      const tuft = cyl(.018, .034, .07, 6, hairMat,
+        Math.cos(a) * .115, .185 + (i % 2) * .012, Math.sin(a) * .115, head);
+      tuft.rotation.z = Math.cos(a) * .35;
+      tuft.rotation.x = -Math.sin(a) * .35;
+    }
+  } else if (p.style === 'balding') {
+    // the sides and the back, with the crown bare
+    [-.165, .165].forEach(x => {
+      const side = cyl(.05, .04, .2, 8, hairMat, x, -.02, .01, head);
+      side.rotation.z = x < 0 ? .07 : -.07;
+    });
+    const back = cyl(.14, .11, .22, 10, hairMat, 0, -.02, .11, head);
+    back.scale.set(1.02, 1, .5);
+    box(.02, .015, .12, hairMat, .16, .06, -.04, head);          // a last strand over the ear
   } else if (p.style === 'updo') {
     // grey and fancy: swept back, with a bun
     const sweep = sphere(.16, hairMat, 0, .075, .05, head, 12);
@@ -793,38 +2045,44 @@ function makePerson(p) {
     box(.08, .018, .02, hairMat, 0, -.062, faceZ + .006, head);   // moustache
   }
 
+  /* the head sits on the shoulders — or, for the body, wherever it came to
+     rest. It hangs off the group rather than the torso so a pose can put it
+     down on the floor beside him. */
+  let neck = null;
+  const blood = new THREE.Group();
+  g.add(blood);
   if (p.victim) {
-    // no head on the shoulders: a stump, and the head lying where it came to rest
-    const neck = cyl(.06, .07, .1, 8, skinMat, 0, 1.49, 0, body);
+    neck = new THREE.Object3D();
+    neck.position.set(0, .88, 0);                    // where the head used to sit
+    torso.add(neck);
+    cyl(.06, .07, .1, 8, skinMat, 0, .79, 0, torso);
     const bloodMat0 = new THREE.MeshStandardMaterial({ color: 0x4c0808, roughness: .3 });
-    const stump = cyl(.062, .062, .02, 10, bloodMat0, 0, 1.545, 0, body);
+    cyl(.062, .062, .02, 10, bloodMat0, 0, .845, 0, torso);
     head.position.set(.62, .17, .5);
-    head.rotation.set(-.3, .5, 1.35);                  // lying on its side, facing the room
+    head.rotation.set(-.3, .5, 1.35);                // lying on its side, facing the room
     g.add(head);
     const neckBlood = new THREE.Mesh(new THREE.CircleGeometry(.09, 12), bloodMat0);
     neckBlood.rotation.x = -Math.PI / 2;
-    neckBlood.position.set(.62, .022, .5);
-    g.add(neckBlood);
-  } else {
-    head.position.set(0, 1.58, 0);
-    body.add(head);
-  }
-
-  if (p.victim) {
+    neckBlood.position.set(.62, .02, .5);
+    neckBlood.name = 'neckblood';
+    blood.add(neckBlood);
     const bloodMat = new THREE.MeshStandardMaterial({ color: 0x3f0606, roughness: .28, metalness: .05 });
     const pool = new THREE.Mesh(new THREE.CircleGeometry(.42, 24), bloodMat);
     pool.rotation.x = -Math.PI / 2;
     pool.scale.set(1.15, .8, 1);
     pool.position.set(-.02, .026, .08);
-    g.add(pool);
+    blood.add(pool);
     for (let i = 0; i < 9; i++) {                   // spatter, all of it inside the square
       const a = i / 9 * Math.PI * 2 + .4;
       const r = .42 + (i % 3) * .08;
       const drop = new THREE.Mesh(new THREE.CircleGeometry(.04 + (i % 4) * .016, 10), bloodMat);
       drop.rotation.x = -Math.PI / 2;
       drop.position.set(Math.cos(a) * r * 1.05, .028, .08 + Math.sin(a) * r * .8);
-      g.add(drop);
+      blood.add(drop);
     }
+  } else {
+    head.position.set(0, .88, 0);
+    torso.add(head);
   }
 
   // a name plate over their head
@@ -841,17 +2099,294 @@ function makePerson(p) {
   plate.position.set(0, p.victim ? 1.0 : 2.05, 0);
   plate.userData.billboard = true;
   g.add(plate);
+  /* a generous invisible body, so a guest is as easy to pick up lying on a bed
+     as standing in the middle of a square */
+  const ghost = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 1.8, 10),
+    new THREE.MeshBasicMaterial({ visible: false }));
+  ghost.position.y = .9;
+  g.add(ghost);
+
   g.userData.look = { skin: p.skin, hair: p.hair, style: p.style, glasses: !!p.glasses, beard: !!p.beard,
     beheaded: !!p.victim };
   register(g, 'p_' + p.id, p.name);
-  return { g, plate };
+  /* every material this guest is made of, so the jacuzzi can clip the lot below
+     the waterline and leave nothing but the head showing */
+  const mats = [coat, skinMat, dark, shoeMat, hairMat, eyeWhite, pupil, lip];
+  return { g, plate, body, j, coat: coatMesh, head, neck, blood, mats };
+}
+
+/* ------------------------------------------------------------------ poses
+   A pose is a handful of joint angles plus how the whole figure is turned.
+   Angles are for the body standing up; `lie` rolls it onto its back or its
+   side first, and then lays it down along the bed (or the floor), while `hip`
+   pins the hips at a height instead of dropping the figure onto the surface. */
+const pose = o => Object.assign({
+  t: [0, 0, 0], h: [0, 0, 0],
+  al: [0, 0, -.2], ar: [0, 0, .2], fl: [0, 0, 0], fr: [0, 0, 0],
+  tl: [0, 0, 0], tr: [0, 0, 0], sl: [0, 0, 0], sr: [0, 0, 0],
+  lie: null, flip: 0, turn: 0, hip: null, hem: null, dx: 0, dz: 0, center: false,
+}, o);
+
+/* stood about the floor: nothing here is allowed to float or to sink */
+const FLOOR_POSES = [
+  pose({ al: [0, 0, -.18], ar: [0, 0, .18] }),                                        // standing
+  pose({ ar: [2.6, 0, .8], fr: [.7, 0, 0], al: [0, 0, -.25], h: [0, .3, .12], tr: [0, 0, .14] }),  // waving
+  pose({ tr: [1.2, 0, .1], sr: [-1.7, 0, 0], al: [0, 0, -.95], ar: [0, 0, .95], h: [0, 0, .14] }), // one leg up
+  pose({ flip: Math.PI, al: [Math.PI, 0, -.58], ar: [Math.PI, 0, .58],
+    tl: [-.16, 0, -.1], tr: [.2, 0, .1], sl: [-.06, 0, 0], sr: [-.12, 0, 0] }),       // handstand
+  pose({ al: [2.9, 0, -.42], ar: [2.9, 0, .42], h: [-.34, 0, 0], t: [-.08, 0, 0] }),  // arms up
+  pose({ t: [-.32, 0, .3], h: [0, 0, -.24], al: [.2, 0, -.5], ar: [.45, 0, .55],
+    tl: [.12, 0, -.14], tr: [.12, 0, .16] }),                                         // leaning
+  pose({ t: [-.1, 0, 0], h: [.06, .1, .2], ar: [.35, 0, -.4], fr: [2.45, 0, 0],
+    al: [0, 0, -.2], tl: [.1, 0, -.1], tr: [.1, 0, .1] }),                            // thinking, chin in hand
+  pose({ ar: [1.5, 0, .22], fr: [.2, 0, 0], h: [0, .15, 0], al: [0, 0, -.2], tr: [0, 0, .1] }),  // pointing
+  pose({ t: [-.5, 0, 0], h: [.4, 0, 0], tl: [1.05, 0, -.18], tr: [1.05, 0, .18],
+    sl: [-1.9, 0, 0], sr: [-1.9, 0, 0], al: [.8, 0, -.2], ar: [.8, 0, .2],
+    fl: [.7, 0, 0], fr: [.7, 0, 0] }),                                                // crouching
+  pose({ lie: Math.PI / 2, center: true, al: [.7, 0, -.08], ar: [.5, 0, .08],
+    fl: [.7, 0, 0], fr: [.6, 0, 0], tl: [1.4, 0, -.06], tr: [1.2, 0, .08],
+    sl: [-1.3, 0, 0], sr: [-1.1, 0, 0] }),                                            // curled up on the floor
+  pose({ lie: Math.PI * .94, center: true, al: [0, 0, -.7], ar: [0, 0, .7],
+    tl: [.12, 0, -.14], tr: [.12, 0, .14] }),                                         // flat on the floor
+  pose({ al: [1.6, 0, -.3], ar: [1.6, 0, .3], fl: [2.0, 0, 0], fr: [2.0, 0, 0] }),    // arms crossed
+  pose({ al: [-.45, 0, -.25], ar: [-.45, 0, .25], fl: [.9, 0, 0], fr: [.9, 0, 0],
+    t: [-.06, 0, 0] }),                                                               // hands behind the back
+  pose({ al: [.25, 0, -.95], ar: [.25, 0, .95], fl: [1.7, 0, 1.15], fr: [1.7, 0, -1.15],
+    h: [0, .12, 0] }),                                                                // hands on the hips
+  pose({ al: [2.8, 0, -.45], ar: [2.8, 0, .45], fl: [.2, 0, 0], fr: [.2, 0, 0],
+    t: [-.18, 0, 0], h: [-.25, 0, 0], tl: [.1, 0, -.1], tr: [.1, 0, .1] }),           // a stretch
+  pose({ hip: .36, tl: [1.55, 0, -.7], tr: [1.55, 0, .7], sl: [-1.6, 0, -1.35], sr: [-1.6, 0, 1.35],
+    al: [.9, 0, -.3], ar: [.9, 0, .3], fl: [1.1, 0, 0], fr: [1.1, 0, 0], t: [-.12, 0, 0] }),  // sitting on the floor
+  pose({ hip: .58, tl: [.05, 0, -.05], tr: [.05, 0, .05], sl: [-1.95, 0, 0], sr: [-1.95, 0, 0],
+    al: [.3, 0, -.2], ar: [.3, 0, .2], h: [-.15, 0, 0] }),                             // kneeling
+  pose({ al: [2.9, 0, -.5], ar: [2.9, 0, .5], fl: [1.9, 0, 0], fr: [1.9, 0, 0],
+    t: [.05, 0, 0] }),                                                                 // hands behind the head
+];
+
+/* sat on a chair: the hips are pinned to the seat, the coat rides up, and the
+   legs are left to do something worth looking at */
+const SEAT = SEAT_Y + .10;
+const CHAIR_POSES = [
+  pose({ hip: SEAT, dz: -.09, t: [-.06, 0, 0], al: [.55, 0, -.16], ar: [.55, 0, .16],
+    fl: [.35, 0, 0], fr: [.35, 0, 0], tl: [1.31, 0, -.06], tr: [1.31, 0, .06],
+    sl: [-1.31, 0, 0], sr: [-1.31, 0, 0] }),                                          // hands on the knees
+  pose({ hip: SEAT, dz: -.09, hem: -.01, t: [.3, 0, 0], h: [-.18, 0, 0], al: [-.55, 0, -.5], ar: [-.55, 0, .5],
+    fl: [.25, 0, 0], fr: [.25, 0, 0], tl: [1.42, 0, -.08], tr: [1.42, 0, .08],
+    sl: [-.8, 0, 0], sr: [-.8, 0, 0] }),                                              // leaning back, legs out
+  pose({ hip: SEAT, dz: -.09, t: [-.36, 0, 0], h: [.3, 0, 0], al: [1.05, 0, -.34], ar: [1.05, 0, .34],
+    fl: [1.15, 0, 0], fr: [1.15, 0, 0], tl: [1.22, 0, -.45], tr: [1.22, 0, .45],
+    sl: [-1.35, 0, 0], sr: [-1.35, 0, 0] }),                                          // knees wide, elbows on them
+  pose({ hip: SEAT, dz: -.09, t: [-.12, 0, 0], h: [.08, 0, 0], al: [1.15, 0, -.25], ar: [1.15, 0, .25],
+    fl: [.85, 0, 0], fr: [.85, 0, 0], tl: [2.05, 0, -.14], tr: [2.05, 0, .14],
+    sl: [-2.15, 0, 0], sr: [-2.15, 0, 0] }),                                          // knees up, arms round them
+  pose({ hip: SEAT, dz: -.09, al: [.3, 0, -.5], ar: [.3, 0, .5], fl: [.5, 0, 0], fr: [.5, 0, 0],
+    tl: [1.3, 0, -.6], tr: [1.3, 0, .6], sl: [-1.5, 0, -1.25], sr: [-1.5, 0, 1.25] }),  // cross-legged
+  pose({ hip: SEAT, dz: -.12, turn: 1.2, al: [.4, 0, -.35], ar: [.5, 0, .3],
+    tl: [1.2, 0, -.2], tr: [1.35, 0, .3], sl: [-1.2, 0, 0], sr: [-1.55, 0, 0] }),     // turned sideways
+  pose({ hip: SEAT, dz: -.09, t: [-.45, 0, 0], al: [1.2, 0, -.3], ar: [1.2, 0, .3],
+    fl: [1.5, 0, 0], fr: [1.5, 0, 0], tl: [1.3, 0, -.08], tr: [1.3, 0, .08],
+    sl: [-1.3, 0, 0], sr: [-1.3, 0, 0] }),                                            // elbows on the knees
+  pose({ hip: SEAT, dz: -.09, t: [-.05, 0, 0], al: [2.9, 0, -.5], ar: [2.9, 0, .5],
+    fl: [1.9, 0, 0], fr: [1.9, 0, 0], tl: [1.3, 0, -.06], tr: [1.3, 0, .06],
+    sl: [-1.3, 0, 0], sr: [-1.3, 0, 0] }),                                            // hands behind the head
+  pose({ hip: SEAT, dz: -.09, al: [.5, 0, -.2], ar: [.5, 0, .2], fl: [.9, 0, 0], fr: [.9, 0, 0],
+    tl: [1.45, 0, -.2], tr: [1.5, 0, .35], sl: [-1.2, 0, -.75], sr: [-1.35, 0, 1.35] }),  // legs crossed at the knee
+];
+
+/* on a bed: lying poses settle onto the mattress, the two sitting ones pin the
+   hips just above it */
+const BED_SIT = BED_Y + .16;
+const BED_POSES = [
+  pose({ lie: Math.PI, center: true, al: [0, 0, -1.35], ar: [0, 0, 1.35],
+    fl: [1.9, 0, 0], fr: [1.9, 0, 0], tl: [.12, 0, -.12], tr: [.12, 0, .12] }),       // on his back, hands behind his head
+  pose({ lie: Math.PI / 2, center: true, al: [.7, 0, -.08], ar: [.5, 0, .06],
+    fl: [.7, 0, 0], fr: [.8, 0, 0], tl: [.6, 0, 0], sl: [-1.25, 0, 0],
+    tr: [.35, 0, 0], sr: [-.9, 0, 0] }),                                              // curled on his side
+  pose({ lie: Math.PI, center: true, al: [0, 0, -1.45], ar: [0, 0, 1.45],
+    tl: [0, 0, -.42], tr: [0, 0, .42], sl: [0, 0, 0], sr: [-.05, 0, 0] }),            // starfish
+  pose({ lie: 0, center: true, al: [1.35, 0, -.5], ar: [1.35, 0, .5],
+    fl: [1.9, 0, 0], fr: [1.9, 0, 0], h: [-.55, 0, 0],
+    tl: [.14, 0, -.1], tr: [.14, 0, .1], sl: [-.45, 0, 0], sr: [-.6, 0, 0] }),        // on his stomach, arms folded under his head
+  pose({ hip: BED_SIT + .26, t: [-.32, 0, 0], h: [.34, 0, 0], al: [.9, 0, -.5], ar: [.9, 0, .5],
+    fl: [.9, 0, 0], fr: [.9, 0, 0], tl: [-.25, 0, -.1], tr: [-.25, 0, .1],
+    sl: [-1.9, 0, 0], sr: [-1.9, 0, 0] }),                                            // kneeling on the bed
+  pose({ hip: BED_SIT, t: [-.1, 0, 0], al: [.35, 0, -.5], ar: [.35, 0, .5], fl: [.6, 0, 0], fr: [.6, 0, 0],
+    tl: [1.1, 0, -1.15], tr: [1.1, 0, 1.15], sl: [-1.7, 0, -1.1], sr: [-1.7, 0, 1.1] }),  // cross-legged on the bed
+  pose({ lie: Math.PI, center: true, al: [0, 0, -1.5], ar: [0, 0, 1.5],
+    fl: [.2, 0, 0], fr: [.2, 0, 0], tl: [.1, 0, -.3], tr: [.1, 0, .3] }),             // on his back, arms wide
+  pose({ lie: -Math.PI / 2, center: true, al: [.6, 0, -.1], ar: [.6, 0, .1],
+    fl: [.9, 0, 0], fr: [.9, 0, 0], tl: [.3, 0, -.05], tr: [.3, 0, .05],
+    sl: [-.5, 0, 0], sr: [-.5, 0, 0] }),                                              // on the other side
+  pose({ lie: 0, center: true, h: [-.5, 0, 0], al: [1.1, 0, -.4], ar: [1.1, 0, .4],
+    fl: [1.6, 0, 0], fr: [1.6, 0, 0], tl: [.1, 0, -.1], tr: [.1, 0, .1],
+    sl: [-.3, 0, 0], sr: [-.3, 0, 0] }),                                              // on his stomach, propped up
+];
+
+/* The body, however he was left. A dead man does not hold himself up: each of
+   these is flat on the surface, with the joints limp the way a body falls. */
+const DEAD_LIE = [
+  pose({ lie: Math.PI, center: true, t: [0, 0, .1], h: [.1, 0, .35],            // flat on his back
+    al: [.1, 0, -1.2], ar: [-.1, 0, 1.15], fl: [.25, 0, 0], fr: [.15, 0, 0],
+    tl: [.1, 0, -.18], tr: [.06, 0, .22], sl: [-.12, 0, 0], sr: [-.2, 0, 0] }),
+  pose({ lie: Math.PI / 2, center: true, t: [0, 0, .16], h: [.2, 0, .3],        // on his side, knees drawn up
+    al: [.6, 0, -.06], ar: [.45, 0, .05], fl: [.6, 0, 0], fr: [.75, 0, 0],
+    tl: [.95, 0, -.04], tr: [.55, 0, .06], sl: [-1.45, 0, 0], sr: [-1.05, 0, 0] }),
+  pose({ lie: 0, center: true, t: [0, 0, -.12], h: [0, .45, .25],               // face down, arms at his sides
+    al: [.15, 0, -.3], ar: [-.15, 0, .32], fl: [.1, 0, 0], fr: [.2, 0, 0],
+    tl: [.08, 0, -.14], tr: [.05, 0, .16], sl: [-.15, 0, 0], sr: [-.1, 0, 0] }),
+  pose({ lie: Math.PI * .96, center: true, t: [0, 0, -.05], h: [.12, 0, .5],    // sprawled, one arm above his head
+    al: [-.15, 0, -1.5], ar: [1.1, 0, 1.0], fl: [.15, 0, 0], fr: [.5, 0, 0],
+    tl: [.08, 0, -.42], tr: [.12, 0, .4], sl: [-.1, 0, 0], sr: [-.25, 0, 0] }),
+  pose({ lie: 0, center: true, t: [0, 0, .04], h: [.1, .5, .2],                 // face down, one arm reaching out
+    al: [-.2, 0, -1.2], ar: [.2, 0, .5], fl: [.2, 0, 0], fr: [.3, 0, 0],
+    tl: [.1, 0, -.2], tr: [.1, 0, .2], sl: [-.1, 0, 0], sr: [-.15, 0, 0] }),
+];
+const DEAD_CHAIR = [
+  pose({ hip: SEAT, dz: -.09, t: [-.45, 0, .12], h: [.45, 0, .2],               // slumped forward over his knees
+    al: [.15, 0, -.45], ar: [.1, 0, .47], fl: [.25, 0, 0], fr: [.2, 0, 0],
+    tl: [1.34, 0, -.08], tr: [1.3, 0, .12], sl: [-1.25, 0, 0], sr: [-1.18, 0, 0] }),
+  pose({ hip: SEAT, dz: -.09, t: [.25, 0, -.12], h: [-.4, 0, .3],               // thrown back against the chair
+    al: [.05, 0, -.5], ar: [.05, 0, .5], fl: [.06, 0, 0], fr: [.1, 0, 0],
+    tl: [1.3, 0, -.04], tr: [1.24, 0, .08], sl: [-.9, 0, 0], sr: [-.8, 0, 0] }),
+];
+const DEAD_POSES = { floor: DEAD_LIE, hall: DEAD_LIE, carry: DEAD_LIE, bed: DEAD_LIE, chair: DEAD_CHAIR,
+  jacuzzi: DEAD_LIE, boat: DEAD_LIE };
+const DEAD = DEAD_LIE[0];                     // the one the notes and the tests quote
+
+/* standing in the hall, nothing fancy — and the same posture while being carried */
+const HALL_POSE = pose({ al: [0, 0, -.15], ar: [0, 0, .15] });
+/* in the water: stood on the bottom, seen through the surface, head clear of it */
+const JACUZZI_POSES = [
+  pose({ al: [0, 0, -.35], ar: [0, 0, .35], h: [-.12, 0, 0], t: [-.04, 0, 0] }),
+  pose({ al: [0, 0, -.5], ar: [0, 0, .5], h: [-.2, .12, .08], t: [-.06, 0, 0] }),
+  pose({ al: [.35, 0, -.4], ar: [.35, 0, .4], h: [-.08, -.15, 0], t: [-.02, .1, 0] }),
+  pose({ al: [.15, 0, -.3], ar: [.15, 0, .3], fl: [.35, 0, 0], fr: [.35, 0, 0],
+    h: [-.35, 0, 0], t: [-.08, 0, 0] }),                                             // head back, shoulders under
+  pose({ al: [0, 0, -.6], ar: [0, 0, .6], h: [.15, .3, 0], t: [.05, 0, 0] }),        // looking up
+  pose({ al: [.3, 0, -.45], ar: [.3, 0, .45], fl: [.6, 0, 0], fr: [.6, 0, 0],
+    h: [-.1, -.2, 0] }),                                                             // shoulders hunched, chin down
+  pose({ al: [0, 0, -1.15], ar: [0, 0, 1.15], fl: [.85, 0, 0], fr: [.85, 0, 0],
+    tl: [.55, 0, -.32], tr: [.2, 0, .32], h: [-.06, 0, 0] }),                        // treading water
+  pose({ lie: Math.PI / 2, center: true, al: [2.55, 0, -.5], ar: [.45, 0, .3],
+    fl: [.35, 0, 0], fr: [.55, 0, 0], tl: [.3, 0, 0], tr: [1.15, 0, 0], h: [-.55, 0, 0] }),  // front crawl
+  pose({ lie: -Math.PI / 2, center: true, al: [2.2, 0, -.7], ar: [2.2, 0, .7],
+    fl: [.4, 0, 0], fr: [.4, 0, 0], tl: [.2, 0, .1], tr: [.65, 0, -.1], h: [.2, 0, 0] }),    // backstroke
+  pose({ lie: Math.PI / 2, center: true, al: [1.35, 0, -.95], ar: [1.35, 0, .95],
+    fl: [.95, 0, .32], fr: [.95, 0, -.32], tl: [.35, 0, 0], tr: [.25, 0, 0], h: [-.5, 0, 0] }),  // breaststroke
+];
+const POSES = { floor: FLOOR_POSES, hall: [HALL_POSE], chair: CHAIR_POSES, bed: BED_POSES,
+  carry: [HALL_POSE], jacuzzi: JACUZZI_POSES, boat: FLOOR_POSES };
+const AXIS_X = new THREE.Vector3(1, 0, 0), AXIS_Y = new THREE.Vector3(0, 1, 0), AXIS_Z = new THREE.Vector3(0, 0, 1);
+const spin = (axis, a) => new THREE.Quaternion().setFromAxisAngle(axis, a);
+
+/* upright frame → the square: roll onto the back or the side, then lay the body
+   down along the bed it is on (head at the pillow), then turn it on its hands. */
+function poseQuat(P, kind, k) {
+  const q = spin(AXIS_Z, P.flip || 0);
+  if (P.lie === null || P.lie === undefined) return q;
+  q.premultiply(spin(AXIS_Y, P.lie));
+  q.premultiply(spin(AXIS_X, -Math.PI / 2));
+  if (kind === 'bed' && BED_AXIS[k] === 'x') q.premultiply(spin(AXIS_Y, Math.PI / 2));
+  return q;
+}
+
+function hash(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+const setRot = (o, a) => o.rotation.set(a[0], a[1], a[2]);
+
+/* Put someone on a square: their statement says where, the square says how. */
+function applyPose(id, at, forced) {
+  const v = visuals[id], p = PEOPLE.find(q => q.id === id), g = v.g;
+  const k = at ? key(at[0], at[1]) : '';
+  const kind = forced || (!at ? 'hall'
+    : BEDS.has(k) ? 'bed' : CHAIRS.has(k) ? 'chair' : BOATS.has(k) ? 'boat'
+      : isWater(at[0], at[1]) ? 'jacuzzi' : 'floor');
+  /* Feet go on whatever is under the guest: the boards of a boat, the bottom of the
+     tub, the bed of a river. The water itself is see-through, so nothing is cut off. */
+  const surface = kind === 'bed' ? BED_Y
+    : kind === 'boat' ? (BOAT_Y_AT[k] ?? .18)
+      : kind === 'jacuzzi' ? (JACUZZIS.has(k) ? JACUZZI_Y - .06 : 0) : 0;
+  /* (the jacuzzi kind is "in water", whether that water is a tub or the sea) */
+  const seatY = kind === 'bed' ? BED_Y : SEAT_Y;            // what a sitting body sits on
+  const set = p.victim ? DEAD_POSES[kind] : POSES[kind];
+  const P = set[hash(id + (k || 'hall')) % set.length];
+
+  /* out in the hall or the corridor they face the house, wherever they are standing */
+  g.rotation.y = (kind === 'hall' || kind === 'carry'
+    ? Math.atan2(g.position.x, g.position.z)
+    : kind === 'chair' ? lookAngle(k) + Math.PI : Math.PI) + P.turn;   // a face is on the model's -z
+  v.body.position.set(0, 0, 0);
+  v.body.quaternion.copy(poseQuat(P, kind, k));
+  setRot(v.j.torso, P.t); setRot(v.j.al, P.al); setRot(v.j.ar, P.ar);
+  setRot(v.j.fl, P.fl); setRot(v.j.fr, P.fr);
+  setRot(v.j.tl, P.tl); setRot(v.j.tr, P.tr); setRot(v.j.sl, P.sl); setRot(v.j.sr, P.sr);
+  setRot(v.head, P.h);
+
+  /* a coat rides up when its owner sits down, so the hem stops at the seat */
+  const hem = P.hem !== null ? P.hem
+    : P.hip === null ? COAT_TOP - COAT_H : seatY + .18 - P.hip;   // a coat bunches up when its owner sits
+  const sy = (COAT_TOP - hem) / COAT_H;
+  v.coat.scale.y = sy;
+  v.coat.position.y = hem + COAT_H / 2 * sy;
+
+  if (P.hip !== null) {
+    v.body.position.set(P.dx, P.hip - HIP_Y, P.dz);         // hips pinned: sitting on something
+    g.updateMatrixWorld(true);
+    const seated = new THREE.Box3().setFromObject(v.body);
+    if (seated.min.y < 0) v.body.position.y -= seated.min.y;                  // feet stay out of the floor
+  } else {
+    v.body.position.set(P.dx, 0, P.dz);
+    g.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(v.body);
+    v.body.position.y += surface - bb.min.y;                // and nothing sinks into it
+    if (P.center && at) {                                   // lying down: middle of the square
+      const a = g.rotation.y;
+      const wx = g.position.x - (bb.min.x + bb.max.x) / 2;
+      const wz = g.position.z - (bb.min.z + bb.max.z) / 2;
+      v.body.position.x += wx * Math.cos(a) - wz * Math.sin(a);
+      v.body.position.z += wx * Math.sin(a) + wz * Math.cos(a);
+    }
+  }
+  /* in the water only the head is above the surface: the body stands on the bottom
+     and is shifted down under it — visible, because the water is see-through */
+  if (kind === 'jacuzzi' && !p.victim) {
+    /* a living guest keeps their head out of it: chin at the waterline, the rest of
+       them under. (Only the victim may be under the water altogether.) */
+    g.updateMatrixWorld(true);
+    const hb = new THREE.Box3().setFromObject(v.head);
+    v.body.position.y += (JACUZZI_Y - .04) - hb.min.y;
+    g.updateMatrixWorld(true);
+  }
+
+  if (p.victim) {
+    // the head goes where the neck ends up: off the chair and onto the floor, else on the same surface
+    const rest = P.hip === null ? surface : 0;
+    const wp = v.neck.getWorldPosition(new THREE.Vector3());
+    g.worldToLocal(wp);
+    v.head.position.set(wp.x + .44, rest + .2, wp.z + .32);
+    v.head.rotation.set(-.3, .5, 1.35);
+    const hb = new THREE.Box3().setFromObject(v.head);       // and it rests on that surface too
+    v.head.position.y += rest - hb.min.y;
+    const nb = v.blood.getObjectByName('neckblood');
+    if (nb) nb.position.set(wp.x + .44, .02, wp.z + .32);
+    v.blood.position.y = rest;
+  }
+  /* nothing is cut off at the waterline any more: the water is see-through, so the
+     whole of the guest in it is drawn, feet on the bottom */
+  for (const m of v.mats) m.clippingPlanes = null;
+  v.clipped = false;
+  v.surface = surface; v.kind = kind; v.pose = P;
 }
 
 /* ------------------------------------------------------------------ lights */
 const hemi = new THREE.HemisphereLight(0x4a3f48, 0x1a1516, 1.5);
 scene.add(hemi);
 scene.add(new THREE.AmbientLight(0x2a2430, .6));
-[[-5, -5], [0, -5], [5, -5], [-5, 0], [5, 0], [-5, 4], [0, 4], [5, 4], [0, 7]].forEach(([x, z], i) => {
+[[-5, -5], [0, -5], [5, -5], [-5, 0], [5, 0], [-5, 4], [0, 4], [5, 4], [0, 7],
+ [-6.9, -3], [-6.9, 4], [6.9, -3], [6.9, 4], [0, -6.9]].forEach(([x, z], i) => {
   const l = new THREE.PointLight(i % 2 ? 0xffd9a8 : 0xffe6c4, 55, 15, 2);
   l.position.set(x, 2.6, z);
   l.castShadow = i === 2;
@@ -860,11 +2395,13 @@ scene.add(new THREE.AmbientLight(0x2a2430, .6));
   cyl(.16, .2, .1, 12, new THREE.MeshStandardMaterial({ color: 0x2a2226, roughness: .8 }), x, 3.02, z);
   const bulb = sphere(.09, new THREE.MeshStandardMaterial({ color: 0xfff0d0, emissive: 0xffe6c4, emissiveIntensity: 2 }), x, 2.96, z, scene, 10);
 });
-// a shaft of window light
-const winLight = new THREE.SpotLight(0xa9c3e8, 5, 12, .7, .6, 1.2);
-winLight.position.set(X1 - .4, 2.5, cellZ(WINDOW[1]));
-winLight.target.position.set(2, 0, cellZ(WINDOW[1]));
-scene.add(winLight, winLight.target);
+// a shaft of window light, when the house has a window at all
+if (WINDOW) {
+  const winLight = new THREE.SpotLight(0xa9c3e8, 4, 10, .7, .6, 1.2);
+  winLight.position.set(X1 - .35, 1.05, cellZ(WINDOW[1]));
+  winLight.target.position.set(2, 0, cellZ(WINDOW[1]));
+  scene.add(winLight, winLight.target);
+}
 
 /* ------------------------------------------------------------------ build */
 buildShell();
@@ -872,17 +2409,23 @@ buildWalls();
 buildFurniture();
 buildSigns();
 buildPlaque();
+buildCorridorMarks();
+buildCompass();
 
 const visuals = {};
 PEOPLE.forEach(p => { visuals[p.id] = makePerson(p); });
 // the hall plinths everyone waits on
-const PLINTH_X = [-4.6, -2.75, -.9, .95, 2.8, 4.65];
+/* one plinth per guest, spread across the hall and against its south wall */
+const PLINTH_STEP = Math.min(1.8, (X1 - X0 - 1.4) / Math.max(1, PEOPLE.length - 1));
+const PLINTH_X = PEOPLE.map((_, i) => (i - (PEOPLE.length - 1) / 2) * PLINTH_STEP);
+const PLINTH_Z = Z1 - .9;
 PEOPLE.forEach((p, i) => {
-  const x = PLINTH_X[i], z = 7.9;
+  const x = PLINTH_X[i], z = PLINTH_Z;
   box(.9, .18, .9, M.darkWood, x, .09, z);
   SOLIDS.push(S(x - .45, x + .45, 0, .2, z - .45, z + .45));
   visuals[p.id].g.position.set(x, .18, z);
   visuals[p.id].home = new THREE.Vector3(x, .18, z);
+  applyPose(p.id, null);
 });
 
 // invisible pick squares, one per cell
@@ -897,10 +2440,68 @@ for (let c = 1; c <= N; c++) for (let r = 1; r <= N; r++) {
   cellPick[key(c, r)] = m;
 }
 
+/* ------------------------------------------------------------------ remembering
+   A refresh should not lose the grid. The placements, the crosses and anyone set
+   down in the hall are kept for this room in this browser, and put back on load. */
+const SAVE_KEY = id => 'murdoku.state.' + id;
+function savedState() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY(LEVEL.id)) || 'null'); } catch { return null; }
+}
+function saveState() {
+  try {
+    localStorage.setItem(SAVE_KEY(LEVEL.id), JSON.stringify({
+      placed: state.placed, marks: [...state.marks], parked: state.parked, seen: state.seen,
+      cam: { x: camera.position.x, z: camera.position.z, yaw, pitch },
+    }));
+  } catch { /* private mode: it just forgets */ }
+}
+function forgetState() {
+  try { localStorage.removeItem(SAVE_KEY(LEVEL.id)); } catch { /* nothing to do */ }
+}
+function restoreState() {
+  const saved = savedState();
+  if (!saved) return;
+  const ok = (c, r) => Number.isInteger(c) && Number.isInteger(r) && c >= 1 && c <= N && r >= 1 && r <= N;
+  for (const [id, at] of Object.entries(saved.placed || {})) {
+    const p = PEOPLE.find(q => q.id === id);
+    if (!p || !Array.isArray(at) || !ok(at[0], at[1]) || NO_STAND.has(key(at[0], at[1]))) continue;
+    state.placed[id] = [at[0], at[1]];
+    const g = visuals[id].g;
+    g.position.set(cellX(at[0]), 0, cellZ(at[1]));
+    applyPose(id, [at[0], at[1]]);
+  }
+  for (const k of saved.marks || []) {
+    const [c, r] = String(k).split(',').map(Number);
+    if (ok(c, r) && !NO_STAND.has(key(c, r))) state.marks.add(k);
+  }
+  syncMarks();
+  for (const [id, spot] of Object.entries(saved.parked || {})) {
+    const p = PEOPLE.find(q => q.id === id);
+    if (!p || !spot || !Number.isFinite(spot.x) || !Number.isFinite(spot.z)) continue;
+    const s2 = hallSpot(spot.x, spot.z);
+    if (!s2) continue;
+    state.parked[id] = s2;
+    visuals[id].g.position.set(s2.x, 0, s2.z);
+    applyPose(id, null);
+  }
+}
+
 /* ------------------------------------------------------------------ crosses */
-function markMesh(x, z) {
+/* A cross goes on top of whatever is on the square, so it can be seen: on the
+   bed, on the carpet, on the floor. A square nobody could stand on — a table,
+   a plant, the television — takes no cross at all. */
+function markY(c, r) {
+  const k = key(c, r);
+  if (BEDS.has(k)) return BED_Y + .02;
+  if (JACUZZIS.has(k)) return JACUZZI_Y + .03;
+  if (RUGS.has(k)) return .09;
+  if (isWater(c, r)) return JACUZZI_Y + .03;
+  if (BOATS.has(k)) return (BOAT_Y_AT[k] ?? .18) + .3;
+  return .05;
+}
+function markMesh(x, z, y = .05) {
   const g = new THREE.Group();
-  g.position.set(x, .05, z);
+  g.position.set(x, y, z);
   scene.add(g);
   const mat = new THREE.MeshStandardMaterial({ color: 0xd8cfc0, roughness: .6 });
   box(.9, .02, .12, mat, 0, 0, 0, g).rotation.y = Math.PI / 4;
@@ -916,7 +2517,7 @@ function syncMarks() {
   for (const k of state.marks) {
     if (markObjs[k]) continue;
     const [c, r] = k.split(',').map(Number);
-    markObjs[k] = markMesh(cellX(c), cellZ(r));
+    markObjs[k] = markMesh(cellX(c), cellZ(r), markY(c, r));
   }
 }
 
@@ -938,6 +2539,24 @@ function toast(msg, kind = '') {
 function banner(html) { bannerEl.innerHTML = html; bannerEl.hidden = false; }
 
 const person = id => PEOPLE.find(p => p.id === id);
+
+/* What stands on a square, said plainly — a rug is a rug, and a table is a table
+   nobody may stand on. */
+const PIECE_WORD = { bed: 'a bed', chair: 'a chair', rug: 'a rug', table: 'a table',
+  plant: 'a plant', tv: 'the television', jacuzzi: 'the jacuzzi', shelf: 'a shelf',
+  crate: 'a crate', tree: 'a tree', bush: 'a bush', rubble: 'rubble', boat: 'a boat',
+  crocodile: 'a crocodile' };
+function pieceAt(c, r) { return PIECE_WORD[KIND_AT[key(c, r)]] || null; }
+function describeSquare(c, r) {
+  const k = key(c, r);
+  const piece = pieceAt(c, r);
+  let text = !piece ? (isWater(c, r) ? 'the water — you can stand in it' : 'empty floor')
+    : KIND_AT[k] === 'jacuzzi' ? `${piece} — you can stand in the water`
+      : NO_STAND.has(k) ? `${piece} — nobody can stand on it`
+        : piece;
+  if (state.marks.has(k)) text += ' · crossed out';
+  return text + '.';
+}
 const placedList = () => PEOPLE.filter(p => state.placed[p.id]);
 
 function openPad() {
@@ -951,9 +2570,10 @@ function togglePad() {
 function renderPad() {
   $('#padPeople').innerHTML = PEOPLE.map(p => {
     const at = state.placed[p.id];
-    const ok = at && p.test ? p.test(at[0], at[1]) : null;
+    const ok = at && p.test ? p.test(at[0], at[1], state.placed) : null;
     const tag = !at ? '<b class="none">·</b>' : ok === null ? '<b class="none">?</b>' : ok ? '<b>✓</b>' : '<b class="no">✗</b>';
-    const where = at ? `C${at[0]}R${at[1]} · ${roomAt(at[0], at[1])}` : 'in the hall';
+    const where = at ? `C${at[0]}R${at[1]} · ${roomAt(at[0], at[1])}`
+      : state.parked[p.id] ? 'set down outside the grid' : 'in the hall';
     const colour = '#' + p.colour.toString(16).padStart(6, '0');
     return `<li class="person" style="border-left-color:${colour}">
       <i class="chip" style="background:${colour}"></i>
@@ -963,7 +2583,7 @@ function renderPad() {
       ${tag}</li>`;
   }).join('');
   $('#padClues').innerHTML = `
-    <li><span>placed</span><b class="${placedList().length === 6 ? '' : 'none'}">${placedList().length}/6</b></li>
+    <li><span>placed</span><b class="${placedList().length === PEOPLE.length ? '' : 'none'}">${placedList().length}/${PEOPLE.length}</b></li>
     <li><span>one per column</span><b class="${columnsOK() ? '' : 'no'}">${columnsOK() ? 'yes' : 'no'}</b></li>
     <li><span>one per row</span><b class="${rowsOK() ? '' : 'no'}">${rowsOK() ? 'yes' : 'no'}</b></li>
     <li><span>marks</span><b class="none">${state.marks.size}</b></li>`;
@@ -1019,6 +2639,8 @@ function target() {
     let o = h.object;
     while (o) {
       if (o.userData && o.userData.interact) {
+        // whoever you are carrying is between you and the floor: look past them
+        if (state.carry && o.userData.interact === 'p_' + state.carry) break;
         return { id: o.userData.interact, object: o, label: o.userData.label || '', point: h.point };
       }
       o = o.parent;
@@ -1029,9 +2651,44 @@ function target() {
 
 /* ------------------------------------------------------------------ placing */
 function cellOfPoint(pt) {
-  const c = clamp(Math.round(pt.x / CELL + 3.5), 1, N);
-  const r = clamp(Math.round(pt.z / CELL + 3.5), 1, N);
+  const c = clamp(Math.round(pt.x / CELL + (N + 1) / 2), 1, N);
+  const r = clamp(Math.round(pt.z / CELL + (N + 1) / 2), 1, N);
   return [c, r];
+}
+/* The hall and the corridor round the house are free floor. Anything put down
+   out there is a note to yourself — "these two are a row, and that column is
+   theirs" — and never counts as a placement: the grid, the notes and the case
+   all ignore it. All four sides of the grid are fair. */
+const outside = (x, z) => x < X0 - .55 || x > X1 + .55 || z < Z0 - .55 || z > GRID_Z1 + .55;
+const corridor = (x, z) => outside(x, z) && x > OX0 + .45 && x < OX1 - .45 && z > OZ0 + .45 && z < Z1 - .45;
+function hallSpot(x, z) {
+  const px = clamp(x, OX0 + .55, OX1 - .55), pz = clamp(z, OZ0 + .55, Z1 - .55);
+  if (!corridor(px, pz)) return null;                // not in the grid, and not in a wall
+  for (const p of PEOPLE) {                          // keep a body's width apart
+    if (p.id === state.carry) continue;
+    const g = visuals[p.id].g;
+    if (Math.hypot(g.position.x - px, g.position.z - pz) < .8) return null;
+  }
+  for (const s of SOLIDS) {                          // and off the plinths
+    if (s.y1 > .3) continue;
+    if (px > s.x0 - .3 && px < s.x1 + .3 && pz > s.z0 - .3 && pz < s.z1 + .3) return null;
+  }
+  return { x: px, z: pz };
+}
+function park(id, x, z) {
+  const p = person(id);
+  const spot = hallSpot(x, z);
+  if (!spot) { toast('No room for them there.', 'bad'); return false; }
+  delete state.placed[id];
+  state.parked[id] = spot;
+  state.carry = null;
+  const g = visuals[id].g;
+  g.position.set(spot.x, 0, spot.z);
+  applyPose(id, null);
+  saveState();
+  toast(`${p.name} set down beside the grid — a note to yourself, not a placement.`);
+  renderPad();
+  return true;
 }
 function occupantOf(c, r) {
   return PEOPLE.find(p => { const at = state.placed[p.id]; return at && at[0] === c && at[1] === r; });
@@ -1041,8 +2698,11 @@ function lift(id) {
   if (!p) return;
   if (state.carry) putBack(state.carry, false);
   if (state.placed[id]) delete state.placed[id];
+  delete state.parked[id];
   state.carry = id;
   visuals[id].g.position.set(0, 0, 0);
+  applyPose(id, null, 'carry');
+  saveState();
   toast(`Carrying ${p.name}. Stand where they stood, then press E.`);
   renderPad();
 }
@@ -1051,18 +2711,23 @@ function place(id, c, r) {
   const k = key(c, r);
   if (state.marks.has(k)) { toast('That square is crossed out.', 'bad'); return false; }
   if (NO_STAND.has(k)) {
-    const what = TABLES.has(k) ? 'the table' : PLANTS.has(k) ? 'the plant' : 'the television';
+    const what = TABLES.has(k) ? 'the table' : PLANTS.has(k) ? 'the plant'
+      : SHELVES.has(k) ? 'the shelf' : CRATES.has(k) ? 'the crate' : TREES.has(k) ? 'the tree'
+        : BUSHES.has(k) ? 'the bush' : RUBBLE.has(k) ? 'the rubble' : CROCS.has(k) ? 'the crocodile'
+          : 'the television';
     toast(`Nobody stands on ${what}.`, 'bad');
     return false;
   }
   const other = occupantOf(c, r);
   if (other && other.id !== id) { toast(`${other.name} is standing there.`, 'bad'); return false; }
   state.placed[id] = [c, r];
+  delete state.parked[id];
   state.carry = null;
   const g = visuals[id].g;
   g.position.set(cellX(c), 0, cellZ(r));
-  g.rotation.y = Math.PI;
-  const ok = p.test ? p.test(c, r) : null;
+  applyPose(id, [c, r]);
+  saveState();
+  const ok = p.test ? p.test(c, r, state.placed) : null;
   toast(ok === null ? `${p.name} on C${c}R${r} — ${roomAt(c, r)}.`
     : ok ? `${p.name} on C${c}R${r}. That fits their statement.`
       : `${p.name} on C${c}R${r}. That does not fit their statement.`, ok === false ? 'bad' : ok ? 'good' : '');
@@ -1074,10 +2739,12 @@ function place(id, c, r) {
 }
 function putBack(id, say = true) {
   if (state.placed[id]) delete state.placed[id];
+  delete state.parked[id];
   if (state.carry === id) state.carry = null;
   const g = visuals[id].g;
   g.position.copy(visuals[id].home);
-  g.rotation.y = Math.PI;
+  applyPose(id, null);
+  saveState();
   if (say) toast(`${person(id).name} goes back to the hall.`);
   renderPad();
 }
@@ -1094,17 +2761,17 @@ function murdererOf() {
 function giveKnife(id) {
   const g = visuals[id].g;
   if (g.userData.knife) return;
-  g.userData.knife = true;
   const steel = new THREE.MeshStandardMaterial({ color: 0xb9c2c8, roughness: .16, metalness: .92 });
   const edge = new THREE.MeshStandardMaterial({ color: 0xe6edf1, roughness: .1, metalness: .95 });
   const wet = new THREE.MeshStandardMaterial({ color: 0x6e0c0c, roughness: .28, emissive: 0x2a0404, emissiveIntensity: .5 });
   const handleMat = new THREE.MeshStandardMaterial({ color: 0x1b1715, roughness: .82 });
   const brass = new THREE.MeshStandardMaterial({ color: 0x9c8150, roughness: .35, metalness: .8 });
   const knife = new THREE.Group();
-  knife.position.set(.27, 1.12, -.24);        // in front of the body, where the hand is
-  knife.rotation.set(-.3, .15, .45);                      // held up and out, toward whoever is looking
+  knife.position.set(0, -.34, 0);             // in the hand, at the end of the forearm
+  knife.rotation.set(Math.PI, 0, .3);                     // blade on past the hand
   knife.scale.setScalar(1.1);
-  g.add(knife);
+  visuals[id].j.fr.add(knife);
+  g.userData.knife = knife;
   cyl(.017, .019, .12, 10, handleMat, 0, 0, 0, knife);    // handle
   sphere(.02, brass, 0, -.066, 0, knife, 10);             // pommel
   box(.062, .012, .022, brass, 0, .066, 0, knife);        // guard
@@ -1123,6 +2790,16 @@ function giveKnife(id) {
   glow.position.set(0, .22, 0);
   knife.add(glow);
 }
+/* A knife in a hand that happens to point at a wall would go through it. Held
+   upright it cannot: the blade rises out of the fist, wherever the arm is. */
+function levelKnife(id) {
+  const k = visuals[id].g.userData.knife;
+  if (!k || !k.parent) return;
+  const q = new THREE.Quaternion();
+  k.parent.getWorldQuaternion(q);
+  k.quaternion.copy(q.invert());
+  k.updateMatrixWorld(true);
+}
 function revealMurderer(id) {
   const p = person(id);
   const at = state.placed[id];
@@ -1138,10 +2815,13 @@ function revealMurderer(id) {
   else { if (dc) dirs.push([dc, 0]); if (dr) dirs.push([0, dr]); }
   dirs.push([0, 1], [1, 0], [0, -1], [-1, 0]);
   let spot = null;
+  const blocked = (c, r) => SOLIDS.some(s2 => s2.y1 > P.stepUp
+    && cellX(c) > s2.x0 - P.r && cellX(c) < s2.x1 + P.r
+    && cellZ(r) > s2.z0 - P.r && cellZ(r) < s2.z1 + P.r);
   for (const [a, b] of dirs) {
     const c = at[0] + a, r = at[1] + b;
     if (c < 1 || c > N || r < 1 || r > N) continue;
-    if (occupantOf(c, r) || NO_STAND.has(key(c, r))) continue;
+    if (occupantOf(c, r) || NO_STAND.has(key(c, r)) || blocked(c, r)) continue;
     spot = [c, r];
     break;
   }
@@ -1149,32 +2829,37 @@ function revealMurderer(id) {
   const cx = cellX(spot[0]), cz = cellZ(spot[1]);
   state.started = false;
   visuals[id].g.rotation.y = Math.atan2(-(cx - mx), -(cz - mz));   // the face looks down local −z
+  levelKnife(id);                                                  // and the blade stands up, clear of the wall
   camera.position.set(cx, 1.62, cz);
   yaw = Math.atan2(-(mx - cx), -(mz - cz));
   pitch = Math.atan2(1.3 - 1.62, Math.hypot(mx - cx, mz - cz));
   camera.rotation.set(pitch, yaw, 0);
   camera.updateMatrixWorld(true);
   state.started = true;
+  const next = nextRoom();
   banner('THE MURDERER IS ' + p.name.toUpperCase()
-    + `<small>${p.name} was alone in the ${where} with the body. Vladimir can rest.</small>`);
-  toast(`${p.name} shared the ${where} with Vladimir — and the knife is still in hand.`, 'good');
+    + `<small>${p.name} was alone in the ${where} with the body. ${VICTIM.name} can rest.</small>`
+    + (next ? `<a href="?level=${next.id}">next room — ${next.title.replace(/^the /, '')} →</a>` : ''));
+  toast(`${p.name} shared the ${where} with ${VICTIM.name} — and the knife is still in hand.`, 'good');
 }
 function checkWin() {
   if (state.won) return;
   if (placedList().length < PEOPLE.length) return;
   if (!linesOK()) return;
-  const wrong = PEOPLE.filter(p => p.test && !p.test(...state.placed[p.id]));
+  const wrong = PEOPLE.filter(p => p.test && !p.test(...state.placed[p.id], state.placed));
   if (wrong.length) {
     toast(`${wrong.length} statement${wrong.length > 1 ? 's do' : ' does'} not fit yet.`, 'bad');
     return;
   }
   if (!murdererOf()) {
-    toast('Vladimir has to be in a room with exactly one other person.', 'bad');
+    toast(`${VICTIM.name} has to be in a room with exactly one other person.`, 'bad');
     return;
   }
   if (state.codes === undefined) { /* not this room's state */ }
   state.won = true;
   state.murderer = murdererOf();
+  markDone(LEVEL.id);
+  document.exitPointerLock?.();          // the banner's next-room link has to be clickable
   banner('CASE CLOSED<small>everyone accounted for. One of them is holding the knife.</small>');
   toast('The grid holds: every statement fits, every row and column has one of them — and the body shares its room with one person.', 'good');
   openPad();
@@ -1233,8 +2918,8 @@ function move(dt) {
   }
   const pos = { x: camera.position.x, z: camera.position.z };
   resolve(pos);
-  pos.x = clamp(pos.x, X0 + .4, X1 - .4);
-  pos.z = clamp(pos.z, Z0 + .4, Z1 - .4);
+  pos.x = clamp(pos.x, OX0 + .4, OX1 - .4);
+  pos.z = clamp(pos.z, OZ0 + .4, Z1 - .4);
   camera.position.x = pos.x;
   camera.position.z = pos.z;
   vy -= 9.8 * dt;
@@ -1256,11 +2941,24 @@ function move(dt) {
 }
 
 /* ------------------------------------------------------------------ input */
+/* where a carried guest would be put down: the square under the crosshair, or —
+   when they are in the way of it — the square they are floating above; and in
+   the hall, the floor they are floating above */
+function dropSquare() {
+  const t = state.hovered;
+  if (t && t.id === 'cell') return { cell: cellOfPoint(t.point) };
+  const g = visuals[state.carry].g.position;
+  if (g.x > X0 && g.x < X1 && g.z > Z0 && g.z < GRID_Z1) return { cell: cellOfPoint(g) };
+  if (corridor(g.x, g.z)) return { hall: { x: g.x, z: g.z } };
+  return null;
+}
 function use() {
   const t = state.hovered;
   if (state.carry) {
-    if (!t || t.id !== 'cell') { toast('Look at a square on the floor.'); return; }
-    place(state.carry, ...cellOfPoint(t.point));
+    const sq = dropSquare();
+    if (!sq) { toast('Stand in the house, or in the hall, to put them down.'); return; }
+    if (sq.cell) place(state.carry, sq.cell[0], sq.cell[1]);
+    else park(state.carry, sq.hall.x, sq.hall.z);
     return;
   }
   if (!t) return;
@@ -1278,7 +2976,7 @@ function use() {
     const [c, r] = cellOfPoint(t.point);
     const who = occupantOf(c, r);
     if (who) { lift(who.id); return; }
-    tray(`<p>C${c}R${r} — <b>${roomAt(c, r)}</b>. ${state.marks.has(key(c, r)) ? 'Crossed out.' : 'Empty.'}</p>`,
+    tray(`<p>C${c}R${r} — <b>${roomAt(c, r)}</b> · ${describeSquare(c, r)}</p>`,
       '<kbd>F</kbd>mark this square', 'the grid', `C${c}R${r}`);
   }
 }
@@ -1287,14 +2985,14 @@ function giveHint() {
   if (!placedList().length) return toast('Hint · pak een gast op met E en zet hem op het vak waar zijn of haar verklaring past.');
   if (!columnsOK()) return toast('Hint · er staan twee mensen in dezelfde kolom. Dat mag niet.');
   if (!rowsOK()) return toast('Hint · er staan twee mensen in dezelfde rij. Dat mag niet.');
-  const wrong = PEOPLE.filter(p => p.test && state.placed[p.id] && !p.test(...state.placed[p.id]));
+  const wrong = PEOPLE.filter(p => p.test && state.placed[p.id] && !p.test(...state.placed[p.id], state.placed));
   if (wrong.length) return toast(`Hint · ${wrong[0].name} klopt niet: ${wrong[0].hint}.`);
   const loose = PEOPLE.find(p => !state.placed[p.id]);
-  if (loose) return toast(`Hint · ${loose.name} staat nog in de hal — ${loose.hint}.`);
-  return toast('Hint · Vladimir moet met precies één ander in een kamer liggen. Wie was dat?', 'good');
+  if (loose) return toast(`Hint · ${loose.name} staat nog ${state.parked[loose.id] ? 'in de hal, buiten het raster' : 'in de hal'} — ${loose.hint}.`);
+  return toast(`Hint · ${VICTIM.name} moet met precies één ander in een kamer liggen. Wie was dat?`, 'good');
 }
 function readCase() {
-  tray(`<p><b>CASE 004 — VLADIMIR.</b> Murder, and the house is a grid.</p>
+  tray(`<p><b>CASE — ${VICTIM.name.toUpperCase()}.</b> Murder, and the house is a grid.</p>
     <table>
     ${PEOPLE.map(p => `<tr><td class="c">${p.name}</td><td>${p.clue.toLowerCase()}.</td></tr>`).join('')}
     </table>
@@ -1308,8 +3006,16 @@ function toggleMark() {
   const k = key(c, r);
   const who = occupantOf(c, r);
   if (who) { toast(`${who.name} is standing there.`); return; }
+  if (NO_STAND.has(k)) {
+    const what = TABLES.has(k) ? 'table' : PLANTS.has(k) ? 'plant' : SHELVES.has(k) ? 'shelf'
+      : CRATES.has(k) ? 'crate' : TREES.has(k) ? 'tree' : BUSHES.has(k) ? 'bush'
+        : RUBBLE.has(k) ? 'rubble' : CROCS.has(k) ? 'crocodile' : 'television';
+    toast(`Nobody can stand on the ${what}, so the square takes no cross.`, 'bad');
+    return;
+  }
   if (state.marks.has(k)) state.marks.delete(k); else state.marks.add(k);
   syncMarks();
+  saveState();
   renderPad();
   toast(state.marks.has(k) ? `C${c}R${r} crossed out.` : `C${c}R${r} clear again.`);
 }
@@ -1323,8 +3029,9 @@ addEventListener('keydown', e => {
     return;
   }
   if (e.code === 'KeyR' && !state.won) {
-    PEOPLE.forEach(p => { delete state.placed[p.id]; visuals[p.id].g.position.copy(visuals[p.id].home); });
-    state.marks.clear(); syncMarks(); state.carry = null;
+    PEOPLE.forEach(p => { delete state.placed[p.id]; visuals[p.id].g.position.copy(visuals[p.id].home); applyPose(p.id, null); });
+    state.marks.clear(); syncMarks(); state.carry = null; state.parked = {};
+    forgetState();
     renderPad();
     toast('Everyone back to the hall, every mark gone.');
     return;
@@ -1334,6 +3041,7 @@ addEventListener('keydown', e => {
     if (state.carry) putBack(state.carry);
     return;
   }
+  if (e.code === 'KeyL') { openRooms(); document.exitPointerLock?.(); return; }
   if (e.code === 'KeyH') { giveHint(); return; }
   if (e.code === 'KeyF') { toggleMark(); return; }
   if (e.code === 'KeyE') { use(); return; }
@@ -1437,8 +3145,9 @@ function bindTouch() {
   resetBtn?.addEventListener('click', e => {
     e.preventDefault();
     if (state.won) { location.reload(); return; }
-    PEOPLE.forEach(p => { delete state.placed[p.id]; visuals[p.id].g.position.copy(visuals[p.id].home); });
-    state.marks.clear(); syncMarks(); state.carry = null;
+    PEOPLE.forEach(p => { delete state.placed[p.id]; visuals[p.id].g.position.copy(visuals[p.id].home); applyPose(p.id, null); });
+    state.marks.clear(); syncMarks(); state.carry = null; state.parked = {};
+    forgetState();
     renderPad();
     toast('Everyone back to the hall, every mark gone.');
   });
@@ -1451,8 +3160,12 @@ let hoverT = 0;
 function roomUnderPlayer() {
   const c = clamp(Math.floor((camera.position.x + N * CELL / 2) / CELL) + 1, 1, N);
   const r = clamp(Math.floor((camera.position.z + N * CELL / 2) / CELL) + 1, 1, N);
-  const inGrid = camera.position.x > -6 && camera.position.x < 6 && camera.position.z > -6 && camera.position.z < 6;
-  return inGrid ? { room: roomAt(c, r), c, r } : { room: 'the hall', c, r };
+  const p = camera.position;
+  const inGrid = p.x > X0 && p.x < X1 && p.z > Z0 && p.z < GRID_Z1;
+  if (inGrid) return { room: roomAt(c, r), c, r };
+  // off the grid: the hall proper is the strip inside the house's south end
+  const hall = p.z > GRID_Z1 && p.x > X0 - .2 && p.x < X1 + .2;
+  return { room: hall ? 'the hall' : 'the corridor', c, r, out: true };
 }
 function tick() {
   const dt = Math.min(clock.getDelta(), .05);   // slow machines should not under-integrate the jump
@@ -1460,7 +3173,7 @@ function tick() {
   camera.rotation.set(pitch, yaw, 0);
 
   const here = roomUnderPlayer();
-  roomNow.textContent = `${here.room}${here.room === 'the hall' ? '' : ` · C${here.c}R${here.r}`}`;
+  roomNow.textContent = `${here.room}${here.out ? '' : ` · C${here.c}R${here.r}`}`;
 
   hoverT -= dt;
   if (hoverT <= 0) {
@@ -1474,10 +3187,11 @@ function tick() {
       if (state.hovered.id === 'cell') {
         const [c, r] = cellOfPoint(state.hovered.point);
         text = state.carry ? `put ${person(state.carry).name} on C${c}R${r}`
-          : `C${c}R${r} · ${roomAt(c, r)}`;
+          : `C${c}R${r} · ${roomAt(c, r)}${pieceAt(c, r) ? ' · ' + pieceAt(c, r).replace(/^(the|a) /, '')
+            : isWater(c, r) ? ' · water' : ''}`;
         actionable = !!state.carry;
       } else if (state.hovered.id.startsWith('p_')) {
-        text = state.carry ? `${label} (in your arms)` : `pick up ${label.toLowerCase()}`;
+        text = state.carry ? `${label} is standing there` : `pick up ${label.toLowerCase()}`;
         actionable = !state.carry;
       } else if (state.hovered.id === 'casefile' || state.hovered.id.startsWith('sign_')) {
         actionable = false;
@@ -1488,9 +3202,12 @@ function tick() {
       if (state.trayId !== state.hovered.id + (state.carry || '')) {
         state.trayId = state.hovered.id + (state.carry || '');
         if (state.carry) {
-          tray(`<p>Carrying <b>${person(state.carry).name}</b>. Look at a square and press E to put them down.</p>
-            <p class="sub">Q sends them back to the hall.</p>`, '<kbd>E</kbd>put down · <kbd>Q</kbd>put back',
-            'in your arms', person(state.carry).name);
+          const held = person(state.carry);
+          tray(`<p>Carrying <b>${held.name}</b> — <i>${held.clue.toLowerCase()}.</i></p>
+            <p>Look at a square and press E to put them down — or at the hall or corridor floor to park them off the
+            grid.</p>
+            <p class="sub">Q sends them back to their plinth.</p>`, '<kbd>E</kbd>put down · <kbd>Q</kbd>put back',
+            'in your arms', held.name);
         } else if (state.hovered.id === 'casefile') readCase();
         else if (state.hovered.id.startsWith('sign_')) {
           const name = state.hovered.id.slice(5);
@@ -1502,17 +3219,26 @@ function tick() {
         else if (state.hovered.id.startsWith('p_')) {
           const p = person(state.hovered.id.slice(2));
           tray(`<p><b>${p.name}</b> — ${p.clue.toLowerCase()}.</p>
-            <p class="sub">${state.placed[p.id] ? `Standing on C${state.placed[p.id][0]}R${state.placed[p.id][1]} · ${roomAt(...state.placed[p.id])}.` : 'Waiting in the hall.'}</p>`,
+            <p class="sub">${state.placed[p.id] ? `Standing on C${state.placed[p.id][0]}R${state.placed[p.id][1]} · ${roomAt(...state.placed[p.id])}.`
+    : state.parked[p.id] ? 'Set down in the hall, outside the grid.' : 'Waiting in the hall.'}</p>`,
             '<kbd>E</kbd>pick up', 'a guest', p.name);
         } else {
           const [c, r] = cellOfPoint(state.hovered.point);
-          tray(`<p>C${c}R${r} — <b>${roomAt(c, r)}</b>. ${state.marks.has(key(c, r)) ? 'Crossed out.' : 'Empty.'}</p>`,
+          tray(`<p>C${c}R${r} — <b>${roomAt(c, r)}</b> · ${describeSquare(c, r)}</p>`,
             '<kbd>F</kbd>mark this square', 'the grid', `C${c}R${r}`);
         }
       }
     } else {
       crosshair.classList.remove('hot');
-      promptEl.hidden = true;
+      const sq = state.carry ? dropSquare() : null;      // carrying: say where a click would put them
+      if (sq) {
+        const who = person(state.carry).name;
+        promptEl.innerHTML = sq.cell
+          ? `<kbd>${TOUCH ? 'tap' : 'E'}</kbd>put ${who} on C${sq.cell[0]}R${sq.cell[1]}`
+          : `<kbd>${TOUCH ? 'tap' : 'E'}</kbd>set ${who} down here, off the grid`;
+        promptEl.classList.remove('read');
+        promptEl.hidden = false;
+      } else promptEl.hidden = true;
     }
   }
   crosshair.classList.toggle('carry', !!state.carry);
@@ -1524,17 +3250,74 @@ function tick() {
   }
   renderer.render(scene, camera);
 }
+restoreState();                 // a refresh picks the grid up where it was left
+resumeRoom();                   // and does not send you back to the menu
+document.documentElement.classList.remove('booting');   // and now the page is whole
 renderer.setAnimationLoop(tick);
 
+/* ------------------------------------------------------------------ rooms
+   One file per room in ./murdoku/levels/. The rooms you have closed are kept in
+   this browser, so the list can tick them and "next room" can pick one you have
+   not finished yet. */
+const DONE_KEY = 'murdoku.done';
+function doneRooms() {
+  try { return new Set(JSON.parse(localStorage.getItem(DONE_KEY) || '[]')); } catch { return new Set(); }
+}
+function markDone(id) {
+  const done = doneRooms();
+  done.add(id);
+  try { localStorage.setItem(DONE_KEY, JSON.stringify([...done])); } catch { /* private mode: it just forgets */ }
+}
+const nextRoom = () => LEVELS.find(l => l.id !== LEVEL.id && !doneRooms().has(l.id))
+  || LEVELS.find(l => !doneRooms().has(l.id)) || null;
+
+function roomLink(l, cls = '') {
+  const done = doneRooms().has(l.id);
+  return `<a href="?level=${l.id}" class="${cls.trim()}">${l.title}<i>${done ? 'closed ✓' : 'unfinished'}</i></a>`;
+}
+function renderRooms() {
+  $('#roomsList').innerHTML = LEVELS.map(l => roomLink(l, (l.id === LEVEL.id ? ' now' : '') + (doneRooms().has(l.id) ? ' done' : ''))).join('');
+}
+function openRooms() { renderRooms(); $('#rooms').hidden = false; }
+function closeRooms() { $('#rooms').hidden = true; }
+$('#roomsBtn').addEventListener('click', openRooms);
+$('#roomsClose').addEventListener('click', closeRooms);
+addEventListener('keydown', e => { if (e.code === 'Escape' && !$('#rooms').hidden) closeRooms(); });
+
+/* Straight back into the room you were in, on the square you stood on. The menu
+   is for a first visit only. */
+function resumeRoom() {
+  const saved = savedState();
+  if (!saved || !saved.seen) return false;
+  $('#start').hidden = true;
+  state.started = true;
+  if (saved.cam && Number.isFinite(saved.cam.x) && Number.isFinite(saved.cam.z)) {
+    camera.position.set(saved.cam.x, P.eye, saved.cam.z);
+    yaw = saved.cam.yaw || 0;
+    pitch = saved.cam.pitch || 0;
+    camera.rotation.set(pitch, yaw, 0);
+  }
+  if (!TOUCH) openPad();
+  return true;
+}
+
 /* ------------------------------------------------------------------ start */
+$('#levelPick').innerHTML = LEVELS.map(l =>
+  `<a href="?level=${l.id}"${l.id === LEVEL.id ? ' class="now"' : ''}>`
+  + `${l.title.replace(/^the /, '')}${doneRooms().has(l.id) ? ' ✓' : ''}</a>`).join('');
+$('#startText').textContent = LEVEL.title.charAt(0).toUpperCase() + LEVEL.title.slice(1)
+  + `, a body, and ${PEOPLE.length - 1} guests who all have an alibi. The floor is a grid of `
+  + `${N * N} squares and the whole case is a puzzle: put everyone where the statements say they were.`;
 $('#startBtn').addEventListener('click', () => {
   $('#start').hidden = true;
   state.started = true;
+  state.seen = true;
+  saveState();
   if (!TOUCH) openPad();
-  camera.position.set(0, P.eye, 7.6);
+  camera.position.set(0, P.eye, Z1 - 1.9);
   yaw = 0; pitch = -.04;
   if (!TOUCH) canvas.requestPointerLock?.();
-  setTimeout(() => toast('Five guests and a body. Read the case file on the west wall.', ''), 700);
+  setTimeout(() => toast('Six guests and a body. The case file is on the corridor wall, out and to the left.', ''), 700);
 });
 
 addEventListener('resize', () => {
@@ -1548,9 +3331,14 @@ if (new URLSearchParams(location.search).has('test') || new URLSearchParams(loca
   window.__murdoku = {
     state, PEOPLE, ROOM_AT, roomAt, cellX, cellZ, key, place, lift, putBack, checkWin, toggleMark,
     columnsOK, cellOfPoint, visuals, camera, scene, THREE, interact, target, raycaster,
-    BEDS, TABLES, CHAIRS, TVS, RUGS, PLANTS, NO_STAND, WINDOW, WINDOW_AT, FURN, use, readCase, renderPad, openPad, trayEl,
+    BEDS, TABLES, CHAIRS, TVS, RUGS, PLANTS, JACUZZIS, SHELVES, JACUZZI_Y, NO_STAND, WINDOW, WINDOW_AT, FURN, use, readCase,
+    renderPad, openPad, trayEl, N, VICTIM, roomFloor, LEVELS, LEVEL, MERGED, LOOK, sideStyle,
+    pieceAt, describeSquare, saveState, restoreState, forgetState, savedState, isWater, JACUZZI_Y,
+    doneRooms, markDone, nextRoom, openRooms, closeRooms, variantOf, VARIANTS,
+    PLINTH_X, PLINTH_Z,
     SOLIDS, WALLS, buildWalls, wallSign, groundAt, cameraOrder: () => camera.rotation.order,
-    HOUSE: { X0, X1, Z0, Z1, WALL_H, CELL }, plaqueCount: () => interact.filter(o => String(o.userData.interact).startsWith('sign_')).length,
+    HOUSE: { X0, X1, Z0, Z1, WALL_H, CELL },
+    OUTER: { OX0, OX1, OZ0, GALLERY }, corridor, outside, plaqueCount: () => interact.filter(o => String(o.userData.interact).startsWith('sign_')).length,
     rowsOK, linesOK, murdererOf, giveKnife, revealMurderer, checkWinNow: checkWin, beside, nextToSameRoom, giveHint,
     setFeet(y) { feet = y; camera.position.y = y + P.eye; },
     feet: () => feet,
@@ -1558,11 +3346,12 @@ if (new URLSearchParams(location.search).has('test') || new URLSearchParams(loca
     where() { return { x: camera.position.x, z: camera.position.z, yaw, pitch }; },
     teleport(x, z, y2 = 0, p2 = 0) {
       camera.position.set(x, P.eye, z);
-      feet = 0; yaw = y2; pitch = p2;
+      feet = 0; vy = 0; grounded = true; yaw = y2; pitch = p2;
       camera.rotation.set(pitch, yaw, 0);
       camera.updateMatrixWorld(true);
     },
-    keys, syncMarks, markObjs,
+    keys, syncMarks, markObjs, applyPose, POSES, BED_AXIS, markY, BED_Y, SEAT_Y, DEAD, DEAD_POSES,
+    park, hallSpot, dropSquare, marks: () => corridorMarks,
   };
 }
 </script>

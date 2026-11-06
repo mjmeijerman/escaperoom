@@ -154,7 +154,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     && padOpen.left >= 0 && padOpen.left + padOpen.w <= 391 && padOpen.top >= 40
     && room.padBottom <= room.btnTop, { ...padOpen, ...room });
   const listed = await page.evaluate(() => document.querySelectorAll('#padPeople li.person').length);
-  check('with all six guests in them', listed === 6, listed);
+  check('with all seven guests in them', listed === 7, listed);
   await tapBtn('pad');
   await sleep(150);
   check('and close again', (await see('#pad')).hidden === true);
@@ -179,7 +179,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   const marked = await page.evaluate(async () => {
     const d = window.__murdoku;
-    d.teleport(d.cellX(4), d.cellZ(5) - 1.2, 0, -0.5);
+    d.teleport(d.cellX(4), d.cellZ(5) + .55, 0, -.85);         // looking down, at an empty square
     await new Promise(r => setTimeout(r, 300));
     const before = d.state.marks.size;
     document.querySelector('#tbtns button[data-act="mark"]')
