@@ -19,6 +19,7 @@ SSH_CMD="${SSH_CMD:-ssh -o BatchMode=yes}"
 rm -rf "$OUT"; mkdir -p "$OUT"
 cp pcdoc.html murdoku.html hogwarts.html edo.html classic.html "$OUT/"
 cp -r vendor "$OUT/"
+cp -r murdoku "$OUT/"                  # the engine in murdoku.html, one file per room in murdoku/levels/
 cp PLAY.md PC-DOCTOR.md MURDOKU.md README.md "$OUT/"
 cp index.html "$OUT/study.html"          # the Locked Study keeps its room, not the root
 cp site/index.html site/favicon.svg "$OUT/"
