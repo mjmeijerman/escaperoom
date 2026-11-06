@@ -941,8 +941,10 @@ function bed(cells, axis) {
     box(.05, .05, d, pole, cx - w / 2 + .02, canvasTop + .01, cz);
     box(.05, .05, d, pole, cx + w / 2 - .02, canvasTop + .01, cz);
     /* a sleeping bag rolled out over the canvas, its lining open down the middle */
-    box(w - .3, BED_Y - canvasTop, d - .34, bag, cx, (BED_Y + canvasTop) / 2, cz + d * .03);
-    box(w - .52, .02, d - .7, bagIn, cx, BED_Y - .01, cz + d * .03);
+    /* the bag is sunk a little into the canvas and the lining a little into the bag:
+       two faces that only touch are two faces that flicker as you walk past */
+    box(w - .3, BED_Y - canvasTop + .03, d - .34, bag, cx, (BED_Y + canvasTop) / 2 - .015, cz + d * .03);
+    box(w - .52, .02, d - .7, bagIn, cx, BED_Y - .012, cz + d * .03);
     const roll = cyl(.09, .09, w - .34, 10, bag, cx, BED_Y - .02, cz - d / 2 + .2);
     roll.rotation.z = Math.PI / 2;
     box(.44, .04, .28, M.linen, cx, BED_Y - .01, cz - d / 2 + .16);    // a folded shirt for a pillow
